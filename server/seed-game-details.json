@@ -1,0 +1,653 @@
+{
+  "c-the-witcher-3-wild-hunt": [
+    "CD Projekt Red",
+    "CD Projekt",
+    2015,
+    "Geralt de Rivia, cazador de monstruos, recorre un continente devastado por la guerra en busca de su hija adoptiva mientras la Cacería Salvaje se acerca.",
+    "Un jugador"
+  ],
+  "c-elden-ring": [
+    "FromSoftware",
+    "Bandai Namco",
+    2022,
+    "Un RPG de acción de mundo abierto en las Tierras Intermedias, donde exploras para restaurar el Círculo de Elden.",
+    "Un jugador y multijugador"
+  ],
+  "c-hollow-knight": [
+    "Team Cherry",
+    "Team Cherry",
+    2017,
+    "Un metroidvania de acción y plataformas ambientado en Hallownest, un reino subterráneo en ruinas habitado por insectos.",
+    "Un jugador"
+  ],
+  "c-hades": [
+    "Supergiant Games",
+    "Supergiant Games",
+    2020,
+    "Zagreus, hijo de Hades, intenta escapar del inframundo griego enfrentando oleadas de enemigos en cada intento.",
+    "Un jugador"
+  ],
+  "c-stardew-valley": [
+    "ConcernedApe",
+    "ConcernedApe",
+    2016,
+    "Heredás una granja abandonada y reconstruís tu vida cultivando, socializando y explorando un pueblo rural.",
+    "Un jugador y multijugador"
+  ],
+  "c-celeste": [
+    "Maddy Makes Games",
+    "Maddy Makes Games",
+    2018,
+    "Madeline escala la montaña Celeste enfrentando desafíos de plataformas exigentes y obstáculos personales.",
+    "Un jugador"
+  ],
+  "c-dark-souls-iii": [
+    "FromSoftware",
+    "Bandai Namco",
+    2016,
+    "Un RPG de acción exigente ambientado en el reino decadente de Lothric.",
+    "Un jugador y multijugador"
+  ],
+  "c-sekiro-shadows-die-twice": [
+    "FromSoftware",
+    "Activision",
+    2019,
+    "Un shinobi busca venganza y redención en el Japón de la era Sengoku, con un combate centrado en el duelo con espada.",
+    "Un jugador"
+  ],
+  "c-god-of-war": [
+    "Santa Monica Studio",
+    "Sony",
+    2018,
+    "Kratos y su hijo Atreus emprenden un viaje por los reinos nórdicos marcado por la paternidad y la redención.",
+    "Un jugador"
+  ],
+  "c-god-of-war-ragnarok": [
+    "Santa Monica Studio",
+    "Sony",
+    2022,
+    "Kratos y Atreus continúan su historia nórdica mientras el Ragnarök se acerca.",
+    "Un jugador"
+  ],
+  "c-the-last-of-us-part-i": [
+    "Naughty Dog",
+    "Sony",
+    2022,
+    "Joel y Ellie atraviesan un Estados Unidos post-pandémico en busca de un motivo para seguir adelante.",
+    "Un jugador"
+  ],
+  "c-spider-man-remastered": [
+    "Insomniac Games",
+    "Sony",
+    2018,
+    "Peter Parker enfrenta al crimen organizado de Nueva York como un Spider-Man ya experimentado.",
+    "Un jugador"
+  ],
+  "c-horizon-zero-dawn": [
+    "Guerrilla Games",
+    "Sony",
+    2017,
+    "Aloy explora un mundo postapocalíptico dominado por máquinas para descubrir el origen de su pasado.",
+    "Un jugador"
+  ],
+  "c-horizon-forbidden-west": [
+    "Guerrilla Games",
+    "Sony",
+    2022,
+    "Aloy viaja al oeste prohibido para enfrentar una nueva amenaza que pone en riesgo la vida en la Tierra.",
+    "Un jugador"
+  ],
+  "c-bloodborne": [
+    "FromSoftware",
+    "Sony",
+    2015,
+    "Un cazador se adentra en la ciudad gótica de Yharnam, asolada por una misteriosa plaga de sangre.",
+    "Un jugador y multijugador"
+  ],
+  "c-ghost-of-tsushima": [
+    "Sucker Punch",
+    "Sony",
+    2020,
+    "Jin Sakai resiste la invasión mongola de la isla de Tsushima en el Japón feudal.",
+    "Un jugador y multijugador"
+  ],
+  "c-death-stranding": [
+    "Kojima Productions",
+    "Sony",
+    2019,
+    "Sam Porter Bridges reconecta ciudades aisladas en un Estados Unidos fracturado por fenómenos sobrenaturales.",
+    "Un jugador"
+  ],
+  "c-red-dead-redemption-2": [
+    "Rockstar Games",
+    "Rockstar Games",
+    2018,
+    "Arthur Morgan, miembro de una banda de forajidos, vive los últimos días del viejo oeste estadounidense.",
+    "Un jugador y multijugador"
+  ],
+  "c-grand-theft-auto-v": [
+    "Rockstar North",
+    "Rockstar Games",
+    2013,
+    "Tres criminales entrelazan sus historias en la ciudad ficticia de Los Santos.",
+    "Un jugador y multijugador"
+  ],
+  "c-cyberpunk-2077": [
+    "CD Projekt Red",
+    "CD Projekt",
+    2020,
+    "V, un mercenario de Night City, persigue un implante que podría darle la inmortalidad.",
+    "Un jugador"
+  ],
+  "c-the-legend-of-zelda-breath-of-the-wild": [
+    "Nintendo EPD",
+    "Nintendo",
+    2017,
+    "Link despierta tras un largo sueño para recorrer Hyrule y enfrentar la amenaza de Calamity Ganon.",
+    "Un jugador"
+  ],
+  "c-the-legend-of-zelda-tears-of-the-kingdom": [
+    "Nintendo EPD",
+    "Nintendo",
+    2023,
+    "Link explora tanto los cielos como las profundidades de Hyrule en esta secuela directa de Breath of the Wild.",
+    "Un jugador"
+  ],
+  "c-super-mario-odyssey": [
+    "Nintendo EPD",
+    "Nintendo",
+    2017,
+    "Mario viaja por reinos con formas de vida propias para rescatar a la princesa Peach de Bowser.",
+    "Un jugador"
+  ],
+  "c-mario-kart-8-deluxe": [
+    "Nintendo EPD",
+    "Nintendo",
+    2017,
+    "Carreras arcade con personajes de Nintendo en circuitos llenos de ítems y acrobacias.",
+    "Multijugador"
+  ],
+  "c-animal-crossing-new-horizons": [
+    "Nintendo EPD",
+    "Nintendo",
+    2020,
+    "Construís tu vida en una isla desierta que se transforma con el paso del tiempo real.",
+    "Un jugador y multijugador"
+  ],
+  "c-splatoon-3": [
+    "Nintendo EPD",
+    "Nintendo",
+    2022,
+    "Batallas coloridas por equipos donde cubrir territorio con tinta es la clave para ganar.",
+    "Multijugador"
+  ],
+  "c-metroid-dread": [
+    "MercurySteam / Nintendo EPD",
+    "Nintendo",
+    2021,
+    "Samus Aran investiga un planeta hostil mientras es perseguida por un enemigo implacable.",
+    "Un jugador"
+  ],
+  "c-fire-emblem-engage": [
+    "Intelligent Systems",
+    "Nintendo",
+    2023,
+    "Un RPG táctico por turnos donde el Divino Dragón se alía con héroes de otras eras.",
+    "Un jugador"
+  ],
+  "c-super-smash-bros-ultimate": [
+    "Sora Ltd. / Bandai Namco",
+    "Nintendo",
+    2018,
+    "El crossover de lucha con personajes de toda la historia de los videojuegos.",
+    "Multijugador"
+  ],
+  "c-halo-infinite": [
+    "343 Industries",
+    "Xbox Game Studios",
+    2021,
+    "El Jefe Maestro regresa para enfrentar una nueva amenaza tras la caída de un anillo Halo.",
+    "Un jugador y multijugador"
+  ],
+  "c-forza-horizon-5": [
+    "Playground Games",
+    "Xbox Game Studios",
+    2021,
+    "Un festival de carreras de mundo abierto ambientado en un México vibrante y variado.",
+    "Un jugador y multijugador"
+  ],
+  "c-gears-5": [
+    "The Coalition",
+    "Xbox Game Studios",
+    2019,
+    "Kait Diaz investiga sus propios orígenes mientras la humanidad enfrenta una nueva amenaza.",
+    "Un jugador y multijugador"
+  ],
+  "c-sea-of-thieves": [
+    "Rare",
+    "Xbox Game Studios",
+    2018,
+    "Aventuras piratas cooperativas en un mundo abierto lleno de tesoros y peligros marítimos.",
+    "Multijugador"
+  ],
+  "c-starfield": [
+    "Bethesda Game Studios",
+    "Bethesda Softworks",
+    2023,
+    "Un RPG espacial de exploración donde te unís a un grupo que investiga artefactos misteriosos.",
+    "Un jugador"
+  ],
+  "c-minecraft": [
+    "Mojang Studios",
+    "Xbox Game Studios",
+    2011,
+    "Un sandbox de construcción y supervivencia en un mundo generado por bloques.",
+    "Un jugador y multijugador"
+  ],
+  "c-terraria": [
+    "Re-Logic",
+    "Re-Logic",
+    2011,
+    "Un sandbox 2D de exploración, construcción y combate con un mundo lleno de secretos.",
+    "Un jugador y multijugador"
+  ],
+  "c-portal-2": [
+    "Valve",
+    "Valve",
+    2011,
+    "Un puzzle en primera persona donde usás un dispositivo de portales para escapar de instalaciones de pruebas.",
+    "Un jugador y multijugador"
+  ],
+  "c-half-life-alyx": [
+    "Valve",
+    "Valve",
+    2020,
+    "Un shooter de realidad virtual ambientado antes de los eventos de Half-Life 2, con Alyx Vance como protagonista.",
+    "Un jugador"
+  ],
+  "c-counter-strike-2": [
+    "Valve",
+    "Valve",
+    2023,
+    "Un shooter táctico competitivo por equipos centrado en el combate por objetivos.",
+    "Multijugador"
+  ],
+  "c-dota-2": [
+    "Valve",
+    "Valve",
+    2013,
+    "Un MOBA competitivo de estrategia en tiempo real por equipos de cinco jugadores.",
+    "Multijugador"
+  ],
+  "c-team-fortress-2": [
+    "Valve",
+    "Valve",
+    2007,
+    "Un shooter por clases y equipos con un fuerte enfoque cómico y estilizado.",
+    "Multijugador"
+  ],
+  "c-left-4-dead-2": [
+    "Valve",
+    "Valve",
+    2009,
+    "Cuatro sobrevivientes cooperan para escapar de hordas de infectados en un apocalipsis zombi.",
+    "Cooperativo"
+  ],
+  "c-baldur-s-gate-3": [
+    "Larian Studios",
+    "Larian Studios",
+    2023,
+    "Un RPG basado en Dungeons & Dragons donde un grupo intenta librarse de un parásito mental.",
+    "Un jugador y multijugador"
+  ],
+  "c-divinity-original-sin-2": [
+    "Larian Studios",
+    "Larian Studios",
+    2017,
+    "Un RPG por turnos donde Elegidos con poderes prohibidos exploran un mundo de magia e intriga.",
+    "Un jugador y multijugador"
+  ],
+  "c-disco-elysium": [
+    "ZA/UM",
+    "ZA/UM",
+    2019,
+    "Un detective con amnesia investiga un asesinato mientras reconstruye su propia identidad.",
+    "Un jugador"
+  ],
+  "c-slay-the-spire": [
+    "MegaCrit",
+    "MegaCrit",
+    2019,
+    "Un roguelike de cartas donde armás mazos para escalar una torre llena de peligros.",
+    "Un jugador"
+  ],
+  "c-among-us": [
+    "Innersloth",
+    "Innersloth",
+    2018,
+    "Un juego social de deducción donde una tripulación busca impostores entre sus miembros.",
+    "Multijugador"
+  ],
+  "c-fall-guys": [
+    "Mediatonic",
+    "Epic Games",
+    2020,
+    "Un battle royale de plataformas caóticas y coloridas con decenas de jugadores compitiendo a la vez.",
+    "Multijugador"
+  ],
+  "c-rocket-league": [
+    "Psyonix",
+    "Psyonix / Epic Games",
+    2015,
+    "Fútbol jugado con autos cohete en partidos rápidos y acrobáticos.",
+    "Multijugador"
+  ],
+  "c-fortnite": [
+    "Epic Games",
+    "Epic Games",
+    2017,
+    "Un battle royale de construcción donde cien jugadores compiten por ser los últimos en pie.",
+    "Multijugador"
+  ],
+  "c-apex-legends": [
+    "Respawn Entertainment",
+    "Electronic Arts",
+    2019,
+    "Un battle royale por equipos con Leyendas de habilidades únicas.",
+    "Multijugador"
+  ],
+  "c-warframe": [
+    "Digital Extremes",
+    "Digital Extremes",
+    2013,
+    "Un shooter cooperativo de ciencia ficción donde controlás guerreros biomecánicos llamados Warframes.",
+    "Un jugador y multijugador"
+  ],
+  "c-destiny-2": [
+    "Bungie",
+    "Bungie",
+    2017,
+    "Un shooter de mundo compartido donde Guardianes defienden lo que queda de la humanidad.",
+    "Un jugador y multijugador"
+  ],
+  "c-persona-5-royal": [
+    "Atlus",
+    "Atlus / Sega",
+    2019,
+    "Un grupo de estudiantes se convierte en ladrones fantasma para cambiar los corazones corruptos de los adultos.",
+    "Un jugador"
+  ],
+  "c-final-fantasy-vii-remake": [
+    "Square Enix",
+    "Square Enix",
+    2020,
+    "Cloud Strife se une a un grupo eco-terrorista que se enfrenta a una megacorporación en la ciudad de Midgar.",
+    "Un jugador"
+  ],
+  "c-final-fantasy-xvi": [
+    "Square Enix",
+    "Square Enix",
+    2023,
+    "Clive Rosfield se ve envuelto en una guerra entre reinos marcada por Cristales y Eikones.",
+    "Un jugador"
+  ],
+  "c-monster-hunter-world": [
+    "Capcom",
+    "Capcom",
+    2018,
+    "Cazadores rastrean y enfrentan monstruos gigantes en las tierras del Nuevo Mundo.",
+    "Un jugador y multijugador"
+  ],
+  "c-monster-hunter-rise": [
+    "Capcom",
+    "Capcom",
+    2021,
+    "Cacería de monstruos con nuevas herramientas de movilidad en el pueblo de Kamura.",
+    "Un jugador y multijugador"
+  ],
+  "c-resident-evil-4-remake": [
+    "Capcom",
+    "Capcom",
+    2023,
+    "Leon S. Kennedy rescata a la hija del presidente en un pueblo europeo infestado.",
+    "Un jugador"
+  ],
+  "c-resident-evil-village": [
+    "Capcom",
+    "Capcom",
+    2021,
+    "Ethan Winters busca a su hija en un pueblo aislado lleno de horrores.",
+    "Un jugador"
+  ],
+  "c-dead-space-remake": [
+    "Motive Studio",
+    "Electronic Arts",
+    2023,
+    "El ingeniero Isaac Clarke enfrenta horrores a bordo de una nave minera a la deriva.",
+    "Un jugador"
+  ],
+  "c-alan-wake-2": [
+    "Remedy Entertainment",
+    "Epic Games",
+    2023,
+    "Un escritor atrapado y una agente del FBI investigan sucesos sobrenaturales en Bright Falls.",
+    "Un jugador"
+  ],
+  "c-it-takes-two": [
+    "Hazelight Studios",
+    "Electronic Arts",
+    2021,
+    "Una pareja en proceso de separación es transformada en muñecos y debe cooperar para volver a la normalidad.",
+    "Cooperativo"
+  ],
+  "c-a-way-out": [
+    "Hazelight Studios",
+    "Electronic Arts",
+    2018,
+    "Dos convictos planean una fuga de prisión en una historia que solo puede jugarse en cooperativo.",
+    "Cooperativo"
+  ],
+  "c-ori-and-the-will-of-the-wisps": [
+    "Moon Studios",
+    "Xbox Game Studios",
+    2020,
+    "Un metroidvania emotivo donde el espíritu Ori explora un bosque lleno de peligros y belleza.",
+    "Un jugador"
+  ],
+  "c-cuphead": [
+    "Studio MDHR",
+    "Studio MDHR",
+    2017,
+    "Un run and gun de dificultad clásica con una estética inspirada en las caricaturas de los años 30.",
+    "Un jugador y multijugador"
+  ],
+  "c-dead-cells": [
+    "Motion Twin",
+    "Motion Twin",
+    2018,
+    "Un roguelike de acción con combate ágil en una isla en constante cambio.",
+    "Un jugador"
+  ],
+  "c-vampire-survivors": [
+    "poncle",
+    "poncle",
+    2022,
+    "Un survivor de acción minimalista donde sobrevivís oleadas cada vez más intensas de enemigos.",
+    "Un jugador"
+  ],
+  "c-balatro": [
+    "LocalThunk",
+    "Playstack",
+    2024,
+    "Un roguelike de cartas basado en el póker donde armás combos cada vez más extravagantes.",
+    "Un jugador"
+  ],
+  "c-sid-meier-s-civilization-vi": [
+    "Firaxis Games",
+    "2K",
+    2016,
+    "Un juego de estrategia por turnos donde guiás a una civilización desde la antigüedad hasta el futuro.",
+    "Un jugador y multijugador"
+  ],
+  "c-xcom-2": [
+    "Firaxis Games",
+    "2K",
+    2016,
+    "Comandás una resistencia clandestina contra una ocupación alienígena de la Tierra.",
+    "Un jugador"
+  ],
+  "c-age-of-empires-iv": [
+    "Relic Entertainment",
+    "Xbox Game Studios",
+    2021,
+    "Estrategia en tiempo real que recorre civilizaciones históricas y sus conflictos.",
+    "Un jugador y multijugador"
+  ],
+  "c-total-war-warhammer-iii": [
+    "Creative Assembly",
+    "Sega",
+    2022,
+    "Estrategia por turnos y batallas en tiempo real ambientadas en el universo de Warhammer Fantasy.",
+    "Un jugador y multijugador"
+  ],
+  "c-ea-sports-fc-24": [
+    "EA Vancouver",
+    "Electronic Arts",
+    2023,
+    "Simulador de fútbol con clubes y selecciones licenciadas de todo el mundo.",
+    "Un jugador y multijugador"
+  ],
+  "c-nba-2k24": [
+    "Visual Concepts",
+    "2K",
+    2023,
+    "Simulador de básquet con modos de carrera, franquicia y online.",
+    "Un jugador y multijugador"
+  ],
+  "c-gran-turismo-7": [
+    "Polyphony Digital",
+    "Sony",
+    2022,
+    "Un simulador de conducción con cientos de autos y circuitos reales y ficticios.",
+    "Un jugador y multijugador"
+  ],
+  "c-forza-motorsport": [
+    "Turn 10 Studios",
+    "Xbox Game Studios",
+    2023,
+    "Un simulador de carreras centrado en la física de conducción y la personalización técnica.",
+    "Un jugador y multijugador"
+  ],
+  "c-crash-team-racing-nitro-fueled": [
+    "Beenox",
+    "Activision",
+    2019,
+    "Carreras arcade con Crash Bandicoot y compañía por pistas llenas de atajos e ítems.",
+    "Un jugador y multijugador"
+  ],
+  "c-kirby-and-the-forgotten-land": [
+    "HAL Laboratory",
+    "Nintendo",
+    2022,
+    "Kirby explora un misterioso mundo abandonado con nuevas habilidades de absorción.",
+    "Un jugador y multijugador"
+  ],
+  "c-pikmin-4": [
+    "Nintendo EPD",
+    "Nintendo",
+    2023,
+    "Comandás ejércitos de Pikmin para explorar, resolver puzzles y rescatar exploradores perdidos.",
+    "Un jugador y multijugador"
+  ],
+  "c-xenoblade-chronicles-3": [
+    "Monolith Soft",
+    "Nintendo",
+    2022,
+    "Soldados de dos naciones enfrentadas descubren la verdad detrás de su mundo.",
+    "Un jugador"
+  ],
+  "c-silent-hill-2-remake": [
+    "Bloober Team",
+    "Konami",
+    2024,
+    "James Sunderland llega al pueblo de Silent Hill tras recibir una carta de su esposa fallecida.",
+    "Un jugador"
+  ],
+  "c-outer-wilds": [
+    "Mobius Digital",
+    "Annapurna Interactive",
+    2019,
+    "Un explorador espacial investiga un sistema solar atrapado en un misterioso bucle temporal.",
+    "Un jugador"
+  ],
+  "c-hi-fi-rush": [
+    "Tango Gameworks",
+    "Bethesda Softworks",
+    2023,
+    "Un juego de acción rítmica donde cada golpe y movimiento sigue el compás de la música.",
+    "Un jugador"
+  ],
+  "c-lies-of-p": [
+    "Neowiz / Round8 Studio",
+    "Neowiz",
+    2023,
+    "Una reinterpretación oscura de Pinocho como un juego de acción de estilo souls.",
+    "Un jugador"
+  ],
+  "c-helldivers-2": [
+    "Arrowhead Game Studios",
+    "Sony",
+    2024,
+    "Soldados cooperan para defender la Súper Tierra en misiones caóticas contra fuerzas alienígenas.",
+    "Cooperativo"
+  ],
+  "c-palworld": [
+    "Pocketpair",
+    "Pocketpair",
+    2024,
+    "Un juego de supervivencia y crafteo donde capturás y convivís con criaturas llamadas Pals.",
+    "Un jugador y multijugador"
+  ],
+  "c-star-wars-zero-company": [
+    "Bit Reactor",
+    "Electronic Arts",
+    2026,
+    "Un juego de estrategia táctica por turnos ambientado en el ocaso de las Guerras Clon, donde liderás a un escuadrón de mercenarios poco convencional.",
+    "Un jugador"
+  ],
+  "c-assassin-s-creed-black-flag-resynced": [
+    "Ubisoft Singapore",
+    "Ubisoft",
+    2026,
+    "Un remake completo de Assassin's Creed IV: Black Flag que pone a Edward Kenway, un corsario convertido en pirata, a navegar el Caribe durante la Edad de Oro de la piratería.",
+    "Un jugador"
+  ],
+  "c-metal-gear-solid-master-collection-vol-2": [
+    "Konami",
+    "Konami",
+    2026,
+    "Una recopilación que reúne Metal Gear Solid 4: Guns of the Patriots y Metal Gear Solid: Peace Walker, llevando por primera vez el cierre de la historia de Solid Snake a plataformas modernas.",
+    "Un jugador y multijugador"
+  ],
+  "c-splatoon-raiders": [
+    "Nintendo EPD",
+    "Nintendo",
+    2026,
+    "Una aventura de acción cooperativa dentro del universo Splatoon, donde explorás las Islas Espiralita enfrentando oleadas de salmónidos.",
+    "Un jugador y multijugador"
+  ],
+  "c-rhythm-heaven-groove": [
+    "Nintendo EPD / TNX",
+    "Nintendo",
+    2026,
+    "La primera entrega nueva en más de una década de la saga de minijuegos musicales que pone a prueba tu sentido del ritmo.",
+    "Un jugador"
+  ],
+  "c-halo-campaign-evolved": [
+    "Halo Studios",
+    "Xbox Game Studios",
+    2026,
+    "Una reconstrucción moderna de la campaña original de Halo: Combat Evolved, con misiones inéditas protagonizadas por el Jefe Maestro.",
+    "Cooperativo"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "cartridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DLCritic - catalogo y resenas de videojuegos",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "make-admin": "node server/make-admin.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.2.0"
+  }
+}

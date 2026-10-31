@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7">
+  <title>DLCritic — Tu estantería de juegos</title>
+  <meta name="description"
+    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Calificá lo que jugaste y descubrí qué probar después.">
+  <meta property="og:title" content="DLCritic — Tu estantería de juegos">
+  <meta property="og:description"
+    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Calificá lo que jugaste y descubrí qué probar después.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="headbar">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="12" x2="10" y2="12" />
+          <line x1="8" y1="10" x2="8" y2="14" />
+          <line x1="15" y1="13" x2="15.01" y2="13" />
+          <line x1="18" y1="11" x2="18.01" y2="11" />
+          <rect x="2" y="6" width="20" height="12" rx="2" />
+        </svg> DLCritic<small data-i18n="tagline">reseñas de juegos, catalogadas</small></div>
+      <nav id="mainNav">
+        <button class="navbtn" data-view="feed" data-i18n="nav_feed">Novedades</button>
+        <button class="navbtn" data-view="browse" data-i18n="nav_browse">Explorar</button>
+        <button class="navbtn" data-view="characters" data-i18n="nav_characters">Personajes</button>
+        <button class="navbtn" data-view="daily" data-i18n="nav_daily">Reto del día</button>
+      </nav>
+      <div class="headright">
+        <button class="lang-toggle" id="langToggle" aria-label="Change language" title="Change language">ES</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Cambiar paleta de color"
+          title="Cambiar paleta"></button>
+        <div class="userbadge" id="userBadge"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <div id="view-feed" class="viewsec">
+      <div class="hero hero-image">
+        <div class="hero-content">
+          <span class="eyebrow" data-i18n="feed_eyebrow">Catálogo, notas y reseñas</span>
+          <h1 data-i18n-html="feed_h1">Descubrí, calificá y compartí <span>cada juego que jugaste</span>.</h1>
+          <p data-i18n="feed_p">DLCritic es un catálogo de videojuegos con calificaciones y reseñas hechas por la
+            comunidad: explorá títulos de Steam, Epic Games, PlayStation, Xbox y Nintendo, y dejá tu nota.</p>
+          <div class="hero-actions">
+            <button class="btn gold" id="heroExploreBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg><span data-i18n="hero_cta_explore">Explorar catálogo</span></button>
+            <button class="hero-ghost" id="heroAboutBtn" data-i18n="hero_cta_about">Cómo funciona DLCritic</button>
+          </div>
+          <div class="flow-steps">
+            <div class="flow-step"><span class="flow-label" data-i18n="flow_step1_label">01 · Explorar</span><span
+                class="flow-dot"></span></div>
+            <div class="flow-step"><span class="flow-label" data-i18n="flow_step2_label">02 · Calificar</span><span
+                class="flow-dot"></span></div>
+            <div class="flow-step"><span class="flow-label" data-i18n="flow_step3_label">03 · Reseñar</span><span
+                class="flow-dot"></span></div>
+          </div>
+          <div class="hero-credit">© The Fourth Focus - God of War</div>
+        </div>
+      </div>
+
+      <div class="glass-panel">
+        <div class="flowcards-grid">
+          <div class="card flowcard">
+            <div class="flowcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg></div>
+            <h3 data-i18n="flow_card1_title">Explorá el catálogo</h3>
+            <p data-i18n="flow_card1_text">Buscá un juego en Explorar o mirá los que están recién agregados en
+              Novedades. Filtrá por plataforma para encontrar algo rápido.</p>
+            <div class="flowcard-demo flowcard-demo-search">
+              <span class="fd-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg> God of War…</span>
+              <span class="fd-chip">Steam</span><span class="fd-chip">Xbox</span>
+            </div>
+          </div>
+          <div class="card flowcard">
+            <div class="flowcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg></div>
+            <h3 data-i18n="flow_card2_title">Poné tu nota</h3>
+            <p data-i18n="flow_card2_text">Entrá a la ficha del juego y calificalo del 1 al 10 con el selector — se
+              guarda al toque, sin pasos extra.</p>
+            <div class="flowcard-demo flowcard-demo-rate">
+              <span class="fd-num">8.9</span>
+              <span class="fd-gauge"><span class="fd-gauge-fill"></span></span>
+            </div>
+          </div>
+          <div class="card flowcard">
+            <div class="flowcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="8" y1="13" x2="16" y2="13" />
+                <line x1="8" y1="17" x2="13" y2="17" />
+              </svg></div>
+            <h3 data-i18n="flow_card3_title">Contá tu experiencia</h3>
+            <p data-i18n="flow_card3_text">Escribí una reseña corta. Queda publicada en la ficha del juego para que
+              otros la lean antes de jugarlo.</p>
+            <div class="flowcard-demo flowcard-demo-review" data-i18n="flow_card3_demo">“Una de las mejores historias
+              padre-hijo que jugué…”</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="new-games">
+        <div class="sectionhead" style="margin-top:0;">
+          <h2 data-i18n="feed_new_title">Juegos nuevos</h2>
+        </div>
+        <div id="newGamesGrid" class="newsgrid" style="margin-bottom:8px;"></div>
+      </div>
+
+      <div class="hero hero-image news-hero">
+        <div class="hero-content">
+          <span class="eyebrow" data-i18n="feed_news_eyebrow">Al día con el mundo gamer</span>
+          <h2 class="news-hero-title" data-i18n="feed_news_title">Noticias del mundo gamer</h2>
+          <p data-i18n="feed_news_p">Lanzamientos, anuncios y todo lo que se mueve en la industria de los
+            videojuegos.</p>
+        </div>
+      </div>
+
+      <div class="glass-panel feed-panel">
+        <div class="rail-main">
+          <div id="newsFeedList" class="newsfeed" style="margin-top:0;"></div>
+
+          <div class="card datewidget" id="dateWidget"></div>
+
+          <div class="sectionhead">
+            <h2 data-i18n="feed_top_title">Más valorados</h2>
+          </div>
+          <div id="feedList" class="newsgrid"></div>
+        </div>
+        <aside class="rail" id="feedRail"></aside>
+      </div>
+    </div>
+
+    <div id="view-about" class="viewsec" hidden>
+      <button class="backlink" id="aboutBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="11 18 5 12 11 6" />
+        </svg><span data-i18n="back_generic">Volver</span></button>
+
+      <div class="hero" style="padding-top:8px;">
+        <span class="eyebrow" data-i18n="about_eyebrow">Sobre DLCritic</span>
+        <h1 data-i18n-html="about_h1">Un catálogo hecho <span>por y para jugadores</span>.</h1>
+        <p data-i18n="about_p">Nació para tener, en un solo lugar, lo que de verdad importa a la hora de elegir qué
+          jugar: notas y reseñas reales de gente que también juega, sin scores inflados ni marketing de por medio.</p>
+      </div>
+
+      <div class="about-grid">
+        <div class="card about-card">
+          <div class="about-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="5" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+            </svg></div>
+          <h3 data-i18n="about_goal_title">Nuestro objetivo</h3>
+          <p data-i18n="about_goal_text">Ser el lugar de referencia para saber si un juego vale la pena, con
+            calificaciones honestas de la propia comunidad en vez de puntajes de prensa.</p>
+        </div>
+        <div class="card about-card">
+          <div class="about-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg></div>
+          <h3 data-i18n="about_intent_title">Por qué existe</h3>
+          <p data-i18n="about_intent_text">Porque encontrar buenas reseñas de un juego suele significar revisar cinco
+            sitios distintos. Acá concentramos todo — catálogo, notas y opiniones — en un solo lugar simple.</p>
+        </div>
+        <div class="card about-card">
+          <div class="about-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg></div>
+          <h3 data-i18n="about_features_title">Qué podés hacer acá</h3>
+          <ul>
+            <li data-i18n="about_feature1">Calificar juegos del 1 al 10 y dejar tu reseña.</li>
+            <li data-i18n="about_feature2">Armar listas propias y una wishlist personal.</li>
+            <li data-i18n="about_feature3">Jugar el Reto del día y tirar de la ruleta de recomendaciones.</li>
+            <li data-i18n="about_feature4">Ver el perfil público de otros usuarios y sus reseñas.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hero-actions" style="justify-content:center; margin:8px 0 32px;">
+        <button class="btn gold" id="aboutExploreBtn"><span data-i18n="hero_cta_explore">Explorar catálogo</span></button>
+      </div>
+    </div>
+
+    <div id="view-news" class="viewsec" hidden>
+      <button class="backlink" id="newsBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="11 18 5 12 11 6" />
+        </svg><span data-i18n="back_news">Volver a Novedades</span></button>
+      <div class="sectionhead" style="margin-top:0;">
+        <h2 data-i18n="feed_news_title">Noticias del mundo gamer</h2><span class="count" id="newsViewCount">0</span>
+      </div>
+      <div id="newsViewList" class="newsfeed news-view-grid"></div>
+    </div>
+
+    <div id="view-browse" class="viewsec" hidden>
+      <div class="layout-side">
+        <div class="sectionhead side-area-head">
+          <h2 data-i18n="browse_title">Explorar catálogo</h2><span class="count" id="browseCount">0</span>
+        </div>
+        <div class="filterbar side-area-search">
+          <div class="search-wrap">
+            <input type="search" id="browseSearch" name="q" autocomplete="off" class="search-input" data-i18n-ph="search_ph" data-i18n-aria="search_ph" aria-label="Buscar juego"
+              placeholder="Buscar juego…">
+            <button type="button" class="search-clear" data-clears="browseSearch" data-i18n-aria="search_clear_aria" aria-label="Borrar búsqueda" hidden>✕</button>
+          </div>
+        </div>
+        <aside class="side-filters browse-controls" data-i18n-aria="filters_aria" aria-label="Filtros">
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_platforms">Plataformas</h4>
+            <div class="filterbar" id="platformChips"></div>
+          </div>
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_genres">Géneros</h4>
+            <div class="filterbar" id="genreChips"></div>
+          </div>
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_sort">Ordenar</h4>
+            <select class="sort-select" id="browseSortSelect" data-i18n-aria="browse_sort_aria"
+              aria-label="Ordenar juegos"></select>
+          </div>
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_view">Vista</h4>
+            <div class="view-toggle" id="browseViewToggle" role="group" data-i18n-aria="view_mode_group_label"
+              aria-label="Modo de vista">
+              <button type="button" data-viewmode="grid" data-i18n-title="view_grid_title"
+                title="Vista en grilla"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                </svg></button>
+              <button type="button" data-viewmode="list" data-i18n-title="view_list_title"
+                title="Vista en lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg></button>
+            </div>
+          </div>
+        </aside>
+        <div class="side-results">
+          <div class="grid" id="browseGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-characters" class="viewsec" hidden>
+      <div class="layout-side">
+        <div class="side-area-head">
+          <div class="sectionhead" style="margin-top:0;">
+            <h2 data-i18n="characters_title">Personajes</h2><span class="count" id="charactersCount">0</span>
+          </div>
+          <p class="hint" style="margin:-10px 0 18px;" data-i18n="characters_p">Califica a los personajes icónicos y
+            protagonistas de tus juegos favoritos, aparte del juego en sí.</p>
+        </div>
+        <div class="filterbar side-area-search">
+          <div class="search-wrap">
+            <input type="search" id="charactersSearch" name="q" autocomplete="off" class="search-input" data-i18n-ph="characters_search_ph" data-i18n-aria="characters_search_ph" aria-label="Buscar personaje"
+              placeholder="Buscar personaje…">
+            <button type="button" class="search-clear" data-clears="charactersSearch" data-i18n-aria="search_clear_aria" aria-label="Borrar búsqueda" hidden>✕</button>
+          </div>
+        </div>
+        <aside class="side-filters chars-controls" data-i18n-aria="filters_aria" aria-label="Filtros">
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_categories">Categorías</h4>
+            <div class="filterbar" id="charactersCategoryChips"></div>
+          </div>
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_game">Juego</h4>
+            <select class="sort-select" id="charactersGameSelect" data-i18n-aria="characters_game_filter_aria"
+              aria-label="Filtrar por juego"></select>
+          </div>
+          <div class="side-block">
+            <h4 class="side-title" data-i18n="side_sort">Ordenar</h4>
+            <select class="sort-select" id="charactersSortSelect" data-i18n-aria="characters_sort_aria"
+              aria-label="Ordenar"></select>
+          </div>
+          <div class="side-block side-actions">
+            <button type="button" class="btn-ghost" id="charactersVersusBtn" data-i18n="versus_btn">Versus</button>
+            <button type="button" class="btn gold small" id="charactersSuggestBtn"
+              data-i18n="suggest_character_btn">Sugerir un personaje</button>
+          </div>
+        </aside>
+        <div class="side-results">
+          <div class="grid" id="charactersGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-character" class="viewsec" hidden>
+      <button class="backlink" id="characterBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="11 18 5 12 11 6" />
+        </svg><span data-i18n="back_characters">Volver a Personajes</span></button>
+      <div id="characterDetail"></div>
+    </div>
+
+    <div id="view-game" class="viewsec" hidden>
+      <button class="backlink" id="gameBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="11 18 5 12 11 6" />
+        </svg><span id="gameBackText" data-i18n="back_generic">Volver</span></button>
+      <div id="gameDetail"></div>
+    </div>
+
+    <div id="view-profile" class="viewsec" hidden>
+      <div id="profileContent"></div>
+    </div>
+
+    <div id="view-lists" class="viewsec" hidden>
+      <div class="sectionhead" style="margin-top:0;">
+        <h2 data-i18n="lists_title">Listas</h2><span class="count" id="listsViewCount">0</span>
+      </div>
+      <div class="grid" id="listsViewGrid"></div>
+    </div>
+
+    <div id="view-notifications" class="viewsec" hidden>
+      <div class="sectionhead" style="margin-top:0;">
+        <h2 data-i18n="notifications_title">Notificaciones</h2><span class="count" id="notificationsCount">0</span>
+      </div>
+      <div id="notificationsList"></div>
+    </div>
+
+    <div id="view-daily" class="viewsec" hidden>
+      <div class="hero" data-rail-top>
+        <span class="eyebrow" data-i18n="daily_eyebrow">Todos los días hay algo nuevo</span>
+        <h1 data-i18n-html="daily_h1">El <span>reto</span> del día</h1>
+        <p data-i18n="daily_p">Un juego misterioso para adivinar y una ruleta para descubrir qué probar hoy. Volvé
+          mañana por más.</p>
+      </div>
+
+      <div class="daily-col">
+        <div class="sectionhead" style="margin-top:0;">
+          <h2 data-i18n="daily_guess_title">Adivina el juego</h2><span class="daily-counter"
+            id="dailyAttemptsLabel"></span>
+        </div>
+        <div class="card" id="guessCard"></div>
+      </div>
+
+      <div class="daily-col" style="margin-top:8px;">
+        <div class="sectionhead">
+          <h2 data-i18n="daily_spin_title">Ruleta del día</h2><span class="daily-counter" id="spinsLeftLabel"></span>
+        </div>
+        <p class="hint" style="margin:-8px 0 12px; color:var(--fg-soft);" data-i18n="roulette_hint">¿No sabés qué jugar?
+          Tirá de la ruleta y recibí una recomendación aleatoria.</p>
+        <div class="card" id="rouletteCard"></div>
+      </div>
+    </div>
+
+    <div id="view-auth" class="viewsec" hidden>
+      <div class="card authcard">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" class="tab active" id="tabLogin"
+            onclick="setAuthTab('login')" data-i18n="auth_login_tab">Iniciar sesión</button>
+          <button type="button" role="tab" aria-selected="false" class="tab" id="tabRegister"
+            onclick="setAuthTab('register')" data-i18n="auth_register_tab">Registrarme</button>
+        </div>
+
+        <div id="authLoginFields">
+          <div class="field">
+            <label for="a-identifier" data-i18n="auth_identifier_label">Email o usuario</label>
+            <input type="text" id="a-identifier" name="username" spellcheck="false" autocapitalize="none" placeholder="tu@email.com" autocomplete="username">
+          </div>
+          <div class="field">
+            <label for="a-password" data-i18n="auth_password_label">Contraseña</label>
+            <input type="password" id="a-password" name="password" autocomplete="current-password" placeholder="••••••••">
+          </div>
+          <button class="btn wide" id="authSubmit" data-i18n="auth_submit">Entrar</button>
+          <div class="error" id="authError" role="alert" hidden></div>
+        </div>
+
+        <div id="authRegisterStep1" hidden>
+          <div class="field">
+            <label for="r-email" data-i18n="auth_email_label">Correo electrónico</label>
+            <input type="email" id="r-email" name="email" spellcheck="false" placeholder="tu@email.com" autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="r-password" data-i18n="auth_password_label">Contraseña</label>
+            <input type="password" id="r-password" name="new-password" autocomplete="new-password" placeholder="••••••••">
+            <p class="hint" data-i18n="auth_password_hint">Mínimo 8 caracteres, con letras y números.</p>
+          </div>
+          <div class="field">
+            <label for="r-password2" data-i18n="auth_password_confirm_label">Confirmar contraseña</label>
+            <input type="password" id="r-password2" name="new-password-confirm" autocomplete="new-password" placeholder="••••••••">
+          </div>
+          <button class="btn wide" id="registerStep1Next" data-i18n="auth_next_btn">Continuar</button>
+          <div class="error" id="registerStep1Error" role="alert" hidden></div>
+        </div>
+
+        <div id="authRegisterStep2" hidden>
+          <div class="field">
+            <label for="r-avatar-file" data-i18n="profile_avatar_label">Foto de perfil</label>
+            <div class="cover-picker" style="display:flex; align-items:center; gap:14px;">
+              <div class="cover-preview" id="registerAvatarPreview" style="border-radius:50%;"></div>
+              <div style="min-width:0; flex:1;">
+                <input type="file" id="r-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif"
+                  data-i18n-aria="profile_avatar_label" aria-label="Foto de perfil" style="max-width:100%;">
+                <p class="hint" style="margin:6px 0 0;" data-i18n="avatar_file_hint">JPG, PNG, WEBP o GIF. Máximo 5MB.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="r-username" data-i18n="profile_username_label">Nombre de usuario</label>
+            <input type="text" id="r-username" name="username" spellcheck="false" autocapitalize="none" maxlength="20" autocomplete="username" placeholder="tu_nombre">
+          </div>
+          <div class="field">
+            <label for="r-bio" data-i18n="profile_bio_label">Descripción</label>
+            <textarea id="r-bio" name="bio" maxlength="500" style="min-height:70px;"></textarea>
+          </div>
+          <div class="field">
+            <label id="lbl-register-social" data-i18n="profile_social_label">Redes y plataformas de juego (opcional)</label>
+            <div class="field-row" id="registerSocialRow" role="group" aria-labelledby="lbl-register-social" style="flex-wrap:wrap;"></div>
+          </div>
+          <div class="error" id="registerStep2Error" role="alert" hidden></div>
+          <div class="confirm-actions" style="justify-content:space-between; margin-top:12px;">
+            <button class="btn-ghost" id="registerStep2Back" data-i18n="back_generic">Volver</button>
+            <button class="btn gold" id="registerStep2Submit" data-i18n="auth_submit_register">Crear cuenta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-settings" class="viewsec" hidden>
+      <div class="sectionhead" style="margin-top:0;">
+        <h2 data-i18n="settings_title">Ajustes</h2>
+      </div>
+      <div id="settingsContent"></div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="12" x2="10" y2="12" />
+              <line x1="8" y1="10" x2="8" y2="14" />
+              <line x1="15" y1="13" x2="15.01" y2="13" />
+              <line x1="18" y1="11" x2="18.01" y2="11" />
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+            </svg> DLCritic</div>
+          <small data-i18n="tagline">reseñas de juegos, catalogadas</small>
+        </div>
+        <nav class="footer-links">
+          <button type="button" class="footer-link" data-view="feed" data-i18n="nav_feed">Novedades</button>
+          <button type="button" class="footer-link" data-view="browse" data-i18n="nav_browse">Explorar</button>
+          <button type="button" class="footer-link" data-view="characters" data-i18n="nav_characters">Personajes</button>
+          <button type="button" class="footer-link" data-view="shelf" data-i18n="nav_shelf">Mi estantería</button>
+          <button type="button" class="footer-link" data-view="daily" data-i18n="nav_daily">Reto del día</button>
+        </nav>
+      </div>
+
+      <div class="footer-suggest">
+        <div>
+          <div class="footer-suggest-title" data-i18n="footer_suggest_title">¿No encontrás tu juego favorito?</div>
+          <div class="footer-suggest-sub" data-i18n="footer_suggest_sub">Envialo para que lo agreguemos.</div>
+        </div>
+        <button type="button" class="btn gold" id="footerSuggestBtn" data-i18n="footer_suggest_btn">Sugerir un
+          juego</button>
+      </div>
+
+      <div class="footer-bottom">© <span id="footerYear"></span> DLCritic — <span data-i18n="footer_note">hecho por
+          fans, para fans.</span></div>
+    </div>
+  </footer>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="navbtn bottom-navbtn" data-view="feed"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
+        </svg></span><span class="bn-label" data-i18n="nav_feed">Novedades</span></button>
+    <button class="navbtn bottom-navbtn" data-view="browse"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg></span><span class="bn-label" data-i18n="nav_browse">Explorar</span></button>
+    <button class="navbtn bottom-navbtn" data-view="characters"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg></span><span class="bn-label" data-i18n="nav_characters">Personajes</span></button>
+    <button class="navbtn bottom-navbtn" data-view="shelf"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg></span><span class="bn-label" data-i18n="nav_shelf">Mi estantería</span></button>
+    <button class="navbtn bottom-navbtn" data-view="daily"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3" />
+          <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+          <circle cx="16" cy="8" r="1.2" fill="currentColor" />
+          <circle cx="8" cy="16" r="1.2" fill="currentColor" />
+          <circle cx="16" cy="16" r="1.2" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+        </svg></span><span class="bn-label" data-i18n="nav_daily_short">Reto</span></button>
+  </nav>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/js/01-icons-and-catalog-meta.js"></script>
+  <script src="/js/02-i18n.js"></script>
+  <script src="/js/03-state-and-utils.js"></script>
+  <script src="/js/04-api-theme-rating.js"></script>
+  <script src="/js/05-navigation.js"></script>
+  <script src="/js/06-news-and-new-games.js"></script>
+  <script src="/js/07-stats-share-modals.js"></script>
+  <script src="/js/08-browse.js"></script>
+  <script src="/js/09-shelf-profile.js"></script>
+  <script src="/js/10-lists.js"></script>
+  <script src="/js/11-auth.js"></script>
+  <script src="/js/12-settings.js"></script>
+  <script src="/js/13-daily-challenge.js"></script>
+  <script src="/js/14-characters.js"></script>
+  <script src="/js/15-side-panels.js"></script>
+  <script src="/js/16-init.js"></script>
+</body>
+
+</html>

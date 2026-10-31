@@ -1,0 +1,917 @@
+[
+  {
+    "id": "c-the-witcher-3-wild-hunt",
+    "title": "The Witcher 3: Wild Hunt",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-elden-ring",
+    "title": "Elden Ring",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-hollow-knight",
+    "title": "Hollow Knight",
+    "genre": "Plataformas",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-hades",
+    "title": "Hades",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-stardew-valley",
+    "title": "Stardew Valley",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-celeste",
+    "title": "Celeste",
+    "genre": "Plataformas",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-dark-souls-iii",
+    "title": "Dark Souls III",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-sekiro-shadows-die-twice",
+    "title": "Sekiro: Shadows Die Twice",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-god-of-war",
+    "title": "God of War",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-god-of-war-ragnarok",
+    "title": "God of War Ragnarök",
+    "genre": "Aventura",
+    "platforms": [
+      "psn"
+    ]
+  },
+  {
+    "id": "c-the-last-of-us-part-i",
+    "title": "The Last of Us Part I",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-spider-man-remastered",
+    "title": "Spider-Man Remastered",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-horizon-zero-dawn",
+    "title": "Horizon Zero Dawn",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-horizon-forbidden-west",
+    "title": "Horizon Forbidden West",
+    "genre": "RPG",
+    "platforms": [
+      "psn"
+    ]
+  },
+  {
+    "id": "c-bloodborne",
+    "title": "Bloodborne",
+    "genre": "RPG",
+    "platforms": [
+      "psn"
+    ]
+  },
+  {
+    "id": "c-ghost-of-tsushima",
+    "title": "Ghost of Tsushima",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-death-stranding",
+    "title": "Death Stranding",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-red-dead-redemption-2",
+    "title": "Red Dead Redemption 2",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-grand-theft-auto-v",
+    "title": "Grand Theft Auto V",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-cyberpunk-2077",
+    "title": "Cyberpunk 2077",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-the-legend-of-zelda-breath-of-the-wild",
+    "title": "The Legend of Zelda: Breath of the Wild",
+    "genre": "Aventura",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-the-legend-of-zelda-tears-of-the-kingdom",
+    "title": "The Legend of Zelda: Tears of the Kingdom",
+    "genre": "Aventura",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-super-mario-odyssey",
+    "title": "Super Mario Odyssey",
+    "genre": "Plataformas",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-mario-kart-8-deluxe",
+    "title": "Mario Kart 8 Deluxe",
+    "genre": "Carreras",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-animal-crossing-new-horizons",
+    "title": "Animal Crossing: New Horizons",
+    "genre": "Estrategia",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-splatoon-3",
+    "title": "Splatoon 3",
+    "genre": "Disparos",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-metroid-dread",
+    "title": "Metroid Dread",
+    "genre": "Acción",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-fire-emblem-engage",
+    "title": "Fire Emblem Engage",
+    "genre": "Estrategia",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-super-smash-bros-ultimate",
+    "title": "Super Smash Bros. Ultimate",
+    "genre": "Acción",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-halo-infinite",
+    "title": "Halo Infinite",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-forza-horizon-5",
+    "title": "Forza Horizon 5",
+    "genre": "Carreras",
+    "platforms": [
+      "steam",
+      "epic",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-gears-5",
+    "title": "Gears 5",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-sea-of-thieves",
+    "title": "Sea of Thieves",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-starfield",
+    "title": "Starfield",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-minecraft",
+    "title": "Minecraft",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-terraria",
+    "title": "Terraria",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-portal-2",
+    "title": "Portal 2",
+    "genre": "Puzzle",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-half-life-alyx",
+    "title": "Half-Life: Alyx",
+    "genre": "Disparos",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-counter-strike-2",
+    "title": "Counter-Strike 2",
+    "genre": "Disparos",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-dota-2",
+    "title": "Dota 2",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-team-fortress-2",
+    "title": "Team Fortress 2",
+    "genre": "Disparos",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-left-4-dead-2",
+    "title": "Left 4 Dead 2",
+    "genre": "Disparos",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-baldur-s-gate-3",
+    "title": "Baldur's Gate 3",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-divinity-original-sin-2",
+    "title": "Divinity: Original Sin 2",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-disco-elysium",
+    "title": "Disco Elysium",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-slay-the-spire",
+    "title": "Slay the Spire",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-among-us",
+    "title": "Among Us",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-fall-guys",
+    "title": "Fall Guys",
+    "genre": "Otro",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-rocket-league",
+    "title": "Rocket League",
+    "genre": "Deportes",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-fortnite",
+    "title": "Fortnite",
+    "genre": "Disparos",
+    "platforms": [
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-apex-legends",
+    "title": "Apex Legends",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-warframe",
+    "title": "Warframe",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-destiny-2",
+    "title": "Destiny 2",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-persona-5-royal",
+    "title": "Persona 5 Royal",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-final-fantasy-vii-remake",
+    "title": "Final Fantasy VII Remake",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-final-fantasy-xvi",
+    "title": "Final Fantasy XVI",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-monster-hunter-world",
+    "title": "Monster Hunter World",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-monster-hunter-rise",
+    "title": "Monster Hunter Rise",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-resident-evil-4-remake",
+    "title": "Resident Evil 4 (Remake)",
+    "genre": "Terror",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-resident-evil-village",
+    "title": "Resident Evil Village",
+    "genre": "Terror",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-dead-space-remake",
+    "title": "Dead Space (Remake)",
+    "genre": "Terror",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-alan-wake-2",
+    "title": "Alan Wake 2",
+    "genre": "Terror",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-it-takes-two",
+    "title": "It Takes Two",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-a-way-out",
+    "title": "A Way Out",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-ori-and-the-will-of-the-wisps",
+    "title": "Ori and the Will of the Wisps",
+    "genre": "Plataformas",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-cuphead",
+    "title": "Cuphead",
+    "genre": "Plataformas",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-dead-cells",
+    "title": "Dead Cells",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-vampire-survivors",
+    "title": "Vampire Survivors",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-balatro",
+    "title": "Balatro",
+    "genre": "Puzzle",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-sid-meier-s-civilization-vi",
+    "title": "Sid Meier's Civilization VI",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-xcom-2",
+    "title": "XCOM 2",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-age-of-empires-iv",
+    "title": "Age of Empires IV",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-total-war-warhammer-iii",
+    "title": "Total War: Warhammer III",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam"
+    ]
+  },
+  {
+    "id": "c-ea-sports-fc-24",
+    "title": "EA Sports FC 24",
+    "genre": "Deportes",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-nba-2k24",
+    "title": "NBA 2K24",
+    "genre": "Deportes",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-gran-turismo-7",
+    "title": "Gran Turismo 7",
+    "genre": "Carreras",
+    "platforms": [
+      "psn"
+    ]
+  },
+  {
+    "id": "c-forza-motorsport",
+    "title": "Forza Motorsport",
+    "genre": "Carreras",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-crash-team-racing-nitro-fueled",
+    "title": "Crash Team Racing Nitro-Fueled",
+    "genre": "Carreras",
+    "platforms": [
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-kirby-and-the-forgotten-land",
+    "title": "Kirby and the Forgotten Land",
+    "genre": "Plataformas",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-pikmin-4",
+    "title": "Pikmin 4",
+    "genre": "Estrategia",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-xenoblade-chronicles-3",
+    "title": "Xenoblade Chronicles 3",
+    "genre": "RPG",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-silent-hill-2-remake",
+    "title": "Silent Hill 2 (Remake)",
+    "genre": "Terror",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-outer-wilds",
+    "title": "Outer Wilds",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-hi-fi-rush",
+    "title": "Hi-Fi Rush",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-lies-of-p",
+    "title": "Lies of P",
+    "genre": "RPG",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-helldivers-2",
+    "title": "Helldivers 2",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "psn"
+    ]
+  },
+  {
+    "id": "c-palworld",
+    "title": "Palworld",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-star-wars-zero-company",
+    "title": "Star Wars Zero Company",
+    "genre": "Estrategia",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-assassin-s-creed-black-flag-resynced",
+    "title": "Assassin's Creed Black Flag Resynced",
+    "genre": "Aventura",
+    "platforms": [
+      "steam",
+      "epic",
+      "psn",
+      "xbox"
+    ]
+  },
+  {
+    "id": "c-metal-gear-solid-master-collection-vol-2",
+    "title": "Metal Gear Solid: Master Collection Vol. 2",
+    "genre": "Acción",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox",
+      "switch"
+    ]
+  },
+  {
+    "id": "c-splatoon-raiders",
+    "title": "Splatoon Raiders",
+    "genre": "Disparos",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-rhythm-heaven-groove",
+    "title": "Rhythm Heaven Groove",
+    "genre": "Otro",
+    "platforms": [
+      "switch"
+    ]
+  },
+  {
+    "id": "c-halo-campaign-evolved",
+    "title": "Halo: Campaign Evolved",
+    "genre": "Disparos",
+    "platforms": [
+      "steam",
+      "psn",
+      "xbox"
+    ]
+  }
+]
