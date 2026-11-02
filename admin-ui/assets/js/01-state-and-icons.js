@@ -1,5 +1,5 @@
 /**
- * ARCHIVO 1 de 6 — Panel de administración (public/admin.html).
+ * ARCHIVO 1 de 6 — Panel de administración (admin-ui/admin.html).
  * Íconos + datos fijos + el estado global de ESTE panel (independiente
  * del state de la app principal — son dos páginas separadas, cada una con
  * su propio HTML/CSS/JS, que solo comparten el mismo backend).

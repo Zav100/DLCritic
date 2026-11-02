@@ -19,8 +19,26 @@ app.use(express.json());
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
 
-const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 8 });
-const writeLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
+/* ---------------- dos dominios, un mismo servidor ---------------- */
+
+// Si ADMIN_HOST está definido (uno o varios dominios separados por coma), ese dominio sirve SOLO el panel de
+// administración (/admin, /api/admin y el login) y cualquier otro dominio sirve SOLO el sitio público: en el dominio
+// público /admin y /api/admin no existen. Sin ADMIN_HOST (desarrollo local) un único dominio sirve todo.
+// No es la barrera de seguridad —la API de admin igual exige sesión y is_admin—, sino que cada dominio muestre lo suyo.
+const ADMIN_HOSTS = new Set((process.env.ADMIN_HOST || '').split(',').map(h => h.trim().toLowerCase()).filter(Boolean));
+const ADMIN_ONLY_PATH = /^\/(admin|api\/admin)(\/|$)/;
+const ADMIN_HOST_ALLOWED_PATH = /^\/(admin|api\/admin)(\/|$)|^\/api\/auth\/(me|login|logout)$/;
+app.use((req, res, next) => {
+  if (!ADMIN_HOSTS.size) return next();
+  if (ADMIN_HOSTS.has(req.hostname.toLowerCase())) {
+    if (req.path === '/') return res.redirect('/admin');
+    return ADMIN_HOST_ALLOWED_PATH.test(req.path) ? next() : res.status(404).json({ error: 'not_found' });
+  }
+  return ADMIN_ONLY_PATH.test(req.path) ? res.status(404).json({ error: 'not_found' }) : next();
+});
+
+const authLimiter = rateLimit({ name: 'auth', windowMs: 10 * 60 * 1000, max: 8 });
+const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
 
 function publicUser(u) {
   if (!u) return null;
@@ -575,7 +593,7 @@ app.put('/api/profile', requireAuth, writeLimiter, async (req, res) => {
   res.json({ user: publicUser(await findUserById.get(req.user.id)) });
 });
 
-const avatarUploadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'avatar-upload:' + req.user.id });
+const avatarUploadLimiter = rateLimit({ name: 'avatar', windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
 
 app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, res) => {
   let file;
@@ -921,8 +939,12 @@ app.get('/usuario/:username', async (req, res) => {
 
 /* ---------------- admin dashboard ---------------- */
 
+// El panel vive en admin-ui/, fuera de public/: Vercel sirve public/ directo desde su CDN, sin pasar por el filtro de
+// dominios de arriba, y acá queremos que solo salga en el dominio del dashboard.
+const adminUiDir = path.join(__dirname, '..', 'admin-ui');
 app.use('/api/admin', require('./admin'));
-app.get('/admin', (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(publicDir, 'admin.html')));
+app.get('/admin', (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(adminUiDir, 'admin.html')));
+app.use('/admin/assets', express.static(path.join(adminUiDir, 'assets')));
 
 /* ---------------- static frontend ---------------- */
 

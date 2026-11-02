@@ -1,50 +1,62 @@
-// Prueba de humo de punta a punta: levanta la app en un puerto libre, crea usuarios de prueba (smoketest_*) y recorre
-// las rutas con escritura — registro, sesión, reseñas, listas, seguimiento, notificaciones, reto diario, sugerencias
-// y el panel de admin — comprobando respuestas y errores. Al terminar borra todo lo que creó.
-// Uso: node -r ./scripts/local-env.js scripts/smoke-test.js      (Postgres local)
-//      npm run test:smoke                                          (usa DATABASE_URL de .env.local)
-// Ojo: no correrlo contra la base de producción sin querer; deja la base como estaba, pero escribe mientras corre.
+// Prueba de humo de punta a punta: crea usuarios de prueba (smoketest_*) y recorre las rutas con escritura —
+// registro, sesión, reseñas, listas, seguimiento, notificaciones, reto diario, sugerencias, subida de imágenes, el
+// límite de intentos, la separación de dominios y el panel de admin — comprobando respuestas y errores.
+// Al terminar borra todo lo que creó.
+//
+// Uso: node -r ./scripts/local-env.js scripts/smoke-test.js   (Postgres local, app en proceso)
+//      npm run test:smoke                                       (app en proceso, usa DATABASE_URL de .env.local)
+//      BASE_URL=https://sitio.vercel.app ADMIN_URL=https://panel.vercel.app npm run test:smoke   (contra un despliegue)
+// En modo remoto, DATABASE_URL tiene que apuntar a la MISMA base que el despliegue, y se vacía la tabla rate_limits
+// entre pasos (Vercel ignora el X-Forwarded-For falso y todos los pasos salen con tu IP). Correrlo solo contra una
+// base de pruebas (la rama dev), no contra producción.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { del } = require('@vercel/blob');
-const app = require('../server/index.js');
+const REMOTE = !!process.env.BASE_URL;
+const PUBLIC_HOST = 'public.test', ADMIN_HOST = 'admin.test';
+if (!REMOTE) process.env.ADMIN_HOST = ADMIN_HOST; // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar)
 const db = require('../server/db');
 const { uploadsDir } = require('../server/upload');
-
-const server = app.listen(0);
-const base = `http://localhost:${server.address().port}`;
+const server = REMOTE ? null : require('../server/index.js').listen(0);
+const publicBase = REMOTE ? process.env.BASE_URL : `http://localhost:${server.address().port}`;
+const adminBase = REMOTE ? (process.env.ADMIN_URL || process.env.BASE_URL) : publicBase;
 let ipCounter = 10; // el límite de intentos es por IP: cada cliente simula la suya (la app confía en X-Forwarded-For)
 
-function client() {
+// kind: 'public' (por defecto) o 'admin': a qué dominio le habla el cliente.
+function client(kind = 'public') {
   const ip = `10.9.0.${ipCounter++}`;
+  const base = kind === 'admin' ? adminBase : publicBase;
+  const forwardedHost = REMOTE ? {} : { 'X-Forwarded-Host': kind === 'admin' ? ADMIN_HOST : PUBLIC_HOST };
   let cookie = '';
   const call = async (method, url, body) => {
     const isForm = body instanceof FormData; // multipart: fetch pone solo el Content-Type (con el boundary)
     const res = await fetch(base + url, {
       method,
-      headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), 'X-Forwarded-For': ip, ...(cookie ? { Cookie: cookie } : {}) },
+      redirect: 'manual',
+      headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), 'X-Forwarded-For': ip, ...forwardedHost, ...(cookie ? { Cookie: cookie } : {}) },
       body: body === undefined ? undefined : (isForm ? body : JSON.stringify(body)),
     });
     for (const c of res.headers.getSetCookie()) cookie = c.split(';')[0].endsWith('=') ? '' : c.split(';')[0];
     const text = await res.text();
     let json = null;
     try { json = JSON.parse(text); } catch { /* html */ }
-    return { status: res.status, body: json, text };
+    return { status: res.status, body: json, text, headers: res.headers };
   };
   return call;
 }
 
 let passed = 0, failed = 0;
+const resetLimits = () => (REMOTE ? db.prepare('DELETE FROM rate_limits').run() : null);
 async function step(name, fn) {
-  try { await fn(); passed++; console.log('  ✓', name); }
+  try { await resetLimits(); await fn(); passed++; console.log('  ✓', name); }
   catch (e) { failed++; console.log('  ✗', name, '\n     ', String(e.message).split('\n').slice(0, 6).join('\n      ')); }
 }
 const ok = (r, status = 200) => assert.equal(r.status, status, `esperaba ${status}, llegó ${r.status}: ${r.text.slice(0, 200)}`);
 const today = new Date().toISOString().slice(0, 10);
 
 (async () => {
-  const a = client(), b = client(), anon = client(), admin = client();
+  const a = client(), b = client(), anon = client(), admin = client('admin'), aOnAdmin = client('admin');
   const pass = 'Smoketest123';
   let gameId, otherGameId, charId, reviewId, listId;
 
@@ -88,9 +100,10 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_b', password: 'Nueva12345' }));
   });
   await step('rutas protegidas devuelven 401 sin sesión', async () => {
-    for (const [m, u] of [['PUT', `/api/reviews/${gameId}`], ['GET', '/api/notifications'], ['GET', '/api/lists/mine'], ['GET', '/api/daily?date=' + today], ['GET', '/api/admin/games']]) {
+    for (const [m, u] of [['PUT', `/api/reviews/${gameId}`], ['GET', '/api/notifications'], ['GET', '/api/lists/mine'], ['GET', '/api/daily?date=' + today]]) {
       ok(await anon(m, u, m === 'PUT' ? {} : undefined), 401);
     }
+    ok(await client('admin')('GET', '/api/admin/games'), 401); // el panel, por el dominio del dashboard
   });
 
   console.log('Reseñas de juegos');
@@ -205,9 +218,11 @@ const today = new Date().toISOString().slice(0, 10);
 
   console.log('Panel de administración');
   await step('un usuario normal no entra (403); el admin sí', async () => {
-    ok(await a('GET', '/api/admin/games'), 403);
-    ok(await admin('POST', '/api/auth/register', { email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
+    ok(await aOnAdmin('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }));
+    ok(await aOnAdmin('GET', '/api/admin/games'), 403);
+    ok(await client()('POST', '/api/auth/register', { email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
     await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin'").run();
+    ok(await admin('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass }));
     ok(await admin('GET', '/api/admin/games'));
   });
   await step('juegos: crear, editar, ocultar y borrar', async () => {
@@ -254,7 +269,7 @@ const today = new Date().toISOString().slice(0, 10);
   await step('avatar y portada de admin: se guardan, se pueden descargar; formato y tamaño inválidos se rechazan', async () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
     const form = (buf, name, type = 'image/png') => { const f = new FormData(); f.append('image', new Blob([buf], { type }), name); return f; };
-    const fetchable = async url => { const r = await fetch(url.startsWith('/') ? base + url : url); return { status: r.status, type: r.headers.get('content-type'), size: (await r.arrayBuffer()).byteLength }; };
+    const fetchable = async url => { const r = await fetch(url.startsWith('/') ? publicBase + url : url); return { status: r.status, type: r.headers.get('content-type'), size: (await r.arrayBuffer()).byteLength }; };
 
     const av = await a('POST', '/api/profile/avatar', form(png, 'mi foto.PNG')); ok(av);
     const avUrl = av.body.user.avatarUrl; created.push(avUrl);
@@ -270,7 +285,34 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.alloc(4 * 1024 * 1024 + 1), 'enorme.png'))).body.error, 'upload_failed');
     ok(await a('POST', '/api/profile/avatar', new FormData()), 400); // sin archivo
     ok(await anon('POST', '/api/profile/avatar', form(png, 'x.png')), 401);
-    ok(await a('POST', '/api/admin/upload', form(png, 'x.png')), 403);
+    ok(await aOnAdmin('POST', '/api/admin/upload', form(png, 'x.png')), 403); // usuario común en el dominio del dashboard
+  });
+
+  console.log('Dominios y límite de intentos');
+  await step('dominios: el panel solo existe en el dominio del dashboard y el sitio solo en el público', async () => {
+    const pub = client(), adm = client('admin');
+    // dominio público: sin panel (ni siquiera con sesión de admin)
+    for (const route of ['/admin', '/admin/assets/admin.css', '/api/admin/games']) ok(await pub('GET', route), 404);
+    ok(await pub('GET', '/'), 200); ok(await pub('GET', '/api/games'), 200);
+    // dominio del dashboard: solo panel y login
+    const root = await adm('GET', '/'); ok(root, 302); assert.equal(root.headers.get('location'), '/admin');
+    const page = await adm('GET', '/admin'); ok(page); assert.ok(page.text.includes('/admin/assets/js/'), 'el HTML del panel carga sus scripts desde /admin/assets');
+    const css = await adm('GET', '/admin/assets/admin.css'); ok(css); assert.ok(css.text.length > 500);
+    assert.ok((await adm('GET', '/admin/assets/js/02-views-login-and-api.js')).text.includes('apiPost'));
+    ok(await adm('GET', '/api/auth/me'), 200);
+    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x']) ok(await adm('GET', route), 404);
+    ok(await adm('POST', '/api/auth/register', { email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
+    // los archivos del panel no están en public/: tampoco salen por el CDN del sitio público
+    for (const f of ['/admin.html', '/css/admin.css', '/admin-js/01-state-and-icons.js']) assert.notEqual((await pub('GET', f)).status, 200, f);
+  });
+  await step('límite de intentos: el 9.º login fallido seguido devuelve 429 con Retry-After, y el contador se comparte', async () => {
+    const x = client();
+    for (let i = 1; i <= 8; i++) ok(await x('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'mala' + i + 'xxxx' }), 401);
+    const blocked = await x('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }); // aunque sea la clave correcta
+    ok(blocked, 429); assert.ok(Number(blocked.headers.get('retry-after')) > 0); assert.equal(blocked.body.error, 'too_many_requests');
+    if (!REMOTE) { // otro cliente (otra IP) no se ve afectado; en remoto todos comparten tu IP
+      ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }));
+    }
   });
 
   // limpieza (las imágenes: archivo local o blob, según el modo)
@@ -278,13 +320,14 @@ const today = new Date().toISOString().slice(0, 10);
     if (url.startsWith('/uploads/')) fs.rmSync(path.join(uploadsDir, path.basename(url)), { force: true });
     else await del(url);
   }
+  await db.prepare("DELETE FROM rate_limits WHERE key LIKE '%10.9.0.%'" + (REMOTE ? ' OR true' : '')).run();
   await db.prepare("DELETE FROM users WHERE username LIKE 'smoketest\\_%' ESCAPE '\\'").run();
   await db.prepare("DELETE FROM game_suggestions WHERE title LIKE 'smoketest%'").run();
   const left = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE username LIKE 'smoketest%'").get();
   assert.equal(left.n, 0);
 
   console.log(`\n${passed} pasos bien, ${failed} con fallas`);
-  server.close();
+  if (server) server.close();
   await db.close();
   process.exit(failed ? 1 : 0);
-})().catch(async e => { console.error('Error inesperado:', e); server.close(); await db.close().catch(() => {}); process.exit(1); });
+})().catch(async e => { console.error('Error inesperado:', e); if (server) server.close(); await db.close().catch(() => {}); process.exit(1); });

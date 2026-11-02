@@ -258,7 +258,7 @@ function confirmDialog(message){
 /* ---------- sugerir un juego (footer) ---------- */
 // Modal del botón "Sugerir un juego" del footer: un formulario simple que
 // manda la sugerencia a /api/suggestions (la revisa un admin desde el
-// panel de administración, ver public/admin-js/06-suggestions-and-init.js).
+// panel de administración, ver admin-ui/assets/js/06-suggestions-and-init.js).
 function openSuggestModal(){
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';

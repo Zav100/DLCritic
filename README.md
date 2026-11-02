@@ -48,7 +48,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
-- `public/admin.html` — el panel de administración (página aparte, con su propio script).
+- `admin-ui/` — el panel de administración (HTML + `assets/`). Está fuera de `public/` a propósito: el servidor lo entrega solo en el dominio del dashboard (ver `ADMIN_HOST`).
 - `public/uploads/` — imágenes de portada subidas desde `/admin`.
 - `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, al correr `npm run db:seed` contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
 - La base de datos es la única fuente de verdad: todo el catálogo (juegos base + agregados), el calendario y las noticias viven ahí, no hay datos estáticos en el HTML.

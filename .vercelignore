@@ -1,0 +1,13 @@
+# Lo que NO se sube a Vercel (además de lo que ya ignora .gitignore)
+.pgdata
+.neon
+.claude
+.playwright
+scripts
+data.db
+data.db-shm
+data.db-wal
+server.log
+public/uploads
+neon.ts
+README.md

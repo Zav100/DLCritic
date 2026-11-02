@@ -13,7 +13,7 @@ function requireAdmin(req, res, next) {
 }
 router.use(requireAuth, requireAdmin);
 
-const uploadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30, keyFn: req => 'admin-upload:' + req.user.id });
+const uploadLimiter = rateLimit({ name: 'admin-upload', windowMs: 10 * 60 * 1000, max: 30, keyFn: req => 'u:' + req.user.id });
 
 router.post('/upload', uploadLimiter, async (req, res) => {
   let file;

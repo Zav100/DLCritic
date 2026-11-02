@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "gru1"
+  ],
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{public/index.html,admin-ui/**}",
+      "maxDuration": 20
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ],
+  "installCommand": "npm install --omit=dev"
+}
