@@ -29,7 +29,10 @@ function createClient() {
   types.setTypeParser(20, Number); // int8: COUNT(*) llega como texto por defecto
   types.setTypeParser(OID_NUMERIC, parseNumeric);
   // max bajo: en Vercel cada instancia abre su propio pool y Neon limita las conexiones.
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, connectionTimeoutMillis: 10000 });
+  // pg 8 trata sslmode=require como verify-full (valida el certificado del servidor) y en cada arranque avisa que pg 9 lo
+  // volverá más laxo. Pedir verify-full de forma explícita conserva exactamente lo de hoy, sin el aviso y sin depender de la versión.
+  const connectionString = process.env.DATABASE_URL.replace(/([?&])sslmode=(?:require|prefer|verify-ca)(?=&|$)/, '$1sslmode=verify-full');
+  const pool = new Pool({ connectionString, max: 5, connectionTimeoutMillis: 10000 });
   // Neon cierra las conexiones inactivas (y suspende el servidor tras unos minutos sin uso). Sin este manejador, ese
   // cierre llega como un 'error' sin escuchar y tumba el proceso; con él, el pool simplemente abre otra conexión.
   pool.on('error', e => console.error('Conexión inactiva cerrada por la base:', e.message));
