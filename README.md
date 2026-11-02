@@ -118,15 +118,23 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; máximo 4 MB, JP
 | GET/POST | `/api/admin/news` | ✔ admin | listar / crear noticias |
 | PUT/DELETE | `/api/admin/news/:id` | ✔ admin | editar / borrar una noticia |
 
-## Desplegar en un host
+## Desplegar en Vercel
 
-Cualquier host que corra Node 22+ sirve. Opciones simples y con capa gratuita:
+La app corre como **una sola función de Vercel** (`api/index.js` exporta el servidor de Express; `vercel.json` manda a ella todo lo que no sea un archivo de `public/`), con la base en **Neon** y las imágenes en **Vercel Blob**. Región: `gru1` (São Paulo), la misma que la base.
 
-- **Render** (render.com) — conectá el repo, build command `npm install`, start command `npm start`. El disco de `data.db` necesita un "persistent disk" (Render lo ofrece en el plan free con límites, o de pago para más espacio).
-- **Railway** (railway.app) — similar a Render, con volumen persistente para `data.db`.
-- **Fly.io** — más control, requiere un volumen (`fly volumes create`) montado en la carpeta del proyecto.
+**Dos dominios, un mismo despliegue.** Si `ADMIN_HOST` está definido, ese dominio sirve solo el panel de administración (`/admin`, `/api/admin` y el login) y cualquier otro dominio sirve solo el sitio público. Ambos usan la misma `DATABASE_URL`, o sea la misma base. El panel vive en `admin-ui/` (fuera de `public/`) para que no salga por el CDN del dominio público.
 
-La base ya es Postgres (Neon), así que `data.db` y el volumen persistente de la base dejaron de hacer falta; solo se necesita definir `DATABASE_URL` en el host. Las imágenes subidas ya van a Vercel Blob; todavía queda adaptar el servidor para correr en Vercel (ver el plan de migración).
+Variables de entorno del proyecto en Vercel:
+
+| Variable | Qué es |
+|---|---|
+| `DATABASE_URL` | URL **pooled** de la rama de Neon (`production` en producción) |
+| `BLOB_READ_WRITE_TOKEN` | token del Blob store (o conectar el store al proyecto en Vercel > Storage) |
+| `ADMIN_HOST` | dominio del dashboard, ej. `dlcritic-admin.vercel.app` (varios, separados por coma) |
+
+Pasos: `vercel link` (una vez) → cargar las variables → `npm run db:migrate`, `npm run db:import -- data.db` y `npm run db:migrate-uploads` contra la rama de Neon que use el despliegue → `vercel deploy --prod`. Para probar un despliegue: `BASE_URL=https://… ADMIN_URL=https://… npm run test:smoke` (solo contra una base de pruebas, nunca producción).
+
+Otro dominio (por ejemplo `dlcritic.com`) se agrega en Vercel > Settings > Domains y, si es el del dashboard, también en `ADMIN_HOST`.
 
 ## Notas de seguridad
 

@@ -14,3 +14,6 @@ server.log
 .env.*
 !.env.example
 .neon
+
+.vercel
+.env*

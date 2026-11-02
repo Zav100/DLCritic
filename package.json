@@ -16,7 +16,7 @@
     "db:migrate-uploads": "node --env-file-if-exists=.env.local scripts/migrate-uploads.js"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": "24.x"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
