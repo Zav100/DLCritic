@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["-r", "./scripts/local-env.js", "server/index.js"],
       "port": 8793
+    },
+    {
+      "name": "dlcritic-neon",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env.local", "server/index.js"],
+      "port": 8795
     }
   ]
 }
