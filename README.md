@@ -26,6 +26,8 @@ npm run dev
 
 Abrí `http://localhost:8793`.
 
+Con el CLI de Neon (`npm i -g neon`, luego `neon login`) el proyecto ya queda enlazado (`neon.ts` + `.neon`) y `neon init` / `neon checkout <rama>` escriben `DATABASE_URL` en `.env.local` por vos. Las ramas de Neon sirven de copias desechables de la base: `neon checkout dev --create` crea la rama `dev` (se borra sola a los 7 días) y `neon checkout production` vuelve a la principal. Mirá siempre `NEON_BRANCH` en `.env.local` para saber contra qué rama estás escribiendo.
+
 **Traer los datos de la base SQLite anterior (`data.db`)** — sobre una base recién migrada y **sin** correr el seed (copia usuarios, contraseñas, reseñas, todo; conserva los ids y verifica los conteos):
 
 ```bash

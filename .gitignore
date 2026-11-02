@@ -13,3 +13,4 @@ server.log
 .env
 .env.*
 !.env.example
+.neon
