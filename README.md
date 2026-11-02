@@ -39,7 +39,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 
 ## Estructura
 
-- `public/index.html` — todo el frontend (sin build step, HTML/CSS/JS plano).
+- `server/views/index.html` + `public/` (`js/`, `css/`, `img/`) — todo el frontend (sin build step, HTML/CSS/JS plano). El HTML lo entrega el servidor (así cada dominio muestra solo lo suyo) y el resto sale del CDN de Vercel.
 - `server/index.js` — API REST (Express).
 - `server/db.js` — acceso a PostgreSQL (driver `pg`; Neon en producción). Mantiene la forma que tenía SQLite, `db.prepare(sql).get/all/run(...)`, pero asíncrona (`await`).
 - `server/schema.sql` — el esquema de la base. `npm run db:migrate` lo aplica (es seguro repetirlo).

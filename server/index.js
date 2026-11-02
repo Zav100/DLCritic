@@ -857,7 +857,9 @@ app.get('/api/news', async (req, res) => {
 /* ---------------- pretty routes + per-game Open Graph tags ---------------- */
 
 const publicDir = path.join(__dirname, '..', 'public');
-const indexPath = path.join(publicDir, 'index.html');
+// El HTML de la página vive en server/views/, fuera de public/: Vercel sirve public/ directo desde su CDN, sin pasar por el filtro de
+// dominios, y todas las páginas (también la raíz) tienen que pasar por el servidor para que cada dominio muestre solo lo suyo.
+const indexPath = path.join(__dirname, 'views', 'index.html');
 function getIndexTemplate() { return fs.readFileSync(indexPath, 'utf8'); }
 const avgRatingForGame = db.prepare('SELECT AVG(rating) as avg, COUNT(rating) as n FROM reviews WHERE game_id = ? AND rating IS NOT NULL');
 
@@ -933,7 +935,7 @@ app.get('/usuario/:username', async (req, res) => {
   res.type('html').send(renderIndexWithMeta({ title: `${user.username} — DLCritic`, description, image: user.avatar_url || null, url }));
 });
 
-['/explorar', '/mi-estanteria', '/mis-listas', '/notificaciones', '/noticias', '/reto-del-dia', '/acerca-de', '/personajes', '/cuenta', '/ajustes'].forEach(route => {
+['/', '/explorar', '/mi-estanteria', '/mis-listas', '/notificaciones', '/noticias', '/reto-del-dia', '/acerca-de', '/personajes', '/cuenta', '/ajustes'].forEach(route => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(getIndexTemplate()));
 });
 

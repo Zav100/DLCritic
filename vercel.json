@@ -5,7 +5,7 @@
   ],
   "functions": {
     "api/index.js": {
-      "includeFiles": "{public/index.html,admin-ui/**}",
+      "includeFiles": "{server/views/index.html,admin-ui/**}",
       "maxDuration": 20
     }
   },
