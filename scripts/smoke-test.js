@@ -5,8 +5,12 @@
 //      npm run test:smoke                                          (usa DATABASE_URL de .env.local)
 // Ojo: no correrlo contra la base de producción sin querer; deja la base como estaba, pero escribe mientras corre.
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { del } = require('@vercel/blob');
 const app = require('../server/index.js');
 const db = require('../server/db');
+const { uploadsDir } = require('../server/upload');
 
 const server = app.listen(0);
 const base = `http://localhost:${server.address().port}`;
@@ -16,10 +20,11 @@ function client() {
   const ip = `10.9.0.${ipCounter++}`;
   let cookie = '';
   const call = async (method, url, body) => {
+    const isForm = body instanceof FormData; // multipart: fetch pone solo el Content-Type (con el boundary)
     const res = await fetch(base + url, {
       method,
-      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip, ...(cookie ? { Cookie: cookie } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), 'X-Forwarded-For': ip, ...(cookie ? { Cookie: cookie } : {}) },
+      body: body === undefined ? undefined : (isForm ? body : JSON.stringify(body)),
     });
     for (const c of res.headers.getSetCookie()) cookie = c.split(';')[0].endsWith('=') ? '' : c.split(';')[0];
     const text = await res.text();
@@ -244,7 +249,35 @@ const today = new Date().toISOString().slice(0, 10);
     for (const s of all) ok(await admin('DELETE', `/api/admin/suggestions/${s.id}`));
   });
 
-  // limpieza
+  console.log('Imágenes subidas');
+  const created = []; // URLs de imágenes que crea la prueba, para borrarlas al final
+  await step('avatar y portada de admin: se guardan, se pueden descargar; formato y tamaño inválidos se rechazan', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const form = (buf, name, type = 'image/png') => { const f = new FormData(); f.append('image', new Blob([buf], { type }), name); return f; };
+    const fetchable = async url => { const r = await fetch(url.startsWith('/') ? base + url : url); return { status: r.status, type: r.headers.get('content-type'), size: (await r.arrayBuffer()).byteLength }; };
+
+    const av = await a('POST', '/api/profile/avatar', form(png, 'mi foto.PNG')); ok(av);
+    const avUrl = av.body.user.avatarUrl; created.push(avUrl);
+    assert.match(avUrl, /^(\/uploads\/[0-9a-f]{32}\.png|https:\/\/.+\.blob\.vercel-storage\.com\/uploads\/[0-9a-f]{32}\.png)$/, 'URL del avatar: ' + avUrl);
+    assert.deepEqual(await fetchable(avUrl), { status: 200, type: 'image/png', size: png.length });
+    assert.equal((await anon('GET', '/api/users/smoketest_a')).body.user.avatarUrl, avUrl);
+
+    const up = await admin('POST', '/api/admin/upload', form(png, 'portada.jpg', 'image/jpeg')); ok(up);
+    created.push(up.body.url); assert.match(up.body.url, /\/uploads\/[0-9a-f]{32}\.jpg$/);
+    assert.equal((await fetchable(up.body.url)).status, 200);
+
+    assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.from('<script>alert(1)</script>'), 'x.html', 'text/html'))).body.error, 'invalid_file');
+    assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.alloc(4 * 1024 * 1024 + 1), 'enorme.png'))).body.error, 'upload_failed');
+    ok(await a('POST', '/api/profile/avatar', new FormData()), 400); // sin archivo
+    ok(await anon('POST', '/api/profile/avatar', form(png, 'x.png')), 401);
+    ok(await a('POST', '/api/admin/upload', form(png, 'x.png')), 403);
+  });
+
+  // limpieza (las imágenes: archivo local o blob, según el modo)
+  for (const url of created) {
+    if (url.startsWith('/uploads/')) fs.rmSync(path.join(uploadsDir, path.basename(url)), { force: true });
+    else await del(url);
+  }
   await db.prepare("DELETE FROM users WHERE username LIKE 'smoketest\\_%' ESCAPE '\\'").run();
   await db.prepare("DELETE FROM game_suggestions WHERE title LIKE 'smoketest%'").run();
   const left = await db.prepare("SELECT COUNT(*) AS n FROM users WHERE username LIKE 'smoketest%'").get();

@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const db = require('./db');
 const { requireAuth } = require('./auth');
 const { rateLimit } = require('./rateLimit');
-const { upload } = require('./upload');
+const { receiveImage, saveImage } = require('./upload');
 
 const router = express.Router();
 
@@ -15,12 +15,12 @@ router.use(requireAuth, requireAdmin);
 
 const uploadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30, keyFn: req => 'admin-upload:' + req.user.id });
 
-router.post('/upload', uploadLimiter, (req, res) => {
-  upload.single('image')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: 'upload_failed' });
-    if (!req.file) return res.status(400).json({ error: 'invalid_file' });
-    res.json({ url: '/uploads/' + req.file.filename });
-  });
+router.post('/upload', uploadLimiter, async (req, res) => {
+  let file;
+  try { file = await receiveImage(req, res); }
+  catch (e) { return res.status(400).json({ error: 'upload_failed' }); }
+  if (!file) return res.status(400).json({ error: 'invalid_file' });
+  res.json({ url: await saveImage(file) });
 });
 
 function uid() { return Date.now().toString(36) + crypto.randomBytes(3).toString('hex'); }

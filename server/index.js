@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
-const { upload } = require('./upload');
+const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
 const { rateLimit } = require('./rateLimit');
 const {
@@ -577,18 +577,13 @@ app.put('/api/profile', requireAuth, writeLimiter, async (req, res) => {
 
 const avatarUploadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'avatar-upload:' + req.user.id });
 
-app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, (req, res, next) => {
-  upload.single('image')(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: 'upload_failed' });
-    if (!req.file) return res.status(400).json({ error: 'invalid_file' });
-    try {
-      const url = '/uploads/' + req.file.filename;
-      await setAvatarUrl.run(url, req.user.id);
-      res.json({ user: publicUser(await findUserById.get(req.user.id)) });
-    } catch (e) {
-      next(e); // este callback lo llama multer, no Express: sin esto un error de la base quedaría sin responder
-    }
-  });
+app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, res) => {
+  let file;
+  try { file = await receiveImage(req, res); }
+  catch (e) { return res.status(400).json({ error: 'upload_failed' }); }
+  if (!file) return res.status(400).json({ error: 'invalid_file' });
+  await setAvatarUrl.run(await saveImage(file), req.user.id);
+  res.json({ user: publicUser(await findUserById.get(req.user.id)) });
 });
 
 app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, res) => {
@@ -795,12 +790,15 @@ const COVER_PROXY_ALLOWED_HOSTS = new Set([
   'cdn.akamai.steamstatic.com',
   'shared.akamai.steamstatic.com',
 ]);
+// Las portadas y fotos subidas viven en Vercel Blob (un subdominio por tienda): también pasan por el proxy para poder
+// dibujarlas en el canvas de la tarjeta de compartir sin "tainted canvas".
+const isProxyHostAllowed = host => COVER_PROXY_ALLOWED_HOSTS.has(host) || host.endsWith('.public.blob.vercel-storage.com');
 
 app.get('/api/image-proxy', async (req, res) => {
   let target;
   try { target = new URL(String(req.query.url || '')); }
   catch (e) { return res.status(400).json({ error: 'invalid_url' }); }
-  if (target.protocol !== 'https:' || !COVER_PROXY_ALLOWED_HOSTS.has(target.hostname)) {
+  if (target.protocol !== 'https:' || !isProxyHostAllowed(target.hostname)) {
     return res.status(400).json({ error: 'host_not_allowed' });
   }
   try {

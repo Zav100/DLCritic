@@ -85,7 +85,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 2. Corré `npm run make-admin -- <tu_usuario>` en la terminal del servidor (usa la base de `.env.local`).
 3. Entrá a `/admin` con esa misma cuenta.
 
-Las imágenes subidas se guardan en `public/uploads/` (servidas como archivos estáticos) y quedan fuera de git — si desplegás en un host con disco efímero (como el free tier de algunos servicios), asegurate de que ese directorio esté en un volumen persistente, igual que `data.db`.
+Las imágenes subidas (portadas, fotos de personajes, avatares; máximo 4 MB, JPG/PNG/WEBP/GIF) se guardan en **Vercel Blob** cuando existe `BLOB_READ_WRITE_TOKEN` en el entorno, y en `public/uploads/` cuando no (desarrollo local, queda fuera de git). El tope de 4 MB viene de que Vercel rechaza requests de más de 4,5 MB. En la base se guarda la URL final de cada imagen. Para pasar a Blob las imágenes que ya estaban en `public/uploads/`: `npm run db:migrate-uploads` (primero con `-- --dry-run` para ver qué haría). La tarjeta de compartir dibuja las portadas de Blob a través de `/api/image-proxy`.
 
 ## API
 
@@ -126,7 +126,7 @@ Cualquier host que corra Node 22+ sirve. Opciones simples y con capa gratuita:
 - **Railway** (railway.app) — similar a Render, con volumen persistente para `data.db`.
 - **Fly.io** — más control, requiere un volumen (`fly volumes create`) montado en la carpeta del proyecto.
 
-La base ya es Postgres (Neon), así que `data.db` y el volumen persistente de la base dejaron de hacer falta; solo se necesita definir `DATABASE_URL` en el host. Todavía queda pendiente mover las imágenes subidas (`public/uploads/`) a un almacenamiento externo y adaptar el servidor a Vercel (ver el plan de migración).
+La base ya es Postgres (Neon), así que `data.db` y el volumen persistente de la base dejaron de hacer falta; solo se necesita definir `DATABASE_URL` en el host. Las imágenes subidas ya van a Vercel Blob; todavía queda adaptar el servidor para correr en Vercel (ver el plan de migración).
 
 ## Notas de seguridad
 
