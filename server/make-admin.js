@@ -1,18 +1,20 @@
 // Promotes an existing user to admin so they can use /admin.
-// Usage: node server/make-admin.js <username>
+// Usage: npm run make-admin -- <username>      (usa DATABASE_URL de .env.local, o PGLITE_DIR en local)
 const db = require('./db');
 
 const username = process.argv[2];
 if (!username) {
-  console.error('Usage: node server/make-admin.js <username>');
+  console.error('Usage: npm run make-admin -- <username>');
   process.exit(1);
 }
 
-const user = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(username);
-if (!user) {
-  console.error(`No existe ningún usuario "${username}". Registrate primero en la app y despues corré este script.`);
-  process.exit(1);
-}
-
-db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(user.id);
-console.log(`"${user.username}" ahora es administrador. Iniciá sesión con esa cuenta en /admin.`);
+(async () => {
+  const user = await db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)').get(username);
+  if (!user) {
+    console.error(`No existe ningún usuario "${username}". Registrate primero en la app y despues corré este script.`);
+    process.exitCode = 1;
+    return;
+  }
+  await db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(user.id);
+  console.log(`"${user.username}" ahora es administrador. Iniciá sesión con esa cuenta en /admin.`);
+})().catch(e => { console.error(e.message); process.exitCode = 1; }).finally(() => db.close());

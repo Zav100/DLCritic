@@ -6,14 +6,23 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js",
-    "make-admin": "node server/make-admin.js"
+    "dev": "node --watch --env-file-if-exists=.env.local server/index.js",
+    "dev:local": "node --watch -r ./scripts/local-env.js server/index.js",
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.js",
+    "db:seed": "node --env-file-if-exists=.env.local scripts/seed.js",
+    "db:import": "node --env-file-if-exists=.env.local scripts/import-sqlite.js",
+    "make-admin": "node --env-file-if-exists=.env.local server/make-admin.js",
+    "test:smoke": "node --env-file-if-exists=.env.local scripts/smoke-test.js"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "multer": "^2.2.0"
+    "express": "^5.3.0",
+    "multer": "^2.2.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14"
   }
 }

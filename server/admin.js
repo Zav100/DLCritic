@@ -51,17 +51,17 @@ function shapeAdminGame(g) {
   };
 }
 
-router.get('/games', (req, res) => {
-  res.json({ games: listAdminGames.all().map(shapeAdminGame) });
+router.get('/games', async (req, res) => {
+  res.json({ games: (await listAdminGames.all()).map(shapeAdminGame) });
 });
 
-router.post('/games', (req, res) => {
+router.post('/games', async (req, res) => {
   const b = req.body || {};
   const title = String(b.title || '').trim();
   if (title.length < 2) return res.status(400).json({ error: 'title_too_short' });
   const id = 'u-' + uid();
   const genresArr = Array.isArray(b.genres) && b.genres.length ? b.genres : (b.genre ? [b.genre] : ['Otro']);
-  insertAdminGame.run({
+  await insertAdminGame.run({
     id, title, genre: genresArr[0], genres: JSON.stringify(genresArr), platforms: JSON.stringify(b.platforms || []),
     added_by: req.user.username, created_at: new Date().toISOString(),
     cover_url: b.coverUrl || null, card_cover_url: b.cardCoverUrl || null, description: b.description || null,
@@ -71,11 +71,11 @@ router.post('/games', (req, res) => {
     hidden: b.hidden ? 1 : 0, is_new_release: b.isNewRelease ? 1 : 0,
     new_release_date: b.newReleaseDate || null,
   });
-  res.json({ game: shapeAdminGame(findAdminGame.get(id)) });
+  res.json({ game: shapeAdminGame(await findAdminGame.get(id)) });
 });
 
-router.put('/games/:id', (req, res) => {
-  const existing = findAdminGame.get(req.params.id);
+router.put('/games/:id', async (req, res) => {
+  const existing = await findAdminGame.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const b = req.body || {};
   const title = String(b.title !== undefined ? b.title : existing.title).trim();
@@ -83,7 +83,7 @@ router.put('/games/:id', (req, res) => {
   const genresArr = Array.isArray(b.genres)
     ? (b.genres.length ? b.genres : ['Otro'])
     : JSON.parse(existing.genres || '[]').length ? JSON.parse(existing.genres || '[]') : [existing.genre];
-  updateAdminGame.run({
+  await updateAdminGame.run({
     id: req.params.id, title, genre: genresArr[0], genres: JSON.stringify(genresArr),
     platforms: JSON.stringify(b.platforms !== undefined ? b.platforms : JSON.parse(existing.platforms || '[]')),
     cover_url: b.coverUrl !== undefined ? b.coverUrl : existing.cover_url,
@@ -98,11 +98,11 @@ router.put('/games/:id', (req, res) => {
     is_new_release: b.isNewRelease !== undefined ? (b.isNewRelease ? 1 : 0) : existing.is_new_release,
     new_release_date: b.newReleaseDate !== undefined ? b.newReleaseDate : existing.new_release_date,
   });
-  res.json({ game: shapeAdminGame(findAdminGame.get(req.params.id)) });
+  res.json({ game: shapeAdminGame(await findAdminGame.get(req.params.id)) });
 });
 
-router.delete('/games/:id', (req, res) => {
-  deleteAdminGame.run(req.params.id);
+router.delete('/games/:id', async (req, res) => {
+  await deleteAdminGame.run(req.params.id);
   res.json({ ok: true });
 });
 
@@ -138,33 +138,33 @@ function normalizeGameIds(input) {
   return Array.isArray(input) ? input.filter(id => typeof id === 'string' && id) : [];
 }
 
-router.get('/characters', (req, res) => {
-  res.json({ characters: listAdminCharacters.all().map(shapeAdminCharacter) });
+router.get('/characters', async (req, res) => {
+  res.json({ characters: (await listAdminCharacters.all()).map(shapeAdminCharacter) });
 });
 
-router.post('/characters', (req, res) => {
+router.post('/characters', async (req, res) => {
   const b = req.body || {};
   const name = String(b.name || '').trim();
   if (name.length < 2) return res.status(400).json({ error: 'name_too_short' });
   const id = 'ch-' + uid();
   const gameIds = normalizeGameIds(b.gameIds);
-  insertAdminCharacter.run({
+  await insertAdminCharacter.run({
     id, name, game_id: gameIds[0] || null, game_ids: JSON.stringify(gameIds),
     banner_url: b.bannerUrl || null, banner_game_id: b.bannerGameId || null,
     photo_url: b.photoUrl || null, categories: JSON.stringify(normalizeCategories(b.categories)), description: b.description || null,
     added_by: req.user.username, created_at: new Date().toISOString(), hidden: b.hidden ? 1 : 0,
   });
-  res.json({ character: shapeAdminCharacter(findAdminCharacter.get(id)) });
+  res.json({ character: shapeAdminCharacter(await findAdminCharacter.get(id)) });
 });
 
-router.put('/characters/:id', (req, res) => {
-  const existing = findAdminCharacter.get(req.params.id);
+router.put('/characters/:id', async (req, res) => {
+  const existing = await findAdminCharacter.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const b = req.body || {};
   const name = String(b.name !== undefined ? b.name : existing.name).trim();
   if (name.length < 2) return res.status(400).json({ error: 'name_too_short' });
   const gameIds = b.gameIds !== undefined ? normalizeGameIds(b.gameIds) : JSON.parse(existing.game_ids || '[]');
-  updateAdminCharacter.run({
+  await updateAdminCharacter.run({
     id: req.params.id, name, game_id: gameIds[0] || null, game_ids: JSON.stringify(gameIds),
     banner_url: b.bannerUrl !== undefined ? (b.bannerUrl || null) : existing.banner_url,
     banner_game_id: b.bannerGameId !== undefined ? (b.bannerGameId || null) : existing.banner_game_id,
@@ -173,17 +173,17 @@ router.put('/characters/:id', (req, res) => {
     description: b.description !== undefined ? b.description : existing.description,
     hidden: b.hidden !== undefined ? (b.hidden ? 1 : 0) : existing.hidden,
   });
-  res.json({ character: shapeAdminCharacter(findAdminCharacter.get(req.params.id)) });
+  res.json({ character: shapeAdminCharacter(await findAdminCharacter.get(req.params.id)) });
 });
 
-router.delete('/characters/:id', (req, res) => {
-  deleteAdminCharacter.run(req.params.id);
+router.delete('/characters/:id', async (req, res) => {
+  await deleteAdminCharacter.run(req.params.id);
   res.json({ ok: true });
 });
 
 /* ---------------- date calendar ---------------- */
 
-const listAdminDateEvents = db.prepare('SELECT * FROM date_events ORDER BY month ASC, day ASC');
+const listAdminDateEvents = db.prepare('SELECT * FROM date_events ORDER BY month ASC, day ASC, id ASC');
 const findAdminDateEvent = db.prepare('SELECT * FROM date_events WHERE id = ?');
 const insertDateEvent = db.prepare(`
   INSERT INTO date_events (id, month, day, game_id, title_es, desc_es, title_en, desc_en, created_at)
@@ -199,29 +199,29 @@ function shapeAdminDateEvent(e) {
   return { id: e.id, month: e.month, day: e.day, gameId: e.game_id, titleEs: e.title_es, descEs: e.desc_es, titleEn: e.title_en, descEn: e.desc_en };
 }
 
-router.get('/date-events', (req, res) => {
-  res.json({ dateEvents: listAdminDateEvents.all().map(shapeAdminDateEvent) });
+router.get('/date-events', async (req, res) => {
+  res.json({ dateEvents: (await listAdminDateEvents.all()).map(shapeAdminDateEvent) });
 });
 
-router.post('/date-events', (req, res) => {
+router.post('/date-events', async (req, res) => {
   const b = req.body || {};
   const month = Number(b.month), day = Number(b.day);
   if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return res.status(400).json({ error: 'invalid_date' });
   if (!b.titleEs || !b.titleEn) return res.status(400).json({ error: 'title_required' });
   const id = 'de-' + uid();
-  insertDateEvent.run({
+  await insertDateEvent.run({
     id, month, day, game_id: b.gameId || null,
     title_es: b.titleEs, desc_es: b.descEs || '', title_en: b.titleEn, desc_en: b.descEn || '',
     created_at: new Date().toISOString(),
   });
-  res.json({ dateEvent: shapeAdminDateEvent(findAdminDateEvent.get(id)) });
+  res.json({ dateEvent: shapeAdminDateEvent(await findAdminDateEvent.get(id)) });
 });
 
-router.put('/date-events/:id', (req, res) => {
-  const existing = findAdminDateEvent.get(req.params.id);
+router.put('/date-events/:id', async (req, res) => {
+  const existing = await findAdminDateEvent.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const b = req.body || {};
-  updateDateEvent.run({
+  await updateDateEvent.run({
     id: req.params.id,
     month: b.month !== undefined ? Number(b.month) : existing.month,
     day: b.day !== undefined ? Number(b.day) : existing.day,
@@ -231,17 +231,17 @@ router.put('/date-events/:id', (req, res) => {
     title_en: b.titleEn !== undefined ? b.titleEn : existing.title_en,
     desc_en: b.descEn !== undefined ? b.descEn : existing.desc_en,
   });
-  res.json({ dateEvent: shapeAdminDateEvent(findAdminDateEvent.get(req.params.id)) });
+  res.json({ dateEvent: shapeAdminDateEvent(await findAdminDateEvent.get(req.params.id)) });
 });
 
-router.delete('/date-events/:id', (req, res) => {
-  deleteDateEvent.run(req.params.id);
+router.delete('/date-events/:id', async (req, res) => {
+  await deleteDateEvent.run(req.params.id);
   res.json({ ok: true });
 });
 
 /* ---------------- news ---------------- */
 
-const listAdminNews = db.prepare('SELECT * FROM news_items ORDER BY created_at DESC');
+const listAdminNews = db.prepare('SELECT * FROM news_items ORDER BY created_at DESC, id ASC');
 const findAdminNews = db.prepare('SELECT * FROM news_items WHERE id = ?');
 const insertNews = db.prepare(`
   INSERT INTO news_items (id, title, summary, source, url, color, initials, created_at)
@@ -257,8 +257,8 @@ function shapeAdminNews(n) {
   return { id: n.id, title: n.title, summary: n.summary, source: n.source, url: n.url, color: n.color, initials: n.initials };
 }
 
-router.get('/news', (req, res) => {
-  res.json({ news: listAdminNews.all().map(shapeAdminNews) });
+router.get('/news', async (req, res) => {
+  res.json({ news: (await listAdminNews.all()).map(shapeAdminNews) });
 });
 
 // Solo http(s): la URL de una noticia termina en un <a href>, y un "javascript:..." ahí se ejecutaría al hacer clic.
@@ -269,7 +269,7 @@ function isHttpUrl(v) {
 // Largo máximo del resumen de una noticia (tiene que entrar en la tarjeta de Novedades). Si cambia, cambiar también el maxlength de #n-summary en admin.html.
 const NEWS_SUMMARY_MAX = 180;
 
-router.post('/news', (req, res) => {
+router.post('/news', async (req, res) => {
   const b = req.body || {};
   const title = String(b.title || '').trim();
   const source = String(b.source || '').trim();
@@ -279,17 +279,17 @@ router.post('/news', (req, res) => {
   if (!isHttpUrl(url)) return res.status(400).json({ error: 'invalid_url' });
   if (summary.length > NEWS_SUMMARY_MAX) return res.status(400).json({ error: 'summary_too_long' });
   const id = 'news-' + uid();
-  insertNews.run({
+  await insertNews.run({
     id, title, summary, source, url,
     color: b.color || '#5B8DEF', initials: (b.initials || source.slice(0, 2)).toUpperCase(),
     created_at: new Date().toISOString(),
   });
-  trimNews.run();
-  res.json({ newsItem: shapeAdminNews(findAdminNews.get(id)) });
+  await trimNews.run();
+  res.json({ newsItem: shapeAdminNews(await findAdminNews.get(id)) });
 });
 
-router.put('/news/:id', (req, res) => {
-  const existing = findAdminNews.get(req.params.id);
+router.put('/news/:id', async (req, res) => {
+  const existing = await findAdminNews.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const b = req.body || {};
   const str = (v, fallback) => (typeof v === 'string' ? v : fallback);
@@ -297,7 +297,7 @@ router.put('/news/:id', (req, res) => {
   if (!isHttpUrl(url)) return res.status(400).json({ error: 'invalid_url' });
   const summary = str(b.summary, existing.summary).trim();
   if (summary.length > NEWS_SUMMARY_MAX) return res.status(400).json({ error: 'summary_too_long' });
-  updateNews.run({
+  await updateNews.run({
     id: req.params.id,
     title: str(b.title, existing.title),
     summary,
@@ -306,11 +306,11 @@ router.put('/news/:id', (req, res) => {
     color: str(b.color, existing.color),
     initials: str(b.initials, existing.initials).toUpperCase(),
   });
-  res.json({ newsItem: shapeAdminNews(findAdminNews.get(req.params.id)) });
+  res.json({ newsItem: shapeAdminNews(await findAdminNews.get(req.params.id)) });
 });
 
-router.delete('/news/:id', (req, res) => {
-  deleteNews.run(req.params.id);
+router.delete('/news/:id', async (req, res) => {
+  await deleteNews.run(req.params.id);
   res.json({ ok: true });
 });
 
@@ -330,21 +330,21 @@ function shapeSuggestion(s) {
   };
 }
 
-router.get('/suggestions', (req, res) => {
-  res.json({ suggestions: listSuggestions.all().map(shapeSuggestion) });
+router.get('/suggestions', async (req, res) => {
+  res.json({ suggestions: (await listSuggestions.all()).map(shapeSuggestion) });
 });
 
-router.put('/suggestions/:id', (req, res) => {
-  const existing = findSuggestion.get(req.params.id);
+router.put('/suggestions/:id', async (req, res) => {
+  const existing = await findSuggestion.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const status = String((req.body || {}).status || '');
   if (!['unread', 'read', 'archived'].includes(status)) return res.status(400).json({ error: 'invalid_status' });
-  updateSuggestionStatus.run(status, req.params.id);
-  res.json({ suggestion: shapeSuggestion(findSuggestion.get(req.params.id)) });
+  await updateSuggestionStatus.run(status, req.params.id);
+  res.json({ suggestion: shapeSuggestion(await findSuggestion.get(req.params.id)) });
 });
 
-router.delete('/suggestions/:id', (req, res) => {
-  deleteSuggestion.run(req.params.id);
+router.delete('/suggestions/:id', async (req, res) => {
+  await deleteSuggestion.run(req.params.id);
   res.json({ ok: true });
 });
 

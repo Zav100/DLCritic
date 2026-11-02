@@ -5,7 +5,6 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { upload } = require('./upload');
 const db = require('./db');
-require('./seed').seedIfEmpty();
 const { rateLimit } = require('./rateLimit');
 const {
   hashPin, verifyPin, createSession, currentUser, requireAuth,
@@ -17,6 +16,8 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
 app.use(express.json());
+// Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
+app.use((req, res, next) => { req.body ??= {}; next(); });
 
 const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 8 });
 const writeLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
@@ -93,18 +94,18 @@ function validateReview(rating, text, platforms) {
 
 /* ---------------- auth ---------------- */
 
-const findUserByNameCI = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE');
+const findUserByNameCI = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)');
 const findUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
-const insertUser = db.prepare('INSERT INTO users (username, email, pin_hash, joined_at, bio, social_links) VALUES (?, ?, ?, ?, ?, ?)');
+const insertUser = db.prepare('INSERT INTO users (username, email, pin_hash, joined_at, bio, social_links) VALUES (?, ?, ?, ?, ?, ?) RETURNING id');
 const setPasswordHash = db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?');
 
-app.get('/api/auth/me', (req, res) => {
-  res.json({ user: publicUser(currentUser(req)) });
+app.get('/api/auth/me', async (req, res) => {
+  res.json({ user: publicUser(await currentUser(req)) });
 });
 
 // Registration now happens in two client-side steps (email+password, then
 // profile details), but lands here as a single call once both are complete.
-app.post('/api/auth/register', authLimiter, (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   const b = req.body || {};
   const email = String(b.email || '').trim().toLowerCase();
   const password = String(b.password || '');
@@ -114,39 +115,46 @@ app.post('/api/auth/register', authLimiter, (req, res) => {
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
   if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
-  if (findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
-  if (findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
+  if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
+  if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
 
   const socialLinks = sanitizeSocialLinks(b.socialLinks);
   const joinedAt = new Date().toISOString();
-  const info = insertUser.run(username, email, hashPin(password), joinedAt, bio, JSON.stringify(socialLinks));
-  const { token, expires } = createSession(info.lastInsertRowid);
+  let created;
+  try {
+    created = await insertUser.get(username, email, hashPin(password), joinedAt, bio, JSON.stringify(socialLinks));
+  } catch (e) {
+    // Dos registros simultáneos con el mismo email/usuario: el índice único de la base gana la carrera.
+    if (e.code === '23505') return res.status(409).json({ error: /email/.test(e.constraint || '') ? 'email_taken' : 'username_taken' });
+    throw e;
+  }
+  const { token, expires } = await createSession(created.id);
   setSessionCookie(res, token, expires);
-  res.json({ user: publicUser(findUserByNameCI.get(username)) });
+  res.json({ user: publicUser(await findUserByNameCI.get(username)) });
 });
 
 // Accepts an email (new accounts) or a username (accounts grandfathered in
 // from the old PIN system, who are never forced to add an email or change
 // their PIN) as the identifier; the credential is checked the same way either way.
-app.post('/api/auth/login', authLimiter, (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const identifier = String(req.body.identifier || '').trim();
   const password = String(req.body.password || '');
   const user = identifier.includes('@')
-    ? findUserByEmail.get(identifier.toLowerCase())
-    : findUserByNameCI.get(identifier);
+    ? await findUserByEmail.get(identifier.toLowerCase())
+    : await findUserByNameCI.get(identifier);
   if (!user || !verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
 
-  const { token, expires } = createSession(user.id);
+  const { token, expires } = await createSession(user.id);
   setSessionCookie(res, token, expires);
   res.json({ user: publicUser(user) });
 });
 
-app.post('/api/account/password', requireAuth, writeLimiter, (req, res) => {
+app.post('/api/account/password', requireAuth, writeLimiter, async (req, res) => {
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (!verifyPin(currentPassword, req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
   if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'weak_password' });
-  setPasswordHash.run(hashPin(newPassword), req.user.id);
+  await setPasswordHash.run(hashPin(newPassword), req.user.id);
   res.json({ ok: true });
 });
 
@@ -160,7 +168,8 @@ app.post('/api/auth/logout', (req, res) => {
 
 /* ---------------- games (custom, user-submitted) ---------------- */
 
-const listVisibleGames = db.prepare('SELECT * FROM games WHERE hidden = 0 ORDER BY builtin DESC, created_at ASC');
+// id al final: los juegos del catálogo base comparten created_at, y sin desempate Postgres puede devolverlos en cualquier orden.
+const listVisibleGames = db.prepare('SELECT * FROM games WHERE hidden = 0 ORDER BY builtin DESC, created_at ASC, id ASC');
 const findGameById = db.prepare('SELECT * FROM games WHERE id = ?');
 
 function shapeGame(g) {
@@ -174,13 +183,13 @@ function shapeGame(g) {
   };
 }
 
-app.get('/api/games', (req, res) => {
-  res.json({ games: listVisibleGames.all().map(shapeGame) });
+app.get('/api/games', async (req, res) => {
+  res.json({ games: (await listVisibleGames.all()).map(shapeGame) });
 });
 
 /* ---------------- characters (iconic/protagonist ratings, custom) ---------------- */
 
-const listVisibleCharacters = db.prepare('SELECT * FROM characters WHERE hidden = 0 ORDER BY created_at ASC');
+const listVisibleCharacters = db.prepare('SELECT * FROM characters WHERE hidden = 0 ORDER BY created_at ASC, id ASC');
 const findCharacterById = db.prepare('SELECT * FROM characters WHERE id = ?');
 
 function shapeCharacter(c) {
@@ -197,8 +206,8 @@ function shapeCharacter(c) {
 const CHARACTER_CATEGORIES = ['protagonist', 'coprotagonist', 'villain', 'ally', 'secondary'];
 const normalizeCategories = input => (Array.isArray(input) ? [...new Set(input.filter(k => CHARACTER_CATEGORIES.includes(k)))] : []);
 
-app.get('/api/characters', (req, res) => {
-  res.json({ characters: listVisibleCharacters.all().map(shapeCharacter) });
+app.get('/api/characters', async (req, res) => {
+  res.json({ characters: (await listVisibleCharacters.all()).map(shapeCharacter) });
 });
 
 /* ---------------- game suggestions (footer form -> admin inbox) ---------------- */
@@ -210,14 +219,14 @@ const insertSuggestion = db.prepare(`
   VALUES (@id, @title, @platforms, @genre, @release_year, @note, @submitted_by, 'unread', @created_at, @kind, @related_game, @categories)
 `);
 
-app.post('/api/suggestions', writeLimiter, (req, res) => {
+app.post('/api/suggestions', writeLimiter, async (req, res) => {
   const b = req.body || {};
   const title = String(b.title || '').trim();
   if (title.length < 2) return res.status(400).json({ error: 'title_too_short' });
-  const user = currentUser(req);
+  const user = await currentUser(req);
   const id = 'sg-' + crypto.randomBytes(8).toString('hex');
   const isCharacter = b.kind === 'character';
-  insertSuggestion.run({
+  await insertSuggestion.run({
     id, title: title.slice(0, 80),
     platforms: JSON.stringify(Array.isArray(b.platforms) ? b.platforms : []),
     genre: b.genre ? String(b.genre) : null,
@@ -235,11 +244,11 @@ app.post('/api/suggestions', writeLimiter, (req, res) => {
 /* ---------------- reviews ---------------- */
 
 const listReviewsWithVotes = db.prepare(`
-  SELECT r.id, r.game_id as gameId, u.username, r.rating, r.text, r.platforms, r.updated_at as date,
-    (SELECT json_group_array(hv_user.username) FROM helpful_votes hv
-       JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id) as helpfulByJson
+  SELECT r.id, r.game_id AS "gameId", u.username, r.rating, r.text, r.platforms, r.updated_at AS date,
+    COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
+       JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id), '[]') AS "helpfulByJson"
   FROM reviews r JOIN users u ON u.id = r.user_id
-  ORDER BY r.updated_at DESC
+  ORDER BY r.updated_at DESC, r.id ASC
 `);
 const findReviewByGameAndUser = db.prepare('SELECT * FROM reviews WHERE game_id = ? AND user_id = ?');
 const findReviewById = db.prepare('SELECT * FROM reviews WHERE id = ?');
@@ -258,14 +267,14 @@ function shapeReviewRow(r) {
   };
 }
 
-app.get('/api/reviews', (req, res) => {
-  res.json({ reviews: listReviewsWithVotes.all().map(shapeReviewRow) });
+app.get('/api/reviews', async (req, res) => {
+  res.json({ reviews: (await listReviewsWithVotes.all()).map(shapeReviewRow) });
 });
 
-app.put('/api/reviews/:gameId', requireAuth, writeLimiter, (req, res) => {
+app.put('/api/reviews/:gameId', requireAuth, writeLimiter, async (req, res) => {
   const { gameId } = req.params;
-  if (!findGameById.get(gameId)) return res.status(404).json({ error: 'game_not_found' });
-  const existing = findReviewByGameAndUser.get(gameId, req.user.id);
+  if (!await findGameById.get(gameId)) return res.status(404).json({ error: 'game_not_found' });
+  const existing = await findReviewByGameAndUser.get(gameId, req.user.id);
   const now = new Date().toISOString();
 
   const b = req.body || {};
@@ -278,75 +287,75 @@ app.put('/api/reviews/:gameId', requireAuth, writeLimiter, (req, res) => {
 
   if (existing) {
     if (isEmpty) {
-      deleteReviewById.run(existing.id, req.user.id);
+      await deleteReviewById.run(existing.id, req.user.id);
       return res.json({ id: existing.id, deleted: true });
     }
-    updateReview.run(rating, text, JSON.stringify(platforms), now, existing.id);
+    await updateReview.run(rating, text, JSON.stringify(platforms), now, existing.id);
     return res.json({ id: existing.id });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
-  insertReview.run(id, gameId, req.user.id, rating, text, JSON.stringify(platforms), now);
+  await insertReview.run(id, gameId, req.user.id, rating, text, JSON.stringify(platforms), now);
   res.json({ id });
 });
 
-app.delete('/api/reviews/:gameId/text', requireAuth, (req, res) => {
+app.delete('/api/reviews/:gameId/text', requireAuth, async (req, res) => {
   const { gameId } = req.params;
-  const existing = findReviewByGameAndUser.get(gameId, req.user.id);
+  const existing = await findReviewByGameAndUser.get(gameId, req.user.id);
   if (!existing) return res.json({ deleted: true });
 
   const platforms = JSON.parse(existing.platforms);
   const isEmpty = existing.rating == null && platforms.length === 0;
   if (isEmpty) {
-    deleteReviewById.run(existing.id, req.user.id);
+    await deleteReviewById.run(existing.id, req.user.id);
     return res.json({ deleted: true });
   }
-  updateReview.run(existing.rating, '', existing.platforms, new Date().toISOString(), existing.id);
+  await updateReview.run(existing.rating, '', existing.platforms, new Date().toISOString(), existing.id);
   res.json({ deleted: false });
 });
 
-app.delete('/api/reviews/:gameId/rating', requireAuth, (req, res) => {
+app.delete('/api/reviews/:gameId/rating', requireAuth, async (req, res) => {
   const { gameId } = req.params;
-  const existing = findReviewByGameAndUser.get(gameId, req.user.id);
+  const existing = await findReviewByGameAndUser.get(gameId, req.user.id);
   if (!existing) return res.json({ deleted: true });
 
   const platforms = JSON.parse(existing.platforms);
   const isEmpty = (!existing.text || !existing.text.trim()) && platforms.length === 0;
   if (isEmpty) {
-    deleteReviewById.run(existing.id, req.user.id);
+    await deleteReviewById.run(existing.id, req.user.id);
     return res.json({ deleted: true });
   }
-  updateReview.run(null, existing.text, existing.platforms, new Date().toISOString(), existing.id);
+  await updateReview.run(null, existing.text, existing.platforms, new Date().toISOString(), existing.id);
   res.json({ deleted: false });
 });
 
-app.delete('/api/reviews/id/:id', requireAuth, (req, res) => {
-  deleteReviewById.run(req.params.id, req.user.id);
+app.delete('/api/reviews/id/:id', requireAuth, async (req, res) => {
+  await deleteReviewById.run(req.params.id, req.user.id);
   res.json({ ok: true });
 });
 
-app.post('/api/reviews/id/:id/helpful', requireAuth, (req, res) => {
-  const review = findReviewById.get(req.params.id);
+app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
+  const review = await findReviewById.get(req.params.id);
   if (!review) return res.status(404).json({ error: 'not_found' });
   if (review.user_id === req.user.id) return res.status(400).json({ error: 'own_review' });
 
-  if (findVote.get(review.id, req.user.id)) {
-    toggleVoteDelete.run(review.id, req.user.id);
+  if (await findVote.get(review.id, req.user.id)) {
+    await toggleVoteDelete.run(review.id, req.user.id);
   } else {
-    toggleVoteInsert.run(review.id, req.user.id);
-    insertNotification.run(uid(), review.user_id, 'helpful', req.user.id, review.game_id, new Date().toISOString());
+    await toggleVoteInsert.run(review.id, req.user.id);
+    await insertNotification.run(uid(), review.user_id, 'helpful', req.user.id, review.game_id, new Date().toISOString());
   }
 
-  const row = listReviewsWithVotes.all().find(r => r.id === review.id);
+  const row = (await listReviewsWithVotes.all()).find(r => r.id === review.id);
   res.json({ helpfulBy: JSON.parse(row.helpfulByJson || '[]').filter(Boolean) });
 });
 
 /* ---------------- character reviews (separate from game reviews) ---------------- */
 
 const listCharacterReviews = db.prepare(`
-  SELECT cr.id, cr.character_id as characterId, u.username, cr.rating, cr.text, cr.updated_at as date
+  SELECT cr.id, cr.character_id AS "characterId", u.username, cr.rating, cr.text, cr.updated_at AS date
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
-  ORDER BY cr.updated_at DESC
+  ORDER BY cr.updated_at DESC, cr.id ASC
 `);
 const findCharReviewByCharAndUser = db.prepare('SELECT * FROM character_reviews WHERE character_id = ? AND user_id = ?');
 const insertCharReview = db.prepare('INSERT INTO character_reviews (id, character_id, user_id, rating, text, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
@@ -357,15 +366,15 @@ function shapeCharReviewRow(r) {
   return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date };
 }
 
-app.get('/api/character-reviews', (req, res) => {
-  res.json({ characterReviews: listCharacterReviews.all().map(shapeCharReviewRow) });
+app.get('/api/character-reviews', async (req, res) => {
+  res.json({ characterReviews: (await listCharacterReviews.all()).map(shapeCharReviewRow) });
 });
 
-app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, (req, res) => {
+app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async (req, res) => {
   const { characterId } = req.params;
-  const character = findCharacterById.get(characterId);
+  const character = await findCharacterById.get(characterId);
   if (!character || character.hidden) return res.status(404).json({ error: 'character_not_found' });
-  const existing = findCharReviewByCharAndUser.get(characterId, req.user.id);
+  const existing = await findCharReviewByCharAndUser.get(characterId, req.user.id);
   const now = new Date().toISOString();
 
   const b = req.body || {};
@@ -377,46 +386,46 @@ app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, (req, 
 
   if (existing) {
     if (isEmpty) {
-      deleteCharReviewById.run(existing.id, req.user.id);
+      await deleteCharReviewById.run(existing.id, req.user.id);
       return res.json({ id: existing.id, deleted: true });
     }
-    updateCharReview.run(rating, text, now, existing.id);
+    await updateCharReview.run(rating, text, now, existing.id);
     return res.json({ id: existing.id });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
-  insertCharReview.run(id, characterId, req.user.id, rating, text, now);
+  await insertCharReview.run(id, characterId, req.user.id, rating, text, now);
   res.json({ id });
 });
 
-app.delete('/api/character-reviews/:characterId/text', requireAuth, (req, res) => {
+app.delete('/api/character-reviews/:characterId/text', requireAuth, async (req, res) => {
   const { characterId } = req.params;
-  const existing = findCharReviewByCharAndUser.get(characterId, req.user.id);
+  const existing = await findCharReviewByCharAndUser.get(characterId, req.user.id);
   if (!existing) return res.json({ deleted: true });
 
   if (existing.rating == null) {
-    deleteCharReviewById.run(existing.id, req.user.id);
+    await deleteCharReviewById.run(existing.id, req.user.id);
     return res.json({ deleted: true });
   }
-  updateCharReview.run(existing.rating, '', new Date().toISOString(), existing.id);
+  await updateCharReview.run(existing.rating, '', new Date().toISOString(), existing.id);
   res.json({ deleted: false });
 });
 
-app.delete('/api/character-reviews/:characterId/rating', requireAuth, (req, res) => {
+app.delete('/api/character-reviews/:characterId/rating', requireAuth, async (req, res) => {
   const { characterId } = req.params;
-  const existing = findCharReviewByCharAndUser.get(characterId, req.user.id);
+  const existing = await findCharReviewByCharAndUser.get(characterId, req.user.id);
   if (!existing) return res.json({ deleted: true });
 
   if (!existing.text || !existing.text.trim()) {
-    deleteCharReviewById.run(existing.id, req.user.id);
+    await deleteCharReviewById.run(existing.id, req.user.id);
     return res.json({ deleted: true });
   }
-  updateCharReview.run(null, existing.text, new Date().toISOString(), existing.id);
+  await updateCharReview.run(null, existing.text, new Date().toISOString(), existing.id);
   res.json({ deleted: false });
 });
 
-app.delete('/api/character-reviews/id/:id', requireAuth, (req, res) => {
-  deleteCharReviewById.run(req.params.id, req.user.id);
+app.delete('/api/character-reviews/id/:id', requireAuth, async (req, res) => {
+  await deleteCharReviewById.run(req.params.id, req.user.id);
   res.json({ ok: true });
 });
 
@@ -439,14 +448,14 @@ function shapeDaily(row, date) {
   };
 }
 
-app.get('/api/daily', requireAuth, (req, res) => {
+app.get('/api/daily', requireAuth, async (req, res) => {
   const date = String(req.query.date || '');
   if (!date) return res.status(400).json({ error: 'missing_date' });
   if (!isPlausibleDate(date)) return res.status(400).json({ error: 'invalid_date' });
-  res.json({ daily: shapeDaily(getDaily.get(req.user.id, date), date) });
+  res.json({ daily: shapeDaily(await getDaily.get(req.user.id, date), date) });
 });
 
-app.put('/api/daily', requireAuth, (req, res) => {
+app.put('/api/daily', requireAuth, async (req, res) => {
   const { date, guesses, solved, failed, rouletteSpins } = req.body;
   if (!date) return res.status(400).json({ error: 'missing_date' });
   if (!isPlausibleDate(date)) return res.status(400).json({ error: 'invalid_date' });
@@ -458,7 +467,7 @@ app.put('/api/daily', requireAuth, (req, res) => {
   const cleanGuesses = rawGuesses.map(g => g.slice(0, 100));
   const spins = rouletteSpins === undefined ? 0 : rouletteSpins;
   if (!Number.isInteger(spins) || spins < 0 || spins > 3) return res.status(400).json({ error: 'invalid_spins' });
-  upsertDaily.run(req.user.id, date, JSON.stringify(cleanGuesses), solved ? 1 : 0, failed ? 1 : 0, spins);
+  await upsertDaily.run(req.user.id, date, JSON.stringify(cleanGuesses), solved ? 1 : 0, failed ? 1 : 0, spins);
   res.json({ ok: true });
 });
 
@@ -468,34 +477,34 @@ const setFavoriteGame = db.prepare('UPDATE users SET favorite_game_id = ? WHERE 
 const setWishlist = db.prepare('UPDATE users SET wishlist = ? WHERE id = ?');
 const setActivityDates = db.prepare('UPDATE users SET activity_dates = ? WHERE id = ?');
 
-app.put('/api/profile/favorite', requireAuth, (req, res) => {
+app.put('/api/profile/favorite', requireAuth, async (req, res) => {
   const gameId = req.body.gameId || null;
-  if (gameId !== null && (typeof gameId !== 'string' || !findGameById.get(gameId))) return res.status(400).json({ error: 'invalid_game' });
-  setFavoriteGame.run(gameId, req.user.id);
+  if (gameId !== null && (typeof gameId !== 'string' || !await findGameById.get(gameId))) return res.status(400).json({ error: 'invalid_game' });
+  await setFavoriteGame.run(gameId, req.user.id);
   res.json({ favoriteGameId: gameId });
 });
 
-app.post('/api/profile/wishlist/toggle', requireAuth, (req, res) => {
+app.post('/api/profile/wishlist/toggle', requireAuth, async (req, res) => {
   const gameId = req.body.gameId;
   if (typeof gameId !== 'string') return res.status(400).json({ error: 'invalid_game' });
   const wishlist = JSON.parse(req.user.wishlist || '[]');
   const idx = wishlist.indexOf(gameId);
   // Quitar siempre se permite (aunque el juego ya no exista); agregar solo juegos reales.
   if (idx >= 0) wishlist.splice(idx, 1);
-  else if (findGameById.get(gameId)) wishlist.push(gameId);
+  else if (await findGameById.get(gameId)) wishlist.push(gameId);
   else return res.status(400).json({ error: 'invalid_game' });
-  setWishlist.run(JSON.stringify(wishlist), req.user.id);
+  await setWishlist.run(JSON.stringify(wishlist), req.user.id);
   res.json({ wishlist });
 });
 
-app.post('/api/profile/activity', requireAuth, (req, res) => {
+app.post('/api/profile/activity', requireAuth, async (req, res) => {
   const dateStr = req.body.date;
   if (!dateStr) return res.status(400).json({ error: 'missing_date' });
   if (!isPlausibleDate(dateStr)) return res.status(400).json({ error: 'invalid_date' });
   const dates = JSON.parse(req.user.activity_dates || '[]');
   if (!dates.includes(dateStr)) {
     dates.push(dateStr);
-    setActivityDates.run(JSON.stringify(dates), req.user.id);
+    await setActivityDates.run(JSON.stringify(dates), req.user.id);
   }
   res.json({ activityDates: dates });
 });
@@ -512,34 +521,34 @@ const deleteFollow = db.prepare('DELETE FROM follows WHERE follower_id = ? AND f
 const countFollowers = db.prepare('SELECT COUNT(*) as n FROM follows WHERE followed_id = ?');
 const countFollowing = db.prepare('SELECT COUNT(*) as n FROM follows WHERE follower_id = ?');
 
-function shapePublicProfile(u, viewer) {
-  const { n: reviewCount, avg } = countReviewsForUser.get(u.id);
-  const isFollowing = !!(viewer && viewer.id !== u.id && findFollow.get(viewer.id, u.id));
-  const isFriend = !!(viewer && viewer.id !== u.id && findFollow.get(viewer.id, u.id) && findFollow.get(u.id, viewer.id));
+async function shapePublicProfile(u, viewer) {
+  const { n: reviewCount, avg } = await countReviewsForUser.get(u.id);
+  const isFollowing = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id));
+  const isFriend = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id) && await findFollow.get(u.id, viewer.id));
   return {
     username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null,
     isAdmin: !!u.is_admin, bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
-    followerCount: countFollowers.get(u.id).n, followingCount: countFollowing.get(u.id).n,
+    followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n,
     isFollowing, isFriend,
   };
 }
 
-app.get('/api/users/:username', (req, res) => {
-  const user = findUserByNameCI.get(req.params.username);
+app.get('/api/users/:username', async (req, res) => {
+  const user = await findUserByNameCI.get(req.params.username);
   if (!user) return res.status(404).json({ error: 'not_found' });
-  res.json({ user: shapePublicProfile(user, currentUser(req)) });
+  res.json({ user: await shapePublicProfile(user, await currentUser(req)) });
 });
 
-app.put('/api/profile', requireAuth, writeLimiter, (req, res) => {
+app.put('/api/profile', requireAuth, writeLimiter, async (req, res) => {
   const b = req.body || {};
   let username = req.user.username;
   if (typeof b.username === 'string') {
     const newName = b.username.trim();
     if (newName !== req.user.username) {
       if (!USERNAME_RE.test(newName)) return res.status(400).json({ error: 'invalid_username' });
-      const existing = findUserByNameCI.get(newName);
+      const existing = await findUserByNameCI.get(newName);
       if (existing && existing.id !== req.user.id) return res.status(409).json({ error: 'username_taken' });
       username = newName;
     }
@@ -549,7 +558,7 @@ app.put('/api/profile', requireAuth, writeLimiter, (req, res) => {
     const newEmail = b.email.trim().toLowerCase();
     if (newEmail !== (req.user.email || '')) {
       if (!isValidEmail(newEmail)) return res.status(400).json({ error: 'invalid_email' });
-      const existing = findUserByEmail.get(newEmail);
+      const existing = await findUserByEmail.get(newEmail);
       if (existing && existing.id !== req.user.id) return res.status(409).json({ error: 'email_taken' });
       email = newEmail;
     }
@@ -559,38 +568,42 @@ app.put('/api/profile', requireAuth, writeLimiter, (req, res) => {
     ? sanitizeSocialLinks(b.socialLinks)
     : JSON.parse(req.user.social_links || '{}');
   try {
-    updateProfile.run(username, email, bio, JSON.stringify(socialLinks), req.user.id);
+    await updateProfile.run(username, email, bio, JSON.stringify(socialLinks), req.user.id);
   } catch (e) {
     return res.status(409).json({ error: 'username_taken' });
   }
-  res.json({ user: publicUser(findUserById.get(req.user.id)) });
+  res.json({ user: publicUser(await findUserById.get(req.user.id)) });
 });
 
 const avatarUploadLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'avatar-upload:' + req.user.id });
 
-app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, (req, res) => {
-  upload.single('image')(req, res, (err) => {
+app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, (req, res, next) => {
+  upload.single('image')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: 'upload_failed' });
     if (!req.file) return res.status(400).json({ error: 'invalid_file' });
-    const url = '/uploads/' + req.file.filename;
-    setAvatarUrl.run(url, req.user.id);
-    res.json({ user: publicUser(findUserById.get(req.user.id)) });
+    try {
+      const url = '/uploads/' + req.file.filename;
+      await setAvatarUrl.run(url, req.user.id);
+      res.json({ user: publicUser(await findUserById.get(req.user.id)) });
+    } catch (e) {
+      next(e); // este callback lo llama multer, no Express: sin esto un error de la base quedaría sin responder
+    }
   });
 });
 
-app.post('/api/users/:username/follow', requireAuth, writeLimiter, (req, res) => {
-  const target = findUserByNameCI.get(req.params.username);
+app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, res) => {
+  const target = await findUserByNameCI.get(req.params.username);
   if (!target) return res.status(404).json({ error: 'not_found' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'cannot_follow_self' });
-  if (findFollow.get(req.user.id, target.id)) {
-    deleteFollow.run(req.user.id, target.id);
+  if (await findFollow.get(req.user.id, target.id)) {
+    await deleteFollow.run(req.user.id, target.id);
   } else {
-    insertFollow.run(req.user.id, target.id, new Date().toISOString());
-    insertNotification.run(uid(), target.id, 'follow', req.user.id, null, new Date().toISOString());
+    await insertFollow.run(req.user.id, target.id, new Date().toISOString());
+    await insertNotification.run(uid(), target.id, 'follow', req.user.id, null, new Date().toISOString());
   }
-  const isFollowing = !!findFollow.get(req.user.id, target.id);
-  const isFriend = isFollowing && !!findFollow.get(target.id, req.user.id);
-  res.json({ isFollowing, isFriend, followerCount: countFollowers.get(target.id).n });
+  const isFollowing = !!await findFollow.get(req.user.id, target.id);
+  const isFriend = isFollowing && !!await findFollow.get(target.id, req.user.id);
+  res.json({ isFollowing, isFriend, followerCount: (await countFollowers.get(target.id)).n });
 });
 
 /* ---------------- notifications ---------------- */
@@ -606,8 +619,8 @@ const listNotifications = db.prepare(`
 `);
 const markAllNotificationsRead = db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0');
 
-app.get('/api/notifications', requireAuth, (req, res) => {
-  const rows = listNotifications.all(req.user.id);
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  const rows = await listNotifications.all(req.user.id);
   res.json({
     notifications: rows.map(r => ({
       id: r.id,
@@ -620,8 +633,8 @@ app.get('/api/notifications', requireAuth, (req, res) => {
   });
 });
 
-app.post('/api/notifications/read', requireAuth, writeLimiter, (req, res) => {
-  markAllNotificationsRead.run(req.user.id);
+app.post('/api/notifications/read', requireAuth, writeLimiter, async (req, res) => {
+  await markAllNotificationsRead.run(req.user.id);
   res.json({ ok: true });
 });
 
@@ -638,8 +651,8 @@ const findListItem = db.prepare('SELECT 1 FROM game_list_items WHERE list_id = ?
 const insertListItem = db.prepare('INSERT INTO game_list_items (list_id, game_id, added_at) VALUES (?, ?, ?)');
 const deleteListItem = db.prepare('DELETE FROM game_list_items WHERE list_id = ? AND game_id = ?');
 
-function shapeList(l) {
-  const items = itemsForList.all(l.id);
+async function shapeList(l) {
+  const items = await itemsForList.all(l.id);
   return {
     id: l.id, title: l.title, isPublic: !!l.is_public,
     createdAt: l.created_at, updatedAt: l.updated_at,
@@ -647,56 +660,56 @@ function shapeList(l) {
   };
 }
 
-app.get('/api/lists/mine', requireAuth, (req, res) => {
-  res.json({ lists: listsForUser.all(req.user.id).map(shapeList) });
+app.get('/api/lists/mine', requireAuth, async (req, res) => {
+  res.json({ lists: await Promise.all((await listsForUser.all(req.user.id)).map(shapeList)) });
 });
 
-app.get('/api/users/:username/lists', (req, res) => {
-  const user = findUserByNameCI.get(req.params.username);
+app.get('/api/users/:username/lists', async (req, res) => {
+  const user = await findUserByNameCI.get(req.params.username);
   if (!user) return res.status(404).json({ error: 'not_found' });
-  res.json({ lists: publicListsForUser.all(user.id).map(shapeList) });
+  res.json({ lists: await Promise.all((await publicListsForUser.all(user.id)).map(shapeList)) });
 });
 
-app.post('/api/lists', requireAuth, writeLimiter, (req, res) => {
+app.post('/api/lists', requireAuth, writeLimiter, async (req, res) => {
   const title = String((req.body && req.body.title) || '').trim().slice(0, 60);
   if (title.length < 1) return res.status(400).json({ error: 'title_required' });
   const isPublic = req.body && req.body.isPublic === false ? 0 : 1;
   const id = 'list-' + uid();
   const now = new Date().toISOString();
-  insertList.run(id, req.user.id, title, isPublic, now, now);
-  res.json({ list: shapeList(findListById.get(id)) });
+  await insertList.run(id, req.user.id, title, isPublic, now, now);
+  res.json({ list: await shapeList(await findListById.get(id)) });
 });
 
-app.put('/api/lists/:id', requireAuth, writeLimiter, (req, res) => {
-  const list = findListById.get(req.params.id);
+app.put('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
+  const list = await findListById.get(req.params.id);
   if (!list) return res.status(404).json({ error: 'not_found' });
   if (list.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
   const b = req.body || {};
   const title = typeof b.title === 'string' ? b.title.trim().slice(0, 60) || list.title : list.title;
   const isPublic = typeof b.isPublic === 'boolean' ? (b.isPublic ? 1 : 0) : list.is_public;
-  updateListMeta.run(title, isPublic, new Date().toISOString(), list.id);
-  res.json({ list: shapeList(findListById.get(list.id)) });
+  await updateListMeta.run(title, isPublic, new Date().toISOString(), list.id);
+  res.json({ list: await shapeList(await findListById.get(list.id)) });
 });
 
-app.delete('/api/lists/:id', requireAuth, writeLimiter, (req, res) => {
-  const list = findListById.get(req.params.id);
+app.delete('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
+  const list = await findListById.get(req.params.id);
   if (!list) return res.status(404).json({ error: 'not_found' });
   if (list.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
-  deleteListStmt.run(list.id);
+  await deleteListStmt.run(list.id);
   res.json({ ok: true });
 });
 
-app.post('/api/lists/:id/items/toggle', requireAuth, writeLimiter, (req, res) => {
-  const list = findListById.get(req.params.id);
+app.post('/api/lists/:id/items/toggle', requireAuth, writeLimiter, async (req, res) => {
+  const list = await findListById.get(req.params.id);
   if (!list) return res.status(404).json({ error: 'not_found' });
   if (list.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
   const gameId = req.body && req.body.gameId;
   if (!gameId || typeof gameId !== 'string') return res.status(400).json({ error: 'missing_game_id' });
-  if (findListItem.get(list.id, gameId)) deleteListItem.run(list.id, gameId);
-  else if (findGameById.get(gameId)) insertListItem.run(list.id, gameId, new Date().toISOString());
+  if (await findListItem.get(list.id, gameId)) await deleteListItem.run(list.id, gameId);
+  else if (await findGameById.get(gameId)) await insertListItem.run(list.id, gameId, new Date().toISOString());
   else return res.status(400).json({ error: 'invalid_game' });
-  updateListMeta.run(list.title, list.is_public, new Date().toISOString(), list.id);
-  res.json({ list: shapeList(findListById.get(list.id)) });
+  await updateListMeta.run(list.title, list.is_public, new Date().toISOString(), list.id);
+  res.json({ list: await shapeList(await findListById.get(list.id)) });
 });
 
 /* ---------------- cover art (best-effort, via Steam's public search, cached) ---------------- */
@@ -758,21 +771,21 @@ async function resolveCoverUrl(title) {
 // Portada de un juego: de la caché si está fresca; si no, la busca en Steam y la guarda (los errores transitorios no se guardan).
 async function getCoverUrl(title) {
   const key = title.toLowerCase();
-  const cached = getCover.get(key);
+  const cached = await getCover.get(key);
   if (cached && Date.now() - new Date(cached.fetched_at).getTime() < COVER_TTL_MS) return cached.image_url;
   const url = await resolveCoverUrl(title);
   if (url === undefined) return cached ? cached.image_url : null;
-  upsertCover.run(key, url, new Date().toISOString());
+  await upsertCover.run(key, url, new Date().toISOString());
   return url;
 }
 
-const isKnownGameTitle = db.prepare('SELECT 1 FROM games WHERE title = ? COLLATE NOCASE LIMIT 1');
+const isKnownGameTitle = db.prepare('SELECT 1 FROM games WHERE lower(title) = lower(?) LIMIT 1');
 
 app.get('/api/cover', async (req, res) => {
   const title = String(req.query.title || '').trim();
   if (!title) return res.status(400).json({ error: 'missing_title' });
   // Solo títulos del catálogo: si no, cualquiera podía disparar búsquedas ilimitadas a Steam y llenar la caché de basura.
-  if (title.length > 120 || !isKnownGameTitle.get(title)) return res.json({ url: null });
+  if (title.length > 120 || !await isKnownGameTitle.get(title)) return res.json({ url: null });
   res.json({ url: await getCoverUrl(title) });
 });
 
@@ -805,8 +818,8 @@ app.get('/api/image-proxy', async (req, res) => {
 
 /* ---------------- date calendar + news (public reads) ---------------- */
 
-const listDateEvents = db.prepare('SELECT * FROM date_events ORDER BY month ASC, day ASC');
-const listNewsItems = db.prepare('SELECT * FROM news_items ORDER BY created_at DESC');
+const listDateEvents = db.prepare('SELECT * FROM date_events ORDER BY month ASC, day ASC, id ASC');
+const listNewsItems = db.prepare('SELECT * FROM news_items ORDER BY created_at DESC, id ASC');
 
 function shapeDateEvent(e) {
   return {
@@ -818,11 +831,11 @@ function shapeNewsItem(n) {
   return { id: n.id, title: n.title, summary: n.summary, source: n.source, url: n.url, color: n.color, initials: n.initials };
 }
 
-app.get('/api/date-events', (req, res) => {
-  res.json({ dateEvents: listDateEvents.all().map(shapeDateEvent) });
+app.get('/api/date-events', async (req, res) => {
+  res.json({ dateEvents: (await listDateEvents.all()).map(shapeDateEvent) });
 });
-app.get('/api/news', (req, res) => {
-  res.json({ news: listNewsItems.all().map(shapeNewsItem) });
+app.get('/api/news', async (req, res) => {
+  res.json({ news: (await listNewsItems.all()).map(shapeNewsItem) });
 });
 
 /* ---------------- pretty routes + per-game Open Graph tags ---------------- */
@@ -836,13 +849,13 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function findAnyGame(id) {
-  const row = findGameById.get(id);
+async function findAnyGame(id) {
+  const row = await findGameById.get(id);
   return row ? shapeGame(row) : null;
 }
 const avgRatingForCharacter = db.prepare('SELECT AVG(rating) as avg, COUNT(rating) as n FROM character_reviews WHERE character_id = ? AND rating IS NOT NULL');
-function findAnyCharacter(id) {
-  const row = findCharacterById.get(id);
+async function findAnyCharacter(id) {
+  const row = await findCharacterById.get(id);
   return row ? shapeCharacter(row) : null;
 }
 
@@ -860,10 +873,10 @@ function renderIndexWithMeta({ title, description, image, url }) {
 
 app.get('/juego/:id', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const game = findAnyGame(req.params.id);
+  const game = await findAnyGame(req.params.id);
   if (!game) return res.type('html').send(getIndexTemplate());
 
-  const { avg, n } = avgRatingForGame.get(game.id);
+  const { avg, n } = await avgRatingForGame.get(game.id);
   const genreLabel = (game.genres && game.genres[0]) || game.genre;
   const description = n > 0
     ? `${genreLabel} — calificado ${avg.toFixed(1)}/10 por ${n} reseña${n === 1 ? '' : 's'} en DLCritic.`
@@ -874,13 +887,13 @@ app.get('/juego/:id', async (req, res) => {
   res.type('html').send(renderIndexWithMeta({ title: `${game.title} — DLCritic`, description, image, url }));
 });
 
-app.get('/personaje/:id', (req, res) => {
+app.get('/personaje/:id', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const character = findAnyCharacter(req.params.id);
+  const character = await findAnyCharacter(req.params.id);
   if (!character) return res.type('html').send(getIndexTemplate());
 
-  const { avg, n } = avgRatingForCharacter.get(character.id);
-  const games = character.gameIds.map(id => findGameById.get(id)).filter(Boolean);
+  const { avg, n } = await avgRatingForCharacter.get(character.id);
+  const games = (await Promise.all(character.gameIds.map(id => findGameById.get(id)))).filter(Boolean);
   const gamePrefix = games.length ? `${games.map(g => g.title).join(', ')} — ` : '';
   const description = n > 0
     ? `${gamePrefix}calificado ${avg.toFixed(1)}/10 por ${n} reseña${n === 1 ? '' : 's'} en DLCritic.`
@@ -890,12 +903,12 @@ app.get('/personaje/:id', (req, res) => {
   res.type('html').send(renderIndexWithMeta({ title: `${character.name} — DLCritic`, description, image: character.bannerUrl || character.photoUrl, url }));
 });
 
-app.get('/usuario/:username', (req, res) => {
+app.get('/usuario/:username', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const user = findUserByNameCI.get(req.params.username);
+  const user = await findUserByNameCI.get(req.params.username);
   if (!user) return res.type('html').send(getIndexTemplate());
 
-  const { n: reviewCount } = countReviewsForUser.get(user.id);
+  const { n: reviewCount } = await countReviewsForUser.get(user.id);
   const description = reviewCount > 0
     ? `${reviewCount} reseña${reviewCount === 1 ? '' : 's'} en DLCritic.`
     : `Perfil de ${user.username} en DLCritic.`;
@@ -933,5 +946,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'server_error' });
 });
 
-const PORT = process.env.PORT || 8793;
-app.listen(PORT, () => console.log(`DLCritic server listening on http://localhost:${PORT}`));
+// En Vercel la app se exporta y la plataforma se encarga de escuchar; en local (node server/index.js) escucha acá.
+module.exports = app;
+if (require.main === module) {
+  const PORT = process.env.PORT || 8793;
+  app.listen(PORT, () => console.log(`DLCritic server listening on http://localhost:${PORT}`));
+}

@@ -4,7 +4,7 @@
     {
       "name": "dlcritic",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server/index.js"],
+      "runtimeArgs": ["-r", "./scripts/local-env.js", "server/index.js"],
       "port": 8793
     }
   ]

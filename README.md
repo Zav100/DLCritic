@@ -1,29 +1,56 @@
 # DLCritic
 
-Catálogo y reseñas de videojuegos. Frontend estático (HTML/CSS/JS) + backend Node.js/Express + base de datos SQLite.
+Catálogo y reseñas de videojuegos. Frontend estático (HTML/CSS/JS) + backend Node.js/Express + base de datos PostgreSQL (Neon).
 
 ## Correr en local
 
+Hace falta Node 22+ y una base Postgres. Dos formas de tenerla:
+
+**A) Postgres embebido (sin cuenta ni internet, para desarrollar).** Guarda los datos en `.pgdata/` (fuera de git):
+
 ```bash
 npm install
-npm start
+node -r ./scripts/local-env.js scripts/migrate.js   # crea las tablas
+node -r ./scripts/local-env.js scripts/seed.js      # carga el catálogo base
+npm run dev:local
+```
+
+**B) Con Neon.** Creá un proyecto en [neon.tech](https://neon.tech), copiá la URL "Pooled connection" y:
+
+```bash
+cp .env.example .env.local        # y pegá la URL en DATABASE_URL= (.env.local no se sube a git)
+npm install
+npm run db:migrate && npm run db:seed
+npm run dev
 ```
 
 Abrí `http://localhost:8793`.
+
+**Traer los datos de la base SQLite anterior (`data.db`)** — sobre una base recién migrada y **sin** correr el seed (copia usuarios, contraseñas, reseñas, todo; conserva los ids y verifica los conteos):
+
+```bash
+npm run db:import -- data.db                                        # contra Neon
+node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el Postgres embebido
+```
+
+**Prueba de humo** (registro, reseñas, listas, seguimiento, panel de admin…; borra lo que crea): `npm run test:smoke`, o `node -r ./scripts/local-env.js scripts/smoke-test.js` en local.
 
 ## Estructura
 
 - `public/index.html` — todo el frontend (sin build step, HTML/CSS/JS plano).
 - `server/index.js` — API REST (Express).
-- `server/db.js` — esquema de la base de datos (SQLite vía `node:sqlite`, nativo de Node 22+).
+- `server/db.js` — acceso a PostgreSQL (driver `pg`; Neon en producción). Mantiene la forma que tenía SQLite, `db.prepare(sql).get/all/run(...)`, pero asíncrona (`await`).
+- `server/schema.sql` — el esquema de la base. `npm run db:migrate` lo aplica (es seguro repetirlo).
+- `scripts/` — `migrate.js`, `seed.js`, `import-sqlite.js`, `smoke-test.js` y `local-env.js` (modo local con Postgres embebido).
 - `server/auth.js` — hash de PIN (scrypt) y sesiones por cookie httpOnly.
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
 - `public/admin.html` — el panel de administración (página aparte, con su propio script).
 - `public/uploads/` — imágenes de portada subidas desde `/admin`.
-- `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, la primera vez que corre el servidor contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
-- `data.db` — el archivo de base de datos (se crea solo al arrancar; no se sube a git). Es la única fuente de verdad: todo el catálogo (juegos base + agregados), el calendario y las noticias viven acá, no hay datos estáticos en el HTML.
+- `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, al correr `npm run db:seed` contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
+- La base de datos es la única fuente de verdad: todo el catálogo (juegos base + agregados), el calendario y las noticias viven ahí, no hay datos estáticos en el HTML.
+- `data.db` — la base SQLite anterior (no se sube a git). Ya no la usa el servidor; queda para `npm run db:import`.
 
 ## Funcionalidad agregada en esta ronda
 
@@ -53,7 +80,7 @@ Abrí `http://localhost:8793`.
 
 **Para habilitar tu cuenta como admin:**
 1. Registrate normalmente en la app (`/` → Iniciar sesión → Registrarme).
-2. Corré `npm run make-admin <tu_usuario>` en la terminal del servidor.
+2. Corré `npm run make-admin -- <tu_usuario>` en la terminal del servidor (usa la base de `.env.local`).
 3. Entrá a `/admin` con esa misma cuenta.
 
 Las imágenes subidas se guardan en `public/uploads/` (servidas como archivos estáticos) y quedan fuera de git — si desplegás en un host con disco efímero (como el free tier de algunos servicios), asegurate de que ese directorio esté en un volumen persistente, igual que `data.db`.
@@ -97,7 +124,7 @@ Cualquier host que corra Node 22+ sirve. Opciones simples y con capa gratuita:
 - **Railway** (railway.app) — similar a Render, con volumen persistente para `data.db`.
 - **Fly.io** — más control, requiere un volumen (`fly volumes create`) montado en la carpeta del proyecto.
 
-Si más adelante crece el tráfico o querés múltiples instancias del servidor, conviene migrar de SQLite a Postgres (el esquema en `server/db.js` es casi calcado a SQL estándar, así que el cambio es menor). Para eso, Render/Railway ofrecen Postgres administrado con un click.
+La base ya es Postgres (Neon), así que `data.db` y el volumen persistente de la base dejaron de hacer falta; solo se necesita definir `DATABASE_URL` en el host. Todavía queda pendiente mover las imágenes subidas (`public/uploads/`) a un almacenamiento externo y adaptar el servidor a Vercel (ver el plan de migración).
 
 ## Notas de seguridad
 

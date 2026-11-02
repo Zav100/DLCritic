@@ -7,3 +7,9 @@ public/uploads/*
 
 server.log
 .claude/skills/
+
+# Base de datos local (Postgres embebido) y credenciales: nunca se suben
+.pgdata/
+.env
+.env.*
+!.env.example

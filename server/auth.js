@@ -19,16 +19,16 @@ function verifyPin(pin, stored) {
 }
 
 const insertSession = db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)');
-const findSession = db.prepare('SELECT * FROM sessions WHERE token = ?');
+// Sesión y usuario en una sola consulta: cada request autenticado hace un viaje a la base, no dos.
+const findSessionUser = db.prepare('SELECT u.*, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?');
 const deleteSession = db.prepare('DELETE FROM sessions WHERE token = ?');
 const deleteExpired = db.prepare('DELETE FROM sessions WHERE expires_at < ?');
-const findUserById = db.prepare('SELECT * FROM users WHERE id = ?');
 
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const now = new Date();
   const expires = new Date(now.getTime() + SESSION_TTL_MS);
-  insertSession.run(token, userId, now.toISOString(), expires.toISOString());
+  await insertSession.run(token, userId, now.toISOString(), expires.toISOString());
   return { token, expires };
 }
 
@@ -61,22 +61,31 @@ function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
 }
 
-function currentUser(req) {
-  deleteExpired.run(new Date().toISOString());
-  const cookies = parseCookies(req.headers.cookie);
-  const token = cookies[SESSION_COOKIE];
-  if (!token) return null;
-  const session = findSession.get(token);
-  if (!session) return null;
-  if (new Date(session.expires_at) < new Date()) {
-    deleteSession.run(token);
-    return null;
-  }
-  return findUserById.get(session.user_id) || null;
+// Limpieza de sesiones vencidas: es solo higiene (una sesión vencida igual se rechaza al usarla), así que se hace
+// a lo sumo una vez cada 10 minutos por instancia y no en cada request.
+let lastPurge = 0;
+async function purgeExpiredSessions() {
+  if (Date.now() - lastPurge < 10 * 60 * 1000) return;
+  lastPurge = Date.now();
+  await deleteExpired.run(new Date().toISOString());
 }
 
-function requireAuth(req, res, next) {
-  const user = currentUser(req);
+async function currentUser(req) {
+  const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+  if (!token) return null; // visitante sin sesión: ni siquiera se consulta la base
+  await purgeExpiredSessions();
+  const row = await findSessionUser.get(token);
+  if (!row) return null;
+  const { session_expires_at, ...user } = row;
+  if (new Date(session_expires_at) < new Date()) {
+    await deleteSession.run(token);
+    return null;
+  }
+  return user;
+}
+
+async function requireAuth(req, res, next) {
+  const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'not_authenticated' });
   req.user = user;
   next();
