@@ -40,6 +40,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 ## Estructura
 
 - `server/views/index.html` + `public/` (`js/`, `css/`, `img/`) — todo el frontend (sin build step, HTML/CSS/JS plano). El HTML lo entrega el servidor (así cada dominio muestra solo lo suyo) y el resto sale del CDN de Vercel.
+- `public/img/` también tiene la imagen para compartir el enlace (`og-image.png`, 1200×630), el ícono de pantalla de inicio (`apple-touch-icon.png`) y los íconos de `public/site.webmanifest`. Se generan desde `logos/export/`. Las etiquetas `og:url` y `og:image` de `server/views/index.html` llevan la URL completa del sitio (los servicios que muestran la vista previa no entienden las relativas): al pasar a `dlcritic.com`, cambiarlas ahí.
 - `server/index.js` — API REST (Express).
 - `server/db.js` — acceso a PostgreSQL (driver `pg`; Neon en producción). Mantiene la forma que tenía SQLite, `db.prepare(sql).get/all/run(...)`, pero asíncrona (`await`).
 - `server/schema.sql` — el esquema de la base. `npm run db:migrate` lo aplica (es seguro repetirlo).
@@ -48,7 +49,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
-- `admin-ui/` — el panel de administración (HTML + `assets/`). Está fuera de `public/` a propósito: el servidor lo entrega solo en el dominio del dashboard (ver `ADMIN_HOST`).
+- `admin-ui/` — el panel de administración (HTML + `assets/`). Está fuera de `public/` a propósito: el servidor lo entrega solo en el dominio del dashboard (ver `ADMIN_HOST`). Por eso su logo va inline y su favicon (el del sitio con una llave inglesa) vive en `admin-ui/assets/`: en ese dominio `/img/` no existe.
 - `public/uploads/` — imágenes de portada subidas desde `/admin`. Antes de subirse, el navegador las achica con `shrinkImage()` (lado largo máximo 2000 px, 1000 px en avatares, calidad 0.9; lo chico, los GIF y cualquier fallo suben tal cual). La función vive en `public/js/04-api-theme-rating.js` y está copiada en `admin-ui/assets/js/02-views-login-and-api.js`.
 - `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, al correr `npm run db:seed` contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
 - La base de datos es la única fuente de verdad: todo el catálogo (juegos base + agregados), el calendario y las noticias viven ahí, no hay datos estáticos en el HTML.

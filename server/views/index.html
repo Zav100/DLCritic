@@ -12,7 +12,16 @@
   <meta property="og:description"
     content="Catálogo y reseñas de videojuegos hechas por la comunidad. Calificá lo que jugaste y descubrí qué probar después.">
   <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary">
+  <!-- Las URLs de og:url y og:image tienen que ser absolutas (WhatsApp y Discord no entienden las relativas):
+       cuando dlcritic.com sea el dominio del sitio, cambiarlas acá. -->
+  <meta property="og:url" content="https://dlcritic.vercel.app/">
+  <meta property="og:site_name" content="DLCritic">
+  <meta property="og:image" content="https://dlcritic.vercel.app/img/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="DLCritic, el catálogo de videojuegos con reseñas de la comunidad">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -20,6 +29,8 @@
     rel="stylesheet">
   <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 
