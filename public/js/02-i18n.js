@@ -17,7 +17,7 @@
 /* ================= IDIOMA (solo interfaz) ================= */
 const I18N = {
   es: {
-    tagline:"Reseñas de juegos, catalogadas",
+    tagline:"Cada opinión es un DLC",
     nav_feed:"Novedades", nav_browse:"Explorar", nav_shelf:"Mi estantería", nav_daily:"Reto del día", nav_about:"Acerca de", nav_characters:"Personajes",
     nav_daily_short:"Reto",
     feed_eyebrow:"Catálogo, notas y reseñas",
@@ -243,7 +243,7 @@ const I18N = {
     toast_suggestion_sent:"¡Gracias! Tu sugerencia fue enviada.", err_send_suggestion:"No se pudo enviar la sugerencia. Prueba de nuevo."
   },
   en: {
-    tagline:"Game reviews, catalogued",
+    tagline:"Every opinion is a DLC",
     nav_feed:"News", nav_browse:"Browse", nav_shelf:"My Shelf", nav_daily:"Daily Challenge", nav_about:"About", nav_characters:"Characters",
     nav_daily_short:"Daily",
     feed_eyebrow:"Catalog, ratings and reviews",
