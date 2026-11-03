@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logo Preview — Iterations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; transition: background-color .3s, color .3s; }
+  body.light { background: #f5f5f5; color: #333; }
+  body.dark { background: #12111F; color: #eee; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+  h1 { font-size: 1.5rem; font-weight: 600; }
+  h2 { font-size: 1.1rem; font-weight: 600; margin: 2rem 0 1rem; opacity: .7; }
+  .toggle { padding: .5rem 1rem; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; font-size: .875rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1.5rem; }
+  .card { border: 1px solid rgba(128,128,128,.3); border-radius: 12px; overflow: hidden; }
+  .card-img { display: flex; align-items: center; justify-content: center; padding: 2rem; min-height: 240px; }
+  body.light .card-img { background: #fff; }
+  body.dark .card-img { background: #1b1a2e; }
+  .card-img img { max-width: 100%; max-height: 200px; }
+  .card-label { padding: .75rem 1rem; font-size: .875rem; font-weight: 500; border-top: 1px solid rgba(128,128,128,.3); }
+  body.light .card-label { background: #fafafa; }
+  body.dark .card-label { background: #222; }
+  .fav { display: flex; gap: 2rem; flex-wrap: wrap; align-items: end; }
+  .fav > div { display: flex; flex-direction: column; align-items: center; gap: .5rem; font-size: .8rem; font-weight: 500; }
+  .fav .row { display: flex; gap: 1rem; align-items: end; padding: 10px 14px; border-radius: 8px; }
+  .fav .row div { font-size: .75rem; opacity: .6; text-align: center; font-weight: 400; }
+  body.light .fav .row { background: #fff; }
+  body.dark .fav .row { background: #1b1a2e; }
+</style>
+</head>
+<body class="dark">
+  <div class="header">
+    <h1>Logo Preview — Iterations</h1>
+    <button class="toggle" onclick="document.body.classList.toggle('dark'); document.body.classList.toggle('light'); this.textContent = document.body.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';">☀️ Light</button>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-2.svg" alt="iteration-2 — wordmark en Bungee (fuente del sitio)"></div>
+      <div class="card-label">iteration-2 — wordmark en Bungee (fuente del sitio)</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-1.svg" alt="iteration-1 — concepto 2, d-pad y botones más gruesos"></div>
+      <div class="card-label">iteration-1 — concepto 2, d-pad y botones más gruesos</div>
+    </div>
+  </div>
+  <h2>Favicon Size Check</h2>
+  <div class="fav">
+    <div>iteration-1
+      <div class="row">
+        <div><img src="iterations/iteration-1-icon.svg" width="64" height="64"><div>64px</div></div>
+        <div><img src="iterations/iteration-1-icon.svg" width="32" height="32"><div>32px</div></div>
+        <div><img src="iterations/iteration-1-icon.svg" width="16" height="16"><div>16px</div></div>
+      </div>
+    </div>
+  </div>
+  <h2>Conceptos (rondas 1 y 2)</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-1.svg" alt="concept-1 — Cartucho con estrella"></div>
+      <div class="card-label">concept-1 — Cartucho con estrella</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-2.svg" alt="concept-2 — Globo de reseña joystick"></div>
+      <div class="card-label">concept-2 — Globo de reseña joystick</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-3.svg" alt="concept-3 — Monograma D-estrella"></div>
+      <div class="card-label">concept-3 — Monograma D-estrella</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-4.svg" alt="concept-4 — Lupa del crítico"></div>
+      <div class="card-label">concept-4 — Lupa del crítico</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-5.svg" alt="concept-5 — Estrella pixel + (arcade)"></div>
+      <div class="card-label">concept-5 — Estrella pixel + (arcade)</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-6.svg" alt="concept-6 — Joystick arcade, minúsculas redondeadas"></div>
+      <div class="card-label">concept-6 — Joystick arcade, minúsculas redondeadas</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-7.svg" alt="concept-7 — Fantasma crítico con anteojos"></div>
+      <div class="card-label">concept-7 — Fantasma crítico con anteojos</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="concepts/concept-8.svg" alt="concept-8 — Trofeo con estrella"></div>
+      <div class="card-label">concept-8 — Trofeo con estrella</div>
+    </div>
+  </div>
+</body>
+</html>
