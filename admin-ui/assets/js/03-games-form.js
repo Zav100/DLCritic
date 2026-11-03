@@ -96,7 +96,7 @@ async function uploadImageIfNeeded(inputId, existingUrl){
   const file = document.getElementById(inputId).files[0];
   if(!file) return existingUrl;
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('image', await shrinkImage(file));
   const { url } = await api('/admin/upload', { method:'POST', body: formData, isForm:true });
   return url;
 }

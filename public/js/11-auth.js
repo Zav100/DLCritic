@@ -137,7 +137,7 @@ async function handleRegisterSubmit(){
   if(registerAvatarFile){
     try{
       const fd = new FormData();
-      fd.append('image', registerAvatarFile);
+      fd.append('image', await shrinkImage(registerAvatarFile, 1000));
       const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
       user = r.user;
     }catch(e){ /* avatar upload failing shouldn't block account creation */ }

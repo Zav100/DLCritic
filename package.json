@@ -10,6 +10,8 @@
     "dev:local": "node --watch -r ./scripts/local-env.js server/index.js",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.js",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed.js",
+    "db:backup": "node --env-file=.env.backup scripts/backup.js",
+    "db:restore": "node --env-file-if-exists=.env.local scripts/restore.js",
     "db:import": "node --env-file-if-exists=.env.local scripts/import-sqlite.js",
     "make-admin": "node --env-file-if-exists=.env.local server/make-admin.js",
     "test:smoke": "node --env-file-if-exists=.env.local scripts/smoke-test.js",

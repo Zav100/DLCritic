@@ -49,7 +49,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
 - `admin-ui/` — el panel de administración (HTML + `assets/`). Está fuera de `public/` a propósito: el servidor lo entrega solo en el dominio del dashboard (ver `ADMIN_HOST`).
-- `public/uploads/` — imágenes de portada subidas desde `/admin`.
+- `public/uploads/` — imágenes de portada subidas desde `/admin`. Antes de subirse, el navegador las achica con `shrinkImage()` (lado largo máximo 2000 px, 1000 px en avatares, calidad 0.9; lo chico, los GIF y cualquier fallo suben tal cual). La función vive en `public/js/04-api-theme-rating.js` y está copiada en `admin-ui/assets/js/02-views-login-and-api.js`.
 - `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, al correr `npm run db:seed` contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
 - La base de datos es la única fuente de verdad: todo el catálogo (juegos base + agregados), el calendario y las noticias viven ahí, no hay datos estáticos en el HTML.
 - `data.db` — la base SQLite anterior (no se sube a git). Ya no la usa el servidor; queda para `npm run db:import`.
@@ -135,6 +135,15 @@ Variables de entorno del proyecto en Vercel:
 Pasos: `vercel link` (una vez) → cargar las variables → `npm run db:migrate`, `npm run db:import -- data.db` y `npm run db:migrate-uploads` contra la rama de Neon que use el despliegue → `vercel deploy --prod`. Para probar un despliegue: `BASE_URL=https://… ADMIN_URL=https://… npm run test:smoke` (solo contra una base de pruebas, nunca producción).
 
 Otro dominio (por ejemplo `dlcritic.com`) se agrega en Vercel > Settings > Domains y, si es el del dashboard, también en `ADMIN_HOST`.
+
+## Copias de seguridad
+
+Neon solo conserva 6 horas de historial en el plan gratuito, así que las copias de verdad son las propias.
+
+- `npm run db:backup` vuelca todas las tablas de la rama `production` a `backups/dlcritic-<fecha>.json.gz` (una foto coherente, sin `sessions` ni `rate_limits`), la verifica y deja las últimas 30. La URL sale de `.env.backup` (`DATABASE_URL` = URL directa de la rama production; se genera con `neon connection-string production --project-id <id>`). `backups/` y `.env.backup` no se suben a git ni a Vercel: la copia contiene correos y hashes de PIN.
+- Las imágenes que viven en Vercel Blob no van dentro del `.json.gz` (ahí solo queda su URL): el mismo `db:backup` las espeja en `backups/images/uploads/`, bajando solo las que faltan (son públicas, no hace falta el token) y sin borrar nunca nada. Las portadas que son enlaces a Steam no se copian: son ajenas. Si algún día se pierde el store, esos archivos son los originales para volver a subirlos; hoy esa re-subida (y reescribir las URLs de la base) es manual.
+- `npm run db:restore -- backups/<archivo>.json.gz` la carga en la base de `DATABASE_URL` / `.env.local`, y solo si está vacía. Para recuperar producción: crear una rama o base nueva y vacía, restaurar ahí y apuntar la app a ella.
+- Para repetirla cada día en Windows: Programador de tareas, ejecutar `npm run db:backup` en la carpeta del proyecto, con "ejecutar lo antes posible si se perdió el inicio programado" activado.
 
 ## Notas de seguridad
 

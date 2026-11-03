@@ -107,7 +107,7 @@ function renderSettingsView(){
     try{
       if(pendingSettingsAvatarFile){
         const fd = new FormData();
-        fd.append('image', pendingSettingsAvatarFile);
+        fd.append('image', await shrinkImage(pendingSettingsAvatarFile, 1000));
         const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
         state.user = r.user;
         pendingSettingsAvatarFile = null;

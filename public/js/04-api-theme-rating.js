@@ -31,6 +31,32 @@ function apiPost(path, data){ return api(path, { method:'POST', body: JSON.strin
 function apiPut(path, data){ return api(path, { method:'PUT', body: JSON.stringify(data||{}) }); }
 function apiDelete(path){ return api(path, { method:'DELETE' }); }
 
+// Achica una imagen antes de subirla: una foto 4K pesa varios MB y en pantalla no se nota la diferencia, y Vercel rechaza
+// los pedidos de más de 4,5 MB. Lado largo máximo maxSide px (nunca agranda) y calidad 0.9; el JPEG sigue siendo JPEG y el
+// resto pasa a WebP (conserva la transparencia). Lo que ya es chico y liviano, los GIF (se perderían los cuadros) y
+// cualquier fallo devuelven el archivo original sin tocar. Copiada en admin-ui/assets/js/02-views-login-and-api.js
+// (dos páginas sin código compartido): si se cambia una, cambiar la otra.
+async function shrinkImage(file, maxSide = 2000){
+  if(file.type === 'image/gif') return file;
+  try{
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+    if(scale === 1 && file.size <= 1024 * 1024){ bmp.close(); return file; }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale));
+    canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    const type = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.9));
+    // Safari no sabe escribir WebP y devuelve PNG (más pesado): en ese caso, o si no se ganó nada, queda el original.
+    if(!blob || blob.type !== type || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]*$/, '') + (type === 'image/jpeg' ? '.jpg' : '.webp'), { type });
+  }catch(e){ return file; }
+}
+
 // Carga inicial de datos al arrancar la app: catálogo, reseñas, sesión del
 // usuario, calendario de fechas y noticias. Cada pedido falla en silencio
 // por separado (si uno falla, los demás igual se intentan) para que un
