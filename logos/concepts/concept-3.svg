@@ -1,0 +1,29 @@
+<svg viewBox="0 0 1024 512" xmlns="http://www.w3.org/2000/svg">
+  <g id="icon" transform="translate(60 126) scale(.8667)">
+    <rect width="300" height="300" rx="68" fill="#7B61FF"/>
+    <g transform="translate(-6 0)">
+      <path fill-rule="evenodd" d="M56 50H150C214 50 264 94 264 150C264 206 214 250 150 250H56ZM100 94V206H150C190 206 220 182 220 150C220 118 190 94 150 94Z" fill="#1A1830"/>
+      <path d="M158 108L168.6 135.4L197.9 137L175.1 155.6L182.7 184L158 168L133.3 184L140.9 155.6L118.1 137L147.4 135.4Z" fill="#F0A8D0"/>
+    </g>
+  </g>
+  <g transform="translate(380 181)">
+  <g id="wordmark">
+    <g fill="none" stroke="#7B61FF" stroke-width="28" stroke-linejoin="round">
+      <path d="M14 14H50C76 14 86 40 86 75C86 110 76 136 50 136H14Z"/>
+      <path d="M128 14V136H180"/>
+      <path d="M282 46C274 24 260 14 244 14C222 14 208 36 208 75C208 114 222 136 244 136C260 136 274 126 282 104"/>
+    </g>
+    <g fill="none" stroke="#4C7DF0" stroke-width="22" stroke-linejoin="round">
+      <path d="M323 56V150M323 100C323 80 338 67 360 67"/>
+      <path d="M389 56V150"/>
+      <path d="M430 20V117Q430 139 452 139H462M410 67H458"/>
+      <path d="M493 56V150"/>
+      <path d="M578 80C572 70 564 67 556 67C538 67 525 80 525 103C525 126 538 139 556 139C564 139 572 136 578 126"/>
+    </g>
+    <g fill="#EE7DB8">
+      <rect x="378" y="26" width="22" height="22"/>
+      <rect x="482" y="26" width="22" height="22"/>
+    </g>
+  </g>
+  </g>
+</svg>

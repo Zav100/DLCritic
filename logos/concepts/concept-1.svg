@@ -1,0 +1,29 @@
+<svg viewBox="0 0 1024 512" xmlns="http://www.w3.org/2000/svg">
+  <g id="icon" transform="translate(60 126) scale(.8667)">
+    <path d="M96 10H232Q260 10 260 38V262Q260 290 232 290H68Q40 290 40 262V66Z" fill="#8B7FE8"/>
+    <rect x="66" y="56" width="168" height="140" rx="16" fill="#211E3D"/>
+    <path d="M150 76L163.5 111.4L201.4 113.3L171.9 137.1L181.7 173.7L150 153L118.3 173.7L128.1 137.1L98.6 113.3L136.5 111.4Z" fill="#F0A8D0"/>
+    <rect x="66" y="216" width="168" height="10" rx="5" fill="#6C5FC7"/>
+    <rect x="66" y="238" width="168" height="10" rx="5" fill="#6C5FC7"/>
+  </g>
+  <g transform="translate(380 181)">
+  <g id="wordmark">
+    <g fill="none" stroke="#8B7FE8" stroke-width="28" stroke-linejoin="round">
+      <path d="M14 14H50C76 14 86 40 86 75C86 110 76 136 50 136H14Z"/>
+      <path d="M128 14V136H180"/>
+      <path d="M282 46C274 24 260 14 244 14C222 14 208 36 208 75C208 114 222 136 244 136C260 136 274 126 282 104"/>
+    </g>
+    <g fill="none" stroke="#5B8DEF" stroke-width="22" stroke-linejoin="round">
+      <path d="M323 56V150M323 100C323 80 338 67 360 67"/>
+      <path d="M389 56V150"/>
+      <path d="M430 20V117Q430 139 452 139H462M410 67H458"/>
+      <path d="M493 56V150"/>
+      <path d="M578 80C572 70 564 67 556 67C538 67 525 80 525 103C525 126 538 139 556 139C564 139 572 136 578 126"/>
+    </g>
+    <g fill="#EE7DB8">
+      <rect x="378" y="26" width="22" height="22"/>
+      <rect x="482" y="26" width="22" height="22"/>
+    </g>
+  </g>
+  </g>
+</svg>

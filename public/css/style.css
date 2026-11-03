@@ -211,9 +211,13 @@ header {
 }
 
 .logo svg {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+}
+
+.logo-word span {
+  color: var(--pink);
 }
 
 .logo small {
@@ -522,6 +526,10 @@ main {
 .footer-brand .logo {
   margin-bottom: 2px;
   transform: none;
+}
+
+.footer-brand .logo-word span {
+  color: var(--pink-dim);
 }
 
 .footer-brand small {

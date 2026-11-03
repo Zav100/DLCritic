@@ -1,0 +1,29 @@
+<svg viewBox="0 0 1024 512" xmlns="http://www.w3.org/2000/svg">
+  <g id="icon" transform="translate(80 126) scale(0.8667)">
+    <rect x="138" y="112" width="24" height="96" fill="#6C5FC7"/>
+    <circle cx="150" cy="68" r="56" fill="#F0A8D0"/>
+    <circle cx="128" cy="48" r="12" fill="#FFF0F8"/>
+    <rect x="40" y="196" width="220" height="86" rx="26" fill="#8B7FE8"/>
+    <rect x="118" y="184" width="64" height="24" rx="12" fill="#6C5FC7"/>
+    <circle cx="86" cy="240" r="15" fill="#211E3D"/>
+    <circle cx="214" cy="240" r="15" fill="#211E3D"/>
+    <rect x="124" y="234" width="52" height="12" rx="6" fill="#211E3D"/>
+  </g>
+  <g transform="translate(396 181)">
+  <g id="wordmark" fill="none" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#8B7FE8">
+      <circle cx="47" cy="103" r="36"/><path d="M83 11V139"/>
+      <path d="M117 11V139"/>
+      <path d="M214.6 79.9A36 36 0 1 0 214.6 126.1"/>
+    </g>
+    <g stroke="#5B8DEF">
+      <path d="M257 67V139M257 100C257 78 272 67 296 67"/>
+      <path d="M330 67V139"/>
+      <path d="M377 22V117Q377 139 397 139H405M366 67H401"/>
+      <path d="M432 67V139"/>
+      <path d="M527.6 79.9A36 36 0 1 0 527.6 126.1"/>
+    </g>
+    <circle cx="330" cy="27" r="13" fill="#EE7DB8" stroke="none"/><circle cx="432" cy="27" r="13" fill="#EE7DB8" stroke="none"/>
+  </g>
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+<svg viewBox="0 0 1024 512" xmlns="http://www.w3.org/2000/svg">
+  <g id="icon" transform="translate(60 126) scale(.8667)">
+    <rect x="10" y="24" width="280" height="204" rx="76" fill="#8B7FE8"/>
+    <path d="M52 206L36 286L132 222Z" fill="#8B7FE8" stroke="#8B7FE8" stroke-width="12" stroke-linejoin="round"/>
+    <rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D"/>
+    <rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D"/>
+    <circle cx="200" cy="106" r="21" fill="#211E3D"/>
+    <circle cx="242" cy="148" r="21" fill="#F6F3FF"/>
+  </g>
+  <g transform="translate(380 181)">
+  <g id="wordmark">
+    <g fill="none" stroke="#8B7FE8" stroke-width="28" stroke-linejoin="round">
+      <path d="M14 14H50C76 14 86 40 86 75C86 110 76 136 50 136H14Z"/>
+      <path d="M128 14V136H180"/>
+      <path d="M282 46C274 24 260 14 244 14C222 14 208 36 208 75C208 114 222 136 244 136C260 136 274 126 282 104"/>
+    </g>
+    <g fill="none" stroke="#EE7DB8" stroke-width="22" stroke-linejoin="round">
+      <path d="M323 56V150M323 100C323 80 338 67 360 67"/>
+      <path d="M389 56V150"/>
+      <path d="M430 20V117Q430 139 452 139H462M410 67H458"/>
+      <path d="M493 56V150"/>
+      <path d="M578 80C572 70 564 67 556 67C538 67 525 80 525 103C525 126 538 139 556 139C564 139 572 136 578 126"/>
+    </g>
+    <g fill="#EE7DB8">
+      <rect x="378" y="26" width="22" height="22"/>
+      <rect x="482" y="26" width="22" height="22"/>
+    </g>
+  </g>
+  </g>
+</svg>
