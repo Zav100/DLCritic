@@ -130,6 +130,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   const username = String(b.username || '').trim();
   const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, 500) : null;
 
+  // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
+  if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
   if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
@@ -937,6 +939,12 @@ app.get('/usuario/:username', async (req, res) => {
 
 ['/', '/explorar', '/mi-estanteria', '/mis-listas', '/notificaciones', '/noticias', '/reto-del-dia', '/acerca-de', '/personajes', '/cuenta', '/ajustes'].forEach(route => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(getIndexTemplate()));
+});
+
+// Términos y política de privacidad: un HTML por página, con español e inglés adentro (se elige en el navegador).
+// Viven en server/views/ por el mismo motivo que index.html.
+[['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html']].forEach(([route, file]) => {
+  app.get(route, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', file)));
 });
 
 /* ---------------- admin dashboard ---------------- */

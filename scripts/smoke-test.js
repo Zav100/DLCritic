@@ -71,18 +71,19 @@ const today = new Date().toISOString().slice(0, 10);
 
   console.log('Cuentas');
   await step('registro válido crea sesión', async () => {
-    const r = await a('POST', '/api/auth/register', { email: 'smoketest_a@example.com', password: pass, username: 'smoketest_a', bio: 'hola' }); ok(r);
+    const r = await a('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_a@example.com', password: pass, username: 'smoketest_a', bio: 'hola' }); ok(r);
     assert.equal(r.body.user.username, 'smoketest_a');
     const me = await a('GET', '/api/auth/me'); assert.equal(me.body.user.username, 'smoketest_a');
   });
   await step('registro rechaza duplicados (email y usuario sin importar mayúsculas), clave débil y nombre inválido', async () => {
     const x = client();
-    ok(await x('POST', '/api/auth/register', { email: 'smoketest_a@example.com', password: pass, username: 'otro_nombre' }), 409);
-    const dup = await x('POST', '/api/auth/register', { email: 'x1@example.com', password: pass, username: 'SMOKETEST_A' }); ok(dup, 409);
+    ok(await x('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_a@example.com', password: pass, username: 'otro_nombre' }), 409);
+    const dup = await x('POST', '/api/auth/register', { acceptTerms: true, email: 'x1@example.com', password: pass, username: 'SMOKETEST_A' }); ok(dup, 409);
     assert.equal(dup.body.error, 'username_taken');
-    assert.equal((await x('POST', '/api/auth/register', { email: 'x2@example.com', password: '123', username: 'smoketest_x' })).body.error, 'weak_password');
-    assert.equal((await x('POST', '/api/auth/register', { email: 'x3@example.com', password: pass, username: 'a' })).body.error, 'invalid_username');
-    assert.equal((await x('POST', '/api/auth/register', { email: 'malo', password: pass, username: 'smoketest_x' })).body.error, 'invalid_email');
+    assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'x2@example.com', password: '123', username: 'smoketest_x' })).body.error, 'weak_password');
+    assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'x3@example.com', password: pass, username: 'a' })).body.error, 'invalid_username');
+    assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'malo', password: pass, username: 'smoketest_x' })).body.error, 'invalid_email');
+    assert.equal((await x('POST', '/api/auth/register', { email: 'x4@example.com', password: pass, username: 'smoketest_x' })).body.error, 'terms_required');
   });
   await step('login por email y por usuario; contraseña mala = 401; logout cierra sesión', async () => {
     const x = client();
@@ -94,7 +95,7 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await x('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'mala1234' }), 401);
   });
   await step('segundo usuario y cambio de contraseña', async () => {
-    ok(await b('POST', '/api/auth/register', { email: 'smoketest_b@example.com', password: pass, username: 'smoketest_b' }));
+    ok(await b('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_b@example.com', password: pass, username: 'smoketest_b' }));
     ok(await b('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Nueva12345' }), 401);
     ok(await b('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Nueva12345' }));
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_b', password: 'Nueva12345' }));
@@ -220,7 +221,7 @@ const today = new Date().toISOString().slice(0, 10);
   await step('un usuario normal no entra (403); el admin sí', async () => {
     ok(await aOnAdmin('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }));
     ok(await aOnAdmin('GET', '/api/admin/games'), 403);
-    ok(await client()('POST', '/api/auth/register', { email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
+    ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
     await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin'").run();
     ok(await admin('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass }));
     ok(await admin('GET', '/api/admin/games'));
@@ -294,14 +295,15 @@ const today = new Date().toISOString().slice(0, 10);
     // dominio público: sin panel (ni siquiera con sesión de admin)
     for (const route of ['/admin', '/admin/assets/admin.css', '/api/admin/games']) ok(await pub('GET', route), 404);
     ok(await pub('GET', '/'), 200); ok(await pub('GET', '/api/games'), 200);
+    for (const route of ['/terminos', '/privacidad']) { const legal = await pub('GET', route); ok(legal, 200); assert.ok(legal.text.includes('data-lang="en"'), route + ' trae las dos versiones de idioma'); }
     // dominio del dashboard: solo panel y login
     const root = await adm('GET', '/'); ok(root, 302); assert.equal(root.headers.get('location'), '/admin');
     const page = await adm('GET', '/admin'); ok(page); assert.ok(page.text.includes('/admin/assets/js/'), 'el HTML del panel carga sus scripts desde /admin/assets');
     const css = await adm('GET', '/admin/assets/admin.css'); ok(css); assert.ok(css.text.length > 500);
     assert.ok((await adm('GET', '/admin/assets/js/02-views-login-and-api.js')).text.includes('apiPost'));
     ok(await adm('GET', '/api/auth/me'), 200);
-    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x']) ok(await adm('GET', route), 404);
-    ok(await adm('POST', '/api/auth/register', { email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
+    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad']) ok(await adm('GET', route), 404);
+    ok(await adm('POST', '/api/auth/register', { acceptTerms: true, email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
     // los archivos del panel no están en public/: tampoco salen por el CDN del sitio público
     for (const f of ['/admin.html', '/css/admin.css', '/admin-js/01-state-and-icons.js']) assert.notEqual((await pub('GET', f)).status, 200, f);
   });

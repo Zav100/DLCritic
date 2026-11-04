@@ -1,0 +1,24 @@
+/* Páginas de términos y privacidad (server/views/terminos.html y privacidad.html).
+   Colores, tipografías, header y footer vienen de style.css; acá solo está el texto corrido. */
+a.logo { text-decoration: none; }
+/* Sin el menú del medio, los controles del header (ya estilados en style.css) quedan en la última columna del grid. */
+@media (min-width: 561px) { .headright { grid-column: 3; } }
+
+.legal-doc { max-width: 760px; padding-top: 36px; padding-bottom: 56px; }
+.legal-doc h1 { font-family: 'Bungee', sans-serif; font-size: 28px; line-height: 1.15; color: var(--gold); margin: 0 0 8px; }
+.legal-doc h2 { font-size: 19px; margin: 34px 0 8px; }
+.legal-doc h3 { font-size: 15.5px; margin: 20px 0 4px; }
+.legal-doc p, .legal-doc li { font-size: 15.5px; line-height: 1.65; }
+.legal-doc p { margin: 8px 0; }
+.legal-doc ul { margin: 8px 0; padding-left: 22px; }
+.legal-doc li { margin: 5px 0; }
+/* --gold-dim en tema claro y --gold en oscuro: son los que dan buen contraste sobre cada fondo. */
+.legal-doc a { color: var(--gold-dim); text-decoration: underline; text-underline-offset: 2px; }
+[data-theme="dark"] .legal-doc a { color: var(--gold); }
+.legal-doc code { font-family: 'Space Mono', monospace; font-size: 13px; background: var(--paper-alt); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
+
+.legal-updated { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--fg-soft); margin: 0 0 24px; }
+.legal-summary { background: var(--paper-alt); color: var(--ink); border: 1px solid var(--line-dark); border-radius: 14px; padding: 6px 20px 10px; margin: 8px 0 8px; }
+.legal-summary h2 { margin-top: 14px; }
+
+[hidden] { display: none !important; }

@@ -63,6 +63,7 @@ function renderAuthForm(){
   document.getElementById('r-username').value='';
   document.getElementById('r-bio').value='';
   document.getElementById('r-avatar-file').value='';
+  document.getElementById('r-terms').checked=false;
   registerAvatarFile = null;
   setAuthTab(state.authTab||'login');
   document.getElementById('authSubmit').onclick = handleLogin;
@@ -126,13 +127,14 @@ async function handleRegisterSubmit(){
   const username = document.getElementById('r-username').value.trim();
   const bio = document.getElementById('r-bio').value.trim();
   if(username.length<3){ errEl.textContent=t('err_username_len'); errEl.hidden=false; return; }
+  if(!document.getElementById('r-terms').checked){ errEl.textContent=t('err_terms_required'); errEl.hidden=false; return; }
   const socialLinks = {};
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', invalid_username:'err_invalid_username', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
-    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks }));
+    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));
   }catch(e){ errEl.textContent = t(ERR_MSG[e.body&&e.body.error] || 'err_bad_login'); errEl.hidden=false; return; }
   if(registerAvatarFile){
     try{
