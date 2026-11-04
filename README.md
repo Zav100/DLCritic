@@ -85,7 +85,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 2. Corré `npm run make-admin -- <tu_usuario>` en la terminal del servidor (usa la base de `.env.local`).
 3. Entrá a `/admin` con esa misma cuenta.
 
-Las imágenes subidas (portadas, fotos de personajes, avatares; máximo 4 MB, JPG/PNG/WEBP/GIF) se guardan en **Vercel Blob** cuando existe `BLOB_READ_WRITE_TOKEN` en el entorno, y en `public/uploads/` cuando no (desarrollo local, queda fuera de git). El tope de 4 MB viene de que Vercel rechaza requests de más de 4,5 MB. En la base se guarda la URL final de cada imagen. Para pasar a Blob las imágenes que ya estaban en `public/uploads/`: `npm run db:migrate-uploads` (primero con `-- --dry-run` para ver qué haría). La tarjeta de compartir dibuja las portadas de Blob a través de `/api/image-proxy`.
+Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF) se guardan en **Vercel Blob** cuando existe `BLOB_READ_WRITE_TOKEN` en el entorno, y en `public/uploads/` cuando no (desarrollo local, queda fuera de git). El servidor acepta hasta 4 MB por imagen porque Vercel rechaza requests de más de 4,5 MB; como el navegador achica las fotos grandes antes de subirlas, ese tope se nota sobre todo en los GIF, que no se achican (los textos de ayuda dicen eso). En la base se guarda la URL final de cada imagen. Para pasar a Blob las imágenes que ya estaban en `public/uploads/`: `npm run db:migrate-uploads` (primero con `-- --dry-run` para ver qué haría). La tarjeta de compartir dibuja las portadas de Blob a través de `/api/image-proxy`.
 
 ## API
 

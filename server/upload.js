@@ -14,7 +14,7 @@ const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 const CONTENT_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 const ALLOWED_EXT = new Set(Object.keys(CONTENT_TYPES));
 // Vercel rechaza los requests de más de 4,5 MB antes de llegar a la función: el tope tiene que quedar por debajo.
-// Si se cambia, cambiar también los textos "Máximo 4MB" (admin.html, index.html y avatar_file_hint en 02-i18n.js).
+// Si se cambia, cambiar también los textos "GIF: máximo 4MB" (admin.html, index.html y avatar_file_hint en 02-i18n.js).
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 const imageField = multer({
