@@ -48,6 +48,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
+- `server/views/` — el HTML del sitio (`index.html`) y de las páginas legales (`terminos.html`, `privacidad.html`).
 - `admin-ui/` — el panel de administración (HTML + `assets/`). Está fuera de `public/` a propósito: el servidor lo entrega solo en el dominio del dashboard (ver `ADMIN_HOST`).
 - `public/uploads/` — imágenes de portada subidas desde `/admin`. Antes de subirse, el navegador las achica con `shrinkImage()` (lado largo máximo 2000 px, 1000 px en avatares, calidad 0.9; lo chico, los GIF y cualquier fallo suben tal cual). La función vive en `public/js/04-api-theme-rating.js` y está copiada en `admin-ui/assets/js/02-views-login-and-api.js`.
 - `server/seed.js` + `server/seed-*.json` / `server/catalog.json` — datos de arranque (los 93 juegos base, sus fichas técnicas, el calendario de fechas y las noticias). Se insertan en la base **una sola vez**, al correr `npm run db:seed` contra una base vacía — después viven ahí y los edita el admin, no estos archivos.
@@ -144,6 +145,13 @@ Neon solo conserva 6 horas de historial en el plan gratuito, así que las copias
 - Las imágenes que viven en Vercel Blob no van dentro del `.json.gz` (ahí solo queda su URL): el mismo `db:backup` las espeja en `backups/images/uploads/`, bajando solo las que faltan (son públicas, no hace falta el token) y sin borrar nunca nada. Las portadas que son enlaces a Steam no se copian: son ajenas. Si algún día se pierde el store, esos archivos son los originales para volver a subirlos; hoy esa re-subida (y reescribir las URLs de la base) es manual.
 - `npm run db:restore -- backups/<archivo>.json.gz` la carga en la base de `DATABASE_URL` / `.env.local`, y solo si está vacía. Para recuperar producción: crear una rama o base nueva y vacía, restaurar ahí y apuntar la app a ella.
 - Para repetirla cada día en Windows: Programador de tareas, ejecutar `npm run db:backup` en la carpeta del proyecto, con "ejecutar lo antes posible si se perdió el inicio programado" activado.
+
+## Términos y política de privacidad
+
+- Páginas `/terminos` y `/privacidad`: HTML en `server/views/terminos.html` y `privacidad.html`, estilo en `public/css/legal.css` y idioma/tema en `public/js/legal.js`. Cada una trae el texto en español y en inglés y muestra el que la persona eligió en el sitio (`localStorage` `lang`, el mismo que usa el resto de la app); el botón ES/EN alterna entre los dos.
+- Se enlazan desde el footer del sitio y desde la casilla obligatoria del paso 2 del registro (`#r-terms`). El servidor también la exige: `POST /api/auth/register` responde `400 terms_required` si no llega `acceptTerms: true`. No se guarda cuándo se aceptó: haría falta una columna nueva en `users` y correr la migración en producción.
+- El correo de contacto está como marcador `[CORREO_DE_CONTACTO]` en los dos textos (también dentro de los `mailto:`): buscarlo con grep y reemplazarlo por el correo real antes de publicar.
+- Si cambia algo de lo que la política describe (datos nuevos que se guardan, proveedores nuevos, analítica, botón para borrar la cuenta, dónde están los servidores, cuánto duran las copias de seguridad), actualizar los dos idiomas y la fecha de "Última actualización" de cada página. Hoy la política afirma, entre otras cosas: sin analítica ni cookies de seguimiento, tipografías cargadas desde Google Fonts, servidores en São Paulo, copias de la base por unos 30 días y borrado de cuenta pedido por correo.
 
 ## Notas de seguridad
 

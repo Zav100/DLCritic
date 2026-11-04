@@ -591,6 +591,20 @@ main {
   color: var(--ink-soft);
 }
 
+.footer-legal {
+  margin-top: 6px;
+}
+
+.footer-legal a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-legal a:hover {
+  color: var(--gold-dim);
+}
+
 .footer-bottom {
   text-align: center;
   font-family: 'Space Mono', monospace;
@@ -2373,6 +2387,30 @@ main {
 /* FORMS */
 .field {
   margin-bottom: 14px;
+}
+
+/* Casilla de aceptar los Términos en el registro: texto normal (no el estilo de etiqueta en mayúsculas) y links visibles. */
+.field label.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.terms-check input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.terms-check a {
+  color: var(--gold-dim);
+  text-decoration: underline;
 }
 
 .field label {
