@@ -462,6 +462,14 @@
             <label id="lbl-register-social" data-i18n="profile_social_label">Redes y plataformas de juego (opcional)</label>
             <div class="field-row" id="registerSocialRow" role="group" aria-labelledby="lbl-register-social" style="flex-wrap:wrap;"></div>
           </div>
+          <div class="field">
+            <label class="terms-check">
+              <input type="checkbox" id="r-terms">
+              <span data-i18n-html="auth_accept_terms">Tengo 13 años o más y acepto los <a href="/terminos" target="_blank"
+                  rel="noopener">Términos y condiciones</a> y la <a href="/privacidad" target="_blank"
+                  rel="noopener">Política de privacidad</a>.</span>
+            </label>
+          </div>
           <div class="error" id="registerStep2Error" role="alert" hidden></div>
           <div class="confirm-actions" style="justify-content:space-between; margin-top:12px;">
             <button class="btn-ghost" id="registerStep2Back" data-i18n="back_generic">Volver</button>
@@ -514,7 +522,10 @@
       </div>
 
       <div class="footer-bottom">© <span id="footerYear"></span> DLCritic — <span data-i18n="footer_note">hecho por
-          fans, para fans.</span></div>
+          fans, para fans.</span>
+        <div class="footer-legal"><a href="/terminos" data-i18n="footer_terms">Términos y condiciones</a> · <a
+            href="/privacidad" data-i18n="footer_privacy">Política de privacidad</a></div>
+      </div>
     </div>
   </footer>
 
