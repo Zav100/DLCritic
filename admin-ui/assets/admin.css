@@ -26,6 +26,11 @@
   .wrap{ max-width:1080px; margin:0 auto; padding:0 20px 80px; }
   h1{ font-family:'Bungee',sans-serif; font-size:20px; color:var(--gold); margin:0; display:flex; align-items:center; gap:8px; }
   h1 svg{ width:20px; height:20px; flex-shrink:0; }
+  /* Logo de DLCritic (mismo dibujo y colores que el header del sitio) con la etiqueta "Admin" y la llave inglesa. */
+  h1.logo svg{ width:28px; height:28px; }
+  .logo-word span{ color:var(--pink); }
+  h1.logo small{ font-family:'Space Mono',monospace; font-size:10px; font-weight:400; color:var(--teal); letter-spacing:1px; display:flex; align-items:center; gap:4px; margin-left:2px; }
+  h1.logo small svg{ width:11px; height:11px; }
   .topbar{
     display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
     position:sticky; top:0; z-index:50; margin:0 -20px 26px; padding:16px 20px;

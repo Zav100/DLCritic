@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" sizes="32x32" href="/admin/assets/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/admin/assets/favicon.svg">
 <link rel="stylesheet" href="/admin/assets/admin.css">
 </head>
 <body>
@@ -16,7 +18,7 @@
 <div class="wrap">
   <div id="loginView" class="authwrap">
     <div class="card authcard">
-      <h1 style="margin-bottom:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Admin</h1>
+      <h1 class="logo" style="margin-bottom:4px;"><svg viewBox="6 14 288 288"><rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor"/><path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linejoin="round"/><rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D"/><rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D"/><circle cx="200" cy="106" r="21" fill="#211E3D"/><circle cx="242" cy="148" r="21" fill="#F6F3FF"/></svg> <span class="logo-word">DLC<span>ritic</span></span><small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Admin</small></h1>
       <p class="hint">Iniciá sesión con una cuenta de administrador de DLCritic.</p>
       <div class="field">
         <label for="loginUser">Usuario</label>
@@ -42,7 +44,7 @@
 
   <div id="dashView" hidden>
     <div class="topbar">
-      <h1><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> DLCritic — Admin</h1>
+      <h1 class="logo"><svg viewBox="6 14 288 288"><rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor"/><path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linejoin="round"/><rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D"/><rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D"/><circle cx="200" cy="106" r="21" fill="#211E3D"/><circle cx="242" cy="148" r="21" fill="#F6F3FF"/></svg> <span class="logo-word">DLC<span>ritic</span></span><small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Admin</small></h1>
       <div style="display:flex; align-items:center; gap:10px;">
         <span class="pill" id="whoami"></span>
         <button class="btn ghost" id="logoutBtn">Salir</button>
