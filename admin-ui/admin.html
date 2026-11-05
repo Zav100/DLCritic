@@ -18,18 +18,72 @@
 <div class="wrap">
   <div id="loginView" class="authwrap">
     <div class="card authcard">
-      <h1 class="logo" style="margin-bottom:4px;"><svg viewBox="6 14 288 288"><rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor"/><path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linejoin="round"/><rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D"/><rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D"/><circle cx="200" cy="106" r="21" fill="#211E3D"/><circle cx="242" cy="148" r="21" fill="#F6F3FF"/></svg> <span class="logo-word">DLC<span>ritic</span></span><small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Admin</small></h1>
+      <h1 class="logo" style="margin-bottom:14px;"><svg viewBox="6 14 288 288"><rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor"/><path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linejoin="round"/><rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D"/><rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D"/><circle cx="200" cy="106" r="21" fill="#211E3D"/><circle cx="242" cy="148" r="21" fill="#F6F3FF"/></svg> <span class="logo-word">DLC<span>ritic</span></span><small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Admin</small></h1>
       <p class="hint">Iniciá sesión con una cuenta de administrador de DLCritic.</p>
       <div class="field">
-        <label for="loginUser">Usuario</label>
+        <label for="loginUser">Usuario o correo</label>
         <input type="text" id="loginUser" name="username" autocomplete="username" spellcheck="false" autocapitalize="none">
       </div>
       <div class="field">
-        <label for="loginPin">PIN</label>
-        <input type="password" id="loginPin" name="pin" autocomplete="current-password" inputmode="numeric" maxlength="4">
+        <label for="loginPassword">Contraseña</label>
+        <input type="password" id="loginPassword" name="password" autocomplete="current-password">
+      </div>
+      <div class="field" id="loginCodeField" hidden>
+        <label for="loginCode">Código de verificación</label>
+        <input type="text" id="loginCode" name="code" autocomplete="one-time-code" spellcheck="false" autocapitalize="none" maxlength="24">
+        <p class="hint" style="margin:6px 0 0;">Los 6 dígitos de tu app de autenticación, o un código de recuperación.</p>
+      </div>
+      <div class="field">
+        <label class="check-row">
+          <input type="checkbox" id="loginRemember">
+          <span>Recordar este dispositivo (20 días)</span>
+        </label>
       </div>
       <button class="btn wide" id="loginBtn">Entrar</button>
       <div class="error" id="loginError" role="alert" hidden></div>
+    </div>
+  </div>
+
+  <div id="setupView" class="authwrap" hidden>
+    <div class="card authcard" style="max-width:440px;">
+      <h2 style="margin:0 0 8px; font-size:18px;">Activa la verificación en dos pasos</h2>
+      <p class="hint" style="margin:0 0 16px;">Para entrar al panel, las cuentas de administrador necesitan un segundo paso: además de la contraseña, un código de 6 dígitos que cambia cada 30 segundos en tu teléfono.</p>
+
+      <div id="setupStart">
+        <p class="hint" style="margin:0 0 14px;">1. Instala en tu teléfono una app de autenticación (Google Authenticator, Microsoft Authenticator, Authy, 1Password…).</p>
+        <div class="field">
+          <label for="setupPassword">2. Confirma tu contraseña</label>
+          <input type="password" id="setupPassword" autocomplete="current-password">
+        </div>
+        <button class="btn wide" id="setupStartBtn">Empezar</button>
+      </div>
+
+      <div id="setupKey" hidden>
+        <p class="hint" style="margin:0 0 8px;">2. En la app, agrega una cuenta nueva con la opción <b>«Ingresar una clave de configuración»</b> (en inglés, <i>Enter a setup key</i>), ponle de nombre DLCritic, escribe esta clave y elige que sea <b>basada en tiempo</b>:</p>
+        <p class="keybox" id="setupSecret"></p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+          <button class="btn ghost" id="setupCopyKeyBtn" type="button">Copiar clave</button>
+          <a class="btn ghost" id="setupOpenLink" href="#" style="text-decoration:none; display:inline-flex; align-items:center;">Abrir en mi app (en el teléfono)</a>
+        </div>
+        <div class="field">
+          <label for="setupCode">3. Escribe el código de 6 dígitos que muestra la app</label>
+          <input type="text" id="setupCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8">
+        </div>
+        <button class="btn wide" id="setupEnableBtn">Activar</button>
+      </div>
+
+      <div id="setupDone" hidden>
+        <p style="font-size:14px; line-height:1.5; margin:0 0 10px;">Listo, la verificación en dos pasos está activada. Guarda estos <b>códigos de recuperación</b> en un lugar seguro (un gestor de contraseñas, o impresos). Sirven para entrar si pierdes el teléfono, <b>cada uno una sola vez</b>, y no se vuelven a mostrar.</p>
+        <pre class="keybox" id="setupRecovery"></pre>
+        <button class="btn ghost" id="setupCopyRecoveryBtn" type="button" style="margin-bottom:14px;">Copiar códigos</button>
+        <div class="field">
+          <label class="check-row"><input type="checkbox" id="setupSaved"><span>Ya guardé los códigos de recuperación</span></label>
+        </div>
+        <button class="btn wide" id="setupContinueBtn" disabled>Entrar al panel</button>
+      </div>
+
+      <div class="error" id="setupError" role="alert" hidden></div>
+      <button class="btn ghost wide" id="setupLogoutBtn" style="margin-top:10px;">Cerrar sesión</button>
     </div>
   </div>
 

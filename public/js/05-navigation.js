@@ -104,6 +104,10 @@ function applyView(v){
   if(target==='settings') renderSettingsView();
   fillTipsRail(target);
 }
+// Lo que se hace en pantalla después de cerrar sesión (la del menú y "cerrar en todos los dispositivos" de Ajustes): vaciar el usuario y volver al inicio.
+async function finishLogout(toastKey){
+  state.user=null; state.notifications=[]; await loadDailyState(); renderUserBadge(); goView('feed'); toast(t(toastKey));
+}
 let appReady = false;
 let currentViewTransition = null;
 // A transition suspended mid-flight (tab backgrounded, etc.) can leave its
@@ -213,7 +217,7 @@ function openUserMenu(anchorEl){
   menu.querySelector('[data-act="logout"]').onclick = async ()=>{
     closeUserMenu();
     try{ await apiPost('/auth/logout'); }catch(e){}
-    state.user=null; state.notifications=[]; await loadDailyState(); renderUserBadge(); goView('feed'); toast(t('toast_logged_out'));
+    await finishLogout('toast_logged_out');
   };
   setTimeout(()=>{
     document.addEventListener('click', userMenuOutsideClick, true);

@@ -23,19 +23,23 @@ async function maybePurge(now) {
   await purgeStale.run(now);
 }
 
+// Cuenta un intento más de key en ese limitador. Devuelve { limited: false } o { limited: true, retryAfter } (segundos).
+async function consume(name, key, windowMs, max) {
+  const now = Date.now();
+  await maybePurge(now);
+  const { count, reset_at } = await bump.get({ key: `${name}:${key}`, now, resetAt: now + windowMs });
+  return count > max ? { limited: true, retryAfter: Math.ceil((reset_at - now) / 1000) } : { limited: false };
+}
+
 function rateLimit({ name, windowMs, max, keyFn }) {
   return async (req, res, next) => {
-    const now = Date.now();
-    await maybePurge(now);
-    const key = `${name}:${keyFn ? keyFn(req) : req.ip}`;
-    const { count, reset_at } = await bump.get({ key, now, resetAt: now + windowMs });
-    if (count > max) {
-      const retryAfter = Math.ceil((reset_at - now) / 1000);
-      res.setHeader('Retry-After', String(retryAfter));
-      return res.status(429).json({ error: 'too_many_requests', retryAfter });
+    const r = await consume(name, keyFn ? keyFn(req) : req.ip, windowMs, max);
+    if (r.limited) {
+      res.setHeader('Retry-After', String(r.retryAfter));
+      return res.status(429).json({ error: 'too_many_requests', retryAfter: r.retryAfter });
     }
     next();
   };
 }
 
-module.exports = { rateLimit };
+module.exports = { rateLimit, consume };

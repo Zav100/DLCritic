@@ -1,7 +1,8 @@
 const express = require('express');
 const crypto = require('node:crypto');
 const db = require('./db');
-const { requireAuth } = require('./auth');
+const { requireAuth, verifyPin, sessionToken, endOtherSessions } = require('./auth');
+const totp = require('./totp');
 const { rateLimit } = require('./rateLimit');
 const { receiveImage, saveImage } = require('./upload');
 
@@ -12,6 +13,38 @@ function requireAdmin(req, res, next) {
   next();
 }
 router.use(requireAuth, requireAdmin);
+
+/* ---------------- verificación en dos pasos ---------------- */
+
+// Estos dos endpoints van antes de la exigencia de tener 2FA, porque son la forma de conseguirla. Tope compartido: 10 pedidos cada 15 minutos por usuario.
+const twoFactorLimiter = rateLimit({ name: 'admin-2fa', windowMs: 15 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
+const startTwoFactor = db.prepare('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?');
+const finishTwoFactor = db.prepare('UPDATE users SET totp_enabled = 1, totp_last_step = ?, totp_recovery = ? WHERE id = ?');
+
+// Paso 1: genera una clave nueva (la pisa si había una a medio configurar) y la devuelve para el QR. Pide la contraseña otra vez: sin eso,
+// una sesión robada alcanzaría para atar la cuenta al teléfono de otra persona.
+router.post('/2fa/setup', twoFactorLimiter, async (req, res) => {
+  if (req.user.totp_enabled) return res.status(409).json({ error: 'already_enabled' });
+  if (!verifyPin(String(req.body.currentPassword || ''), req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
+  const secret = totp.newSecret();
+  await startTwoFactor.run(secret, req.user.id);
+  res.json({ secret, otpauthUri: totp.otpauthUri(secret, req.user.username) });
+});
+
+// Paso 2: con un código de la app (prueba de que quedó bien configurada) se activa y se devuelven los códigos de recuperación, una única vez.
+router.post('/2fa/enable', twoFactorLimiter, async (req, res) => {
+  if (req.user.totp_enabled) return res.status(409).json({ error: 'already_enabled' });
+  if (!req.user.totp_secret) return res.status(400).json({ error: 'not_started' });
+  const step = totp.verifyCode(req.user.totp_secret, String(req.body.code || '').replace(/\s/g, ''));
+  if (step === null) return res.status(401).json({ error: 'bad_code' });
+  const recoveryCodes = totp.newRecoveryCodes();
+  await finishTwoFactor.run(step, JSON.stringify(recoveryCodes.map(totp.hashRecoveryCode)), req.user.id);
+  await endOtherSessions(req.user.id, sessionToken(req)); // si alguien tenía otra sesión abierta, se cierra
+  res.json({ recoveryCodes });
+});
+
+// Desde acá, todo el panel exige tener la verificación en dos pasos activada.
+router.use((req, res, next) => (req.user.totp_enabled ? next() : res.status(403).json({ error: 'two_factor_required' })));
 
 const uploadLimiter = rateLimit({ name: 'admin-upload', windowMs: 10 * 60 * 1000, max: 30, keyFn: req => 'u:' + req.user.id });
 

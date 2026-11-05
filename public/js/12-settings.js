@@ -61,6 +61,11 @@ function renderSettingsView(){
         <label for="st-email">${esc(t('auth_email_label'))}</label>
         <input type="email" id="st-email" value="${esc(u.email||'')}" placeholder="tu@email.com">
       </div>
+      <div class="field">
+        <label for="st-email-password">${esc(t('settings_current_password_label'))}</label>
+        <input type="password" id="st-email-password" autocomplete="current-password">
+        <p class="hint">${esc(t('settings_email_password_hint'))}</p>
+      </div>
       <div class="error" id="stAccountError" hidden></div>
       <button class="btn gold" id="stAccountSave">${esc(t('save_changes_btn'))}</button>
     </div>
@@ -83,6 +88,11 @@ function renderSettingsView(){
       </div>
       <div class="error" id="stPasswordError" hidden></div>
       <button class="btn gold" id="stPasswordSave">${esc(t('settings_change_password_btn'))}</button>
+      <p class="hint">${esc(t('settings_password_signout_hint'))}</p>
+      <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
+        <p class="hint" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
+        <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
+      </div>
     </div>
   `;
 
@@ -127,18 +137,22 @@ function renderSettingsView(){
     }
   };
 
-  // Guardar Cuenta: solo el email.
+  // Guardar Cuenta: solo el email. Si cambia, el servidor pide la contraseña actual.
   document.getElementById('stAccountSave').onclick = async ()=>{
     const errEl = document.getElementById('stAccountError');
     errEl.hidden = true;
     const email = document.getElementById('st-email').value.trim();
+    const body = { email };
+    if(email.toLowerCase() !== (state.user.email||'').toLowerCase()) body.currentPassword = document.getElementById('st-email-password').value;
     try{
-      const { user } = await apiPut('/profile', { email });
+      const { user } = await apiPut('/profile', body);
       state.user = user;
+      document.getElementById('st-email-password').value = '';
       toast(t('toast_profile_saved'));
     }catch(e){
-      errEl.textContent = (e.body && e.body.error==='email_taken') ? t('err_email_taken')
-        : (e.body && e.body.error==='invalid_email') ? t('err_invalid_email') : t('err_save_user');
+      const code = e.body && e.body.error;
+      errEl.textContent = code==='email_taken' ? t('err_email_taken') : code==='invalid_email' ? t('err_invalid_email')
+        : code==='bad_current_password' ? t('err_bad_current_password') : code==='too_many_requests' ? t('err_too_many') : t('err_save_user');
       errEl.hidden = false;
     }
   };
@@ -150,7 +164,8 @@ function renderSettingsView(){
     const currentPassword = document.getElementById('st-current-password').value;
     const newPassword = document.getElementById('st-new-password').value;
     const newPassword2 = document.getElementById('st-new-password2').value;
-    if(!isStrongPasswordClient(newPassword)){ errEl.textContent=t('err_weak_password'); errEl.hidden=false; return; }
+    const pwProblem = passwordProblemClient(newPassword);
+    if(pwProblem){ errEl.textContent=t(pwProblem); errEl.hidden=false; return; }
     if(newPassword!==newPassword2){ errEl.textContent=t('err_password_mismatch'); errEl.hidden=false; return; }
     try{
       await apiPost('/account/password', { currentPassword, newPassword });
@@ -159,9 +174,17 @@ function renderSettingsView(){
       document.getElementById('st-new-password').value='';
       document.getElementById('st-new-password2').value='';
     }catch(e){
-      errEl.textContent = (e.body && e.body.error==='bad_current_password') ? t('err_bad_current_password') : t('err_weak_password');
+      const code = e.body && e.body.error;
+      errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password') : code==='password_emoji' ? t('err_password_emoji')
+        : code==='too_many_requests' ? t('err_too_many') : t('err_weak_password');
       errEl.hidden = false;
     }
+  };
+
+  // Cerrar sesión en todos los dispositivos (también este): sirve si se perdió un aparato o se sospecha que alguien entró.
+  document.getElementById('stLogoutAll').onclick = async ()=>{
+    try{ await apiPost('/auth/logout-all'); }catch(e){ toast(t('err_logout_all')); return; }
+    await finishLogout('toast_logged_out_all');
   };
 }
 
