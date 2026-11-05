@@ -32,9 +32,33 @@
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <link rel="stylesheet" href="/css/style.css">
+  <script>
+    // Pantalla de bienvenida (public/js/splash.js). Se decide acá, antes del primer dibujo, para que la página no parpadee por debajo: solo al
+    // entrar por el inicio, una vez por sesión y si el sistema no pide reducir el movimiento. Si splash.js no llega a correr, a los 8 s se saca sola.
+    try {
+      if (location.pathname === '/' && !sessionStorage.getItem('dlcSplash') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('splash-on');
+        setTimeout(function () { document.documentElement.classList.remove('splash-on'); }, 8000);
+      }
+    } catch (e) { /* sin sessionStorage o matchMedia: sin pantalla de bienvenida */ }
+  </script>
 </head>
 
 <body>
+
+  <!-- Pantalla de bienvenida: solo se ve si el <head> puso la clase splash-on en <html> (ver public/js/splash.js). Tiene el mismo logo que el header. -->
+  <div id="splash" aria-hidden="true">
+    <div class="splash-bg"></div>
+    <div class="logo splash-logo" id="splashLogo"><svg viewBox="6 14 288 288">
+        <rect class="sp-body" x="10" y="24" width="280" height="204" rx="76" fill="currentColor" />
+        <path class="sp-tail" d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12"
+          stroke-linejoin="round" />
+        <rect class="sp-plus sp-p1" x="50" y="109" width="92" height="34" rx="9" fill="#211E3D" />
+        <rect class="sp-plus sp-p2" x="79" y="80" width="34" height="92" rx="9" fill="#211E3D" />
+        <circle class="sp-dot sp-d1" cx="200" cy="106" r="21" fill="#211E3D" />
+        <circle class="sp-dot sp-d2" cx="242" cy="148" r="21" fill="#F6F3FF" />
+      </svg> <span class="logo-word">DLC<span>ritic</span></span><small data-i18n="tagline">Cada opinión es un DLC</small></div>
+  </div>
 
   <header>
     <div class="headbar">
@@ -602,6 +626,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="/js/splash.js"></script>
   <script src="/js/01-icons-and-catalog-meta.js"></script>
   <script src="/js/02-i18n.js"></script>
   <script src="/js/03-state-and-utils.js"></script>
