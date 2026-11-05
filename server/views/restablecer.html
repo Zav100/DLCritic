@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7">
+  <!-- La dirección de esta página lleva el token de recuperación: que no viaje a otros sitios ni se indexe. -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Nueva contraseña — DLCritic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/legal.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="headbar">
+      <a class="logo" href="/" aria-label="DLCritic"><svg viewBox="6 14 288 288">
+          <rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor" />
+          <path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12"
+            stroke-linejoin="round" />
+          <rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D" />
+          <rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D" />
+          <circle cx="200" cy="106" r="21" fill="#211E3D" />
+          <circle cx="242" cy="148" r="21" fill="#F6F3FF" />
+        </svg> <span class="logo-word">DLC<span>ritic</span></span></a>
+      <div class="headright">
+        <button class="lang-toggle" id="langToggle" aria-label="Change language" title="Change language">ES</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Cambiar paleta de color / Switch color theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap legal-doc">
+
+    <article data-lang="es">
+      <h1>Elige una contraseña nueva</h1>
+      <p class="reset-intro">Escribe la contraseña nueva de tu cuenta de DLCritic. Al cambiarla, se cierra la sesión en todos tus dispositivos.</p>
+    </article>
+    <article data-lang="en" hidden>
+      <h1>Choose a new password</h1>
+      <p class="reset-intro">Enter the new password for your DLCritic account. Once it changes, you are signed out on all your devices.</p>
+    </article>
+
+    <form id="resetForm" class="reset-form" novalidate>
+      <div class="field">
+        <label for="newPassword"><span data-lang="es">Contraseña nueva</span><span data-lang="en" hidden>New password</span></label>
+        <input type="password" id="newPassword" autocomplete="new-password">
+        <p class="hint"><span data-lang="es">Mínimo 8 caracteres, con una mayúscula, un número y un carácter especial (como ! o *). Sin emojis.</span><span data-lang="en" hidden>At least 8 characters, with an uppercase letter, a number and a special character (like ! or *). No emojis.</span></p>
+      </div>
+      <div class="field">
+        <label for="newPassword2"><span data-lang="es">Confirmar contraseña nueva</span><span data-lang="en" hidden>Confirm new password</span></label>
+        <input type="password" id="newPassword2" autocomplete="new-password">
+      </div>
+      <button class="btn" id="resetBtn" type="submit"><span data-lang="es">Cambiar contraseña</span><span data-lang="en" hidden>Change password</span></button>
+      <div class="error" id="resetError" role="alert" hidden></div>
+    </form>
+
+    <div id="resetDone" hidden>
+      <p><span data-lang="es">Listo: tu contraseña cambió y se cerró la sesión en todos tus dispositivos.</span><span data-lang="en" hidden>Done: your password was changed and you were signed out on all your devices.</span></p>
+      <p><a class="btn" href="/cuenta" style="text-decoration:none; display:inline-block;"><span data-lang="es">Iniciar sesión</span><span data-lang="en" hidden>Sign in</span></a></p>
+    </div>
+
+    <div id="resetInvalid" hidden>
+      <p><span data-lang="es">Este enlace no sirve: venció (vale 1 hora), ya se usó o está incompleto. Pide uno nuevo desde «¿Olvidaste tu contraseña?» en la pantalla de inicio de sesión.</span><span data-lang="en" hidden>This link doesn't work: it expired (it is valid for 1 hour), was already used, or is incomplete. Ask for a new one with “Forgot your password?” on the sign-in screen.</span></p>
+      <p><a class="btn" href="/cuenta" style="text-decoration:none; display:inline-block;"><span data-lang="es">Ir a iniciar sesión</span><span data-lang="en" hidden>Go to sign in</span></a></p>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <nav class="footer-links">
+        <a class="footer-link" href="/"><span data-lang="es">Volver al inicio</span><span data-lang="en" hidden>Back to home</span></a>
+      </nav>
+      <div class="footer-bottom">© <span id="footerYear"></span> DLCritic</div>
+    </div>
+  </footer>
+
+  <script src="/js/legal.js"></script>
+  <script src="/js/reset.js"></script>
+</body>
+
+</html>

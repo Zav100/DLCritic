@@ -5,16 +5,27 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
-const { rateLimit } = require('./rateLimit');
+const { rateLimit, consume } = require('./rateLimit');
+const { sendMail, publicUrl, resetEmail, passwordChangedEmail } = require('./mail');
+const { checkSecondFactor } = require('./twofactor');
 const {
-  hashPin, verifyPin, createSession, currentUser, requireAuth,
-  setSessionCookie, clearSessionCookie, deleteSession, parseCookies, SESSION_COOKIE,
+  sha256, hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
+  setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
 } = require('./auth');
 
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
+// X-Frame-Options evita que otro sitio meta DLCritic en un iframe (clickjacking sobre el login y los botones de la cuenta).
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  next();
+});
 app.use(express.json());
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
@@ -38,6 +49,8 @@ app.use((req, res, next) => {
 });
 
 const authLimiter = rateLimit({ name: 'auth', windowMs: 10 * 60 * 1000, max: 8 });
+// Los endpoints que comparan la contraseña actual (cambiar contraseña o correo) tienen su propio tope, más bajo: a quien tuviera una sesión robada no le sirve para adivinar la contraseña.
+const passwordCheckLimiter = rateLimit({ name: 'pwcheck', windowMs: 15 * 60 * 1000, max: 5, keyFn: req => 'u:' + req.user.id });
 const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
 
 function publicUser(u) {
@@ -50,6 +63,7 @@ function publicUser(u) {
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
+    twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
     avatarUrl: u.avatar_url || null,
     bio: u.bio || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
@@ -70,10 +84,21 @@ function isSafeHttpUrl(val) {
 function isValidEmail(val) {
   return typeof val === 'string' && val.length <= 254 && EMAIL_RE.test(val);
 }
-// New accounts are held to this bar; users grandfathered in from the old
-// 4-digit PIN system are never forced to meet it to keep logging in.
+// Las cuentas nuevas y los cambios de contraseña tienen que cumplir esto; quienes quedaron de la época del PIN de 4 dígitos
+// no están obligados a cambiarlo para seguir entrando. Fuera de estas reglas la contraseña es libre: de 8 a 200 caracteres,
+// con al menos una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio).
+// La misma regla está en isStrongPasswordClient (11-auth.js), para dar el error al toque.
 function isStrongPassword(val) {
-  return typeof val === 'string' && val.length >= 8 && val.length <= 200 && /[a-zA-Z]/.test(val) && /[0-9]/.test(val);
+  return typeof val === 'string' && val.length >= 8 && val.length <= 200
+    && /\p{Lu}/u.test(val) && /[0-9]/.test(val) && /[^\p{L}\p{N}\s]/u.test(val);
+}
+// La contraseña no puede tener emojis: cambian según el teclado y el sistema, y es fácil quedarse sin poder escribirla en otro dispositivo.
+// Cuenta cualquier carácter con aspecto de emoji, los tonos de piel, las banderas, el unir-emojis (ZWJ) y el selector de emoji. © ® ™ sí valen.
+const EMOJI_RE = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
+// Devuelve el código de error de una contraseña rechazada ('password_emoji' o 'weak_password'), o null si sirve.
+function passwordProblem(val) {
+  if (typeof val === 'string' && EMOJI_RE.test(val)) return 'password_emoji';
+  return isStrongPassword(val) ? null : 'weak_password';
 }
 function sanitizeSocialLinks(input) {
   const out = {};
@@ -133,7 +158,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
   if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(password);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
   if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
   if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
@@ -148,8 +174,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ error: /email/.test(e.constraint || '') ? 'email_taken' : 'username_taken' });
     throw e;
   }
-  const { token, expires } = await createSession(created.id);
-  setSessionCookie(res, token, expires);
+  // Al crear la cuenta la sesión se recuerda 24 horas: no se cierra apenas se cierra la pestaña, pero para los 20 días hay que iniciar sesión y marcar la casilla.
+  setSessionCookie(res, await createSession(created.id, 'day'));
   res.json({ user: publicUser(await findUserByNameCI.get(username)) });
 });
 
@@ -162,26 +188,109 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const user = identifier.includes('@')
     ? await findUserByEmail.get(identifier.toLowerCase())
     : await findUserByNameCI.get(identifier);
-  if (!user || !verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
+  // Más de 200 caracteres no puede ser una contraseña de esta página (el registro lo impide): ni se gasta tiempo en hashearla.
+  if (password.length > 200) return res.status(401).json({ error: 'bad_login' });
+  if (!user) { spendLoginTime(password); return res.status(401).json({ error: 'bad_login' }); }
+  if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
 
-  const { token, expires } = await createSession(user.id);
-  setSessionCookie(res, token, expires);
+  // Cuenta con verificación en dos pasos: sin código se responde que falta (la contraseña ya estaba bien); con código se comprueba. No se abre ninguna sesión hasta que el código sirva.
+  if (user.totp_enabled) {
+    if (!String(req.body.code || '').trim()) return res.status(401).json({ error: 'two_factor_required' });
+    const second = await checkSecondFactor(user, req.body.code);
+    if (!second.ok) {
+      if (second.retryAfter) res.setHeader('Retry-After', String(second.retryAfter));
+      return res.status(second.error === 'too_many_requests' ? 429 : 401).json({ error: second.error, ...(second.retryAfter && { retryAfter: second.retryAfter }) });
+    }
+  }
+
+  // remember: la casilla "Recordar este dispositivo". Solo vale el booleano true.
+  setSessionCookie(res, await createSession(user.id, req.body.remember === true ? 'remember' : 'short'));
   res.json({ user: publicUser(user) });
 });
 
-app.post('/api/account/password', requireAuth, writeLimiter, async (req, res) => {
+// Cambia la contraseña y cierra las sesiones de los demás dispositivos (la de quien la cambia sigue abierta).
+app.post('/api/account/password', requireAuth, passwordCheckLimiter, writeLimiter, async (req, res) => {
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (!verifyPin(currentPassword, req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
-  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(newPassword);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   await setPasswordHash.run(hashPin(newPassword), req.user.id);
+  await endOtherSessions(req.user.id, sessionToken(req));
   res.json({ ok: true });
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  const cookies = parseCookies(req.headers.cookie);
-  const token = cookies[SESSION_COOKIE];
-  if (token) deleteSession.run(token);
+/* ---- recuperar la contraseña por correo ---- */
+
+const RESET_TTL_MS = 60 * 60 * 1000; // el enlace vale 1 hora
+// Tiempo mínimo que tarda en responder "te mandamos un correo", exista o no la cuenta: así la demora tampoco delata qué correos están registrados.
+const FORGOT_MIN_MS = Number(process.env.FORGOT_MIN_MS ?? 1500);
+const forgotLimiter = rateLimit({ name: 'forgot', windowMs: 15 * 60 * 1000, max: 5 });
+const resetLimiter = rateLimit({ name: 'reset', windowMs: 10 * 60 * 1000, max: 10 });
+const deleteResetsOf = db.prepare('DELETE FROM password_resets WHERE user_id = ?');
+const deleteExpiredResets = db.prepare('DELETE FROM password_resets WHERE expires_at < ?');
+const insertReset = db.prepare('INSERT INTO password_resets (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)');
+const findReset = db.prepare('SELECT * FROM password_resets WHERE token_hash = ?');
+const useReset = db.prepare('DELETE FROM password_resets WHERE token_hash = ?');
+const findUserForReset = db.prepare('SELECT * FROM users WHERE id = ?');
+
+// Pide el enlace. Responde siempre lo mismo (la dirección exista o no) para no revelar qué correos tienen cuenta. Las cuentas viejas sin
+// correo no pueden recuperarse así: primero tienen que agregar uno en Ajustes.
+app.post('/api/auth/forgot', forgotLimiter, async (req, res) => {
+  const started = Date.now();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
+  const lang = req.body.lang === 'en' ? 'en' : 'es';
+  const user = await findUserByEmail.get(email);
+  // Tope por correo: 3 pedidos por hora, para que nadie pueda llenarle la bandeja a otra persona.
+  if (user && !(await consume('forgot-email', email, 60 * 60 * 1000, 3)).limited) {
+    try {
+      const token = crypto.randomBytes(32).toString('hex');
+      const now = new Date();
+      await deleteExpiredResets.run(now.toISOString());
+      await deleteResetsOf.run(user.id); // un enlace nuevo anula el anterior
+      await insertReset.run(sha256(token), user.id, now.toISOString(), new Date(now.getTime() + RESET_TTL_MS).toISOString());
+      await sendMail({ to: user.email, ...resetEmail(lang, user.username, `${publicUrl()}/restablecer?token=${token}`) });
+    } catch (e) {
+      console.error('No se pudo mandar el correo de recuperación:', e.message); // el token nunca se imprime
+    }
+  }
+  await new Promise(resolve => setTimeout(resolve, Math.max(0, FORGOT_MIN_MS - (Date.now() - started))));
+  res.json({ ok: true });
+});
+
+// Elige la contraseña nueva con el token del correo. Cierra todas las sesiones (quien la perdió o se la robaron no queda adentro) y avisa por correo.
+// La verificación en dos pasos de un admin no se toca: restablecer la contraseña no alcanza para entrar.
+app.post('/api/auth/reset', resetLimiter, async (req, res) => {
+  const token = String(req.body.token || '');
+  const newPassword = String(req.body.newPassword || '');
+  const row = /^[0-9a-f]{64}$/.test(token) ? await findReset.get(sha256(token)) : null;
+  if (!row || new Date(row.expires_at) < new Date()) return res.status(400).json({ error: 'invalid_token' });
+  // La contraseña se valida antes de gastar el token: si no sirve, el mismo enlace permite probar con otra.
+  const passwordError = passwordProblem(newPassword);
+  if (passwordError) return res.status(400).json({ error: passwordError });
+  // Se gasta el token con un DELETE: si dos pedidos llegan juntos, solo a uno le queda una fila borrada.
+  if ((await useReset.run(sha256(token))).changes !== 1) return res.status(400).json({ error: 'invalid_token' });
+  const user = await findUserForReset.get(row.user_id);
+  await setPasswordHash.run(hashPin(newPassword), user.id);
+  await endAllSessions(user.id);
+  await deleteResetsOf.run(user.id);
+  try { await sendMail({ to: user.email, ...passwordChangedEmail(req.body.lang === 'en' ? 'en' : 'es', user.username) }); }
+  catch (e) { console.error('No se pudo mandar el aviso de cambio de contraseña:', e.message); }
+  res.json({ ok: true });
+});
+
+// Se espera el borrado: en Vercel la función puede congelarse apenas responde, y la sesión quedaría viva en el servidor.
+app.post('/api/auth/logout', async (req, res) => {
+  const token = sessionToken(req);
+  if (token) await endSession(token);
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// "Cerrar sesión en todos los dispositivos", incluido este.
+app.post('/api/auth/logout-all', requireAuth, async (req, res) => {
+  await endAllSessions(req.user.id);
   clearSessionCookie(res);
   res.json({ ok: true });
 });
@@ -561,7 +670,17 @@ app.get('/api/users/:username', async (req, res) => {
   res.json({ user: await shapePublicProfile(user, await currentUser(req)) });
 });
 
-app.put('/api/profile', requireAuth, writeLimiter, async (req, res) => {
+// Cambiar el correo pide la contraseña actual: sin eso, una sesión robada alcanzaría para quedarse con la cuenta (el correo es por donde se recupera).
+async function requirePasswordForEmailChange(req, res, next) {
+  const email = req.body.email;
+  if (typeof email !== 'string' || email.trim().toLowerCase() === (req.user.email || '')) return next();
+  await passwordCheckLimiter(req, res, () => {
+    if (!verifyPin(String(req.body.currentPassword || ''), req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
+    next();
+  });
+}
+
+app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter, async (req, res) => {
   const b = req.body || {};
   let username = req.user.username;
   if (typeof b.username === 'string') {
@@ -946,6 +1065,8 @@ app.get('/usuario/:username', async (req, res) => {
 [['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html']].forEach(([route, file]) => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', file)));
 });
+// La página donde se elige la contraseña nueva. La dirección lleva el token: Referrer-Policy: no-referrer evita que viaje en el Referer a otros sitios.
+app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).sendFile(path.join(__dirname, 'views', 'restablecer.html')));
 
 /* ---------------- admin dashboard ---------------- */
 

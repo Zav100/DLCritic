@@ -12,11 +12,17 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { del } = require('@vercel/blob');
 const REMOTE = !!process.env.BASE_URL;
 const PUBLIC_HOST = 'public.test', ADMIN_HOST = 'admin.test';
-if (!REMOTE) process.env.ADMIN_HOST = ADMIN_HOST; // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar)
+if (!REMOTE) { // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar), no hay servidor de correo y no se espera de más
+  process.env.ADMIN_HOST = ADMIN_HOST;
+  process.env.FORGOT_MIN_MS = '0';
+  process.env.MAIL_QUIET = '1';
+}
 const db = require('../server/db');
+const totp = require('../server/totp');
 const { uploadsDir } = require('../server/upload');
 const server = REMOTE ? null : require('../server/index.js').listen(0);
 const publicBase = REMOTE ? process.env.BASE_URL : `http://localhost:${server.address().port}`;
@@ -43,6 +49,8 @@ function client(kind = 'public') {
     try { json = JSON.parse(text); } catch { /* html */ }
     return { status: res.status, body: json, text, headers: res.headers };
   };
+  call.getCookie = () => cookie;
+  call.setCookie = c => { cookie = c; };
   return call;
 }
 
@@ -57,8 +65,14 @@ const today = new Date().toISOString().slice(0, 10);
 
 (async () => {
   const a = client(), b = client(), anon = client(), admin = client('admin'), aOnAdmin = client('admin');
-  const pass = 'Smoketest123';
-  let gameId, otherGameId, charId, reviewId, listId;
+  const pass = 'Smoketest123!';
+  let gameId, otherGameId, charId, reviewId, listId, adminTwoFactor;
+  // Activa la verificación en dos pasos de la cuenta con la que está iniciada la sesión de ese cliente (admin).
+  const enableTwoFactor = async c => {
+    const s = await c('POST', '/api/admin/2fa/setup', { currentPassword: pass }); ok(s);
+    const e = await c('POST', '/api/admin/2fa/enable', { code: totp.codeForStep(s.body.secret, Math.floor(Date.now() / 30000)) }); ok(e);
+    return { secret: s.body.secret, recoveryCodes: e.body.recoveryCodes };
+  };
 
   console.log('Catálogo');
   await step('hay juegos y personajes', async () => {
@@ -96,9 +110,192 @@ const today = new Date().toISOString().slice(0, 10);
   });
   await step('segundo usuario y cambio de contraseña', async () => {
     ok(await b('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_b@example.com', password: pass, username: 'smoketest_b' }));
-    ok(await b('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Nueva12345' }), 401);
-    ok(await b('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Nueva12345' }));
-    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_b', password: 'Nueva12345' }));
+    ok(await b('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Nueva12345!' }), 401);
+    ok(await b('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Nueva12345!' }));
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_b', password: 'Nueva12345!' }));
+  });
+  await step('sesiones: el logout las cierra de verdad y en la base solo queda el hash del token', async () => {
+    const s = client();
+    ok(await s('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }));
+    const raw = decodeURIComponent(s.getCookie().split('=')[1]);
+    assert.ok(!(await db.prepare('SELECT 1 AS x FROM sessions WHERE token = ?').get(raw)), 'el token no se guarda tal cual');
+    const copy = client(); copy.setCookie(s.getCookie());
+    assert.equal((await copy('GET', '/api/auth/me')).body.user.username, 'smoketest_a');
+    ok(await s('POST', '/api/auth/logout'));
+    assert.equal((await copy('GET', '/api/auth/me')).body.user, null, 'la cookie copiada ya no sirve');
+  });
+  await step('cambiar la contraseña cierra las otras sesiones; "cerrar en todos los dispositivos" cierra todas', async () => {
+    const c = client(), s2 = client(), s3 = client();
+    ok(await c('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_c@example.com', password: pass, username: 'smoketest_c' }));
+    ok(await s2('POST', '/api/auth/login', { identifier: 'smoketest_c', password: pass }));
+    ok(await c('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Mi clave 98765 ✓' }));
+    assert.equal((await s2('GET', '/api/auth/me')).body.user, null, 'la otra sesión se cerró');
+    assert.equal((await c('GET', '/api/auth/me')).body.user.username, 'smoketest_c', 'la sesión actual sigue abierta');
+    ok(await s3('POST', '/api/auth/login', { identifier: 'smoketest_c', password: 'Mi clave 98765 ✓' }));
+    ok(await c('POST', '/api/auth/logout-all'));
+    assert.equal((await c('GET', '/api/auth/me')).body.user, null);
+    assert.equal((await s3('GET', '/api/auth/me')).body.user, null);
+    ok(await anon('POST', '/api/auth/logout-all'), 401);
+  });
+  await step('cambiar el correo pide la contraseña actual, y comparar contraseñas tiene tope de intentos', async () => {
+    const c = client();
+    ok(await c('POST', '/api/auth/login', { identifier: 'smoketest_c', password: 'Mi clave 98765 ✓' }));
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com' }), 401);
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', currentPassword: 'incorrecta1' }), 401);
+    const r = await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', currentPassword: 'Mi clave 98765 ✓' }); ok(r);
+    assert.equal(r.body.user.email, 'smoketest_c2@example.com');
+    ok(await c('PUT', '/api/profile', { bio: 'sin tocar el correo' })); // lo que no es el correo no pide contraseña
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', bio: 'mismo correo' }));
+    // ya van 4 comparaciones de las 5 permitidas (una fue el cambio de contraseña del paso anterior)
+    ok(await c('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Cuarta987654!' }), 401);
+    const blocked = await c('POST', '/api/account/password', { currentPassword: 'Mi clave 98765 ✓', newPassword: 'Cuarta987654!' });
+    ok(blocked, 429);
+    assert.ok(blocked.headers.get('retry-after'));
+  });
+  await step('contraseña: libre, pero con mayúscula, número y carácter especial; una kilométrica no se hashea', async () => {
+    // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y acá se prueban más de 8
+    const reg = (email, password) => client()('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
+    for (const [n, mala] of [['sin mayúscula', 'abcdef1!'], ['sin número', 'Abcdefg!'], ['sin carácter especial', 'Abcdefg1'], ['corta', 'Ab1!'], ['solo letras y números', 'Password123']]) {
+      assert.equal((await reg(`p_${n.length}@example.com`, mala)).body.error, 'weak_password', n);
+    }
+    // sin emojis (ni tonos de piel, banderas ni el unir-emojis)
+    for (const emoji of ['Abcdef1!😀', 'Abcdef1!❤️', 'Abcdef1!👍🏽', 'Abcdef1!🇦🇷', 'Abcdef1!\u200D']) {
+      assert.equal((await reg('p_emoji@example.com', emoji)).body.error, 'password_emoji', emoji);
+    }
+    // todo lo demás vale (el resultado se frena en el 409 de usuario repetido: pasó la validación)
+    assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_sim@example.com', password: 'Abcdef1©✓€→', username: 'smoketest_a' })).body.error, 'username_taken');
+    const libre = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_libre@example.com', password: 'password123!A', username: 'smoketest_a' });
+    assert.equal(libre.body.error, 'username_taken');
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
+    ok(await client()('POST', '/api/auth/login', { identifier: 'no_existe_nadie', password: pass }), 401);
+  });
+  await step('"recordar este dispositivo": 20 días con cookie persistente; si no, cookie de sesión y 24 horas; crear la cuenta, 24 horas con cookie persistente', async () => {
+    // horas que le quedan a la sesión que abrió esa respuesta (en la base está el hash del token, no el token)
+    const hoursLeft = async res => {
+      const raw = decodeURIComponent(res.headers.getSetCookie()[0].split(';')[0].split('=')[1]);
+      const row = await db.prepare('SELECT expires_at FROM sessions WHERE token = ?').get(crypto.createHash('sha256').update(raw).digest('hex'));
+      return Math.round((Date.parse(row.expires_at) - Date.now()) / 3600000);
+    };
+    const remembered = await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass, remember: true }); ok(remembered);
+    assert.match(remembered.headers.getSetCookie()[0], /Expires=/);
+    assert.equal(await hoursLeft(remembered), 20 * 24);
+    const plain = await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }); ok(plain);
+    assert.doesNotMatch(plain.headers.getSetCookie()[0], /Expires=/, 'cookie de sesión: el navegador la borra al cerrarse');
+    assert.equal(await hoursLeft(plain), 24);
+    const texto = await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass, remember: 'true' }); ok(texto);
+    assert.doesNotMatch(texto.headers.getSetCookie()[0], /Expires=/, 'solo vale el booleano true');
+    // crear la cuenta deja una sesión de 24 horas, pero con cookie persistente
+    const d = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_d@example.com', password: pass, username: 'smoketest_d' }); ok(d);
+    assert.match(d.headers.getSetCookie()[0], /Expires=/);
+    assert.equal(await hoursLeft(d), 24);
+  });
+  await step('correo: el cliente SMTP autentica, arma bien el mensaje y no manda sin cifrar fuera de localhost', async () => {
+    const net = require('node:net');
+    const smtp = require('../server/smtp');
+    const log = [];
+    const server = net.createServer(sock => {
+      let inData = false, body = '', buf = '';
+      sock.write('220 falso ESMTP\r\n');
+      sock.on('data', chunk => {
+        buf += chunk;
+        let i;
+        while ((i = buf.indexOf('\r\n')) >= 0) {
+          const line = buf.slice(0, i); buf = buf.slice(i + 2);
+          if (inData) { if (line === '.') { inData = false; log.push(['CUERPO', body]); sock.write('250 en cola\r\n'); } else body += line + '\r\n'; continue; }
+          log.push(['CMD', line]);
+          if (line.startsWith('EHLO')) sock.write('250-falso\r\n250-AUTH PLAIN\r\n250 8BITMIME\r\n');
+          else if (line.startsWith('AUTH PLAIN')) sock.write('235 ok\r\n');
+          else if (line.startsWith('MAIL FROM') || line.startsWith('RCPT TO')) sock.write('250 ok\r\n');
+          else if (line === 'DATA') { inData = true; sock.write('354 sigue\r\n'); }
+          else if (line === 'QUIT') sock.end('221 chau\r\n');
+        }
+      });
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const subject = 'Restablece tu contraseña de DLCritic', text = 'Hola ñandú\n.\npunto solo\n' + 'x'.repeat(200);
+      await smtp.send({ host: '127.0.0.1', port: server.address().port, secure: 'none', user: 'cuenta@ejemplo.com', pass: 'secreta', from: 'DLCritic <dlcritic@ejemplo.com>', replyTo: 'ayuda@ejemplo.com', to: 'persona@ejemplo.com', subject, text });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const cmds = log.filter(l => l[0] === 'CMD').map(l => l[1]);
+      assert.ok(cmds.includes('AUTH PLAIN ' + Buffer.from('\0cuenta@ejemplo.com\0secreta').toString('base64')), 'autenticó');
+      assert.ok(cmds.includes('MAIL FROM:<dlcritic@ejemplo.com>') && cmds.includes('RCPT TO:<persona@ejemplo.com>'), 'remitente y destinatario');
+      assert.ok(cmds.includes('QUIT'));
+      const [head, ...rest] = log.find(l => l[0] === 'CUERPO')[1].split('\r\n\r\n');
+      assert.ok(head.includes('From: DLCritic <dlcritic@ejemplo.com>') && head.includes('To: persona@ejemplo.com') && head.includes('Reply-To: ayuda@ejemplo.com'));
+      const encoded = head.match(/Subject: =\?UTF-8\?B\?(.+?)\?=/)[1];
+      assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), subject, 'el asunto con tilde va codificado');
+      assert.equal(Buffer.from(rest.join('\r\n\r\n').replace(/\r\n/g, ''), 'base64').toString('utf8'), text, 'el cuerpo (con ñ y un "." solo en una línea) llega intacto');
+    } finally { server.close(); }
+    await assert.rejects(smtp.send({ host: 'mail.ejemplo.com', port: 25, secure: 'none', from: 'a@b.com', to: 'c@d.com', subject: 's', text: 't' }), /localhost/);
+    await assert.rejects(smtp.send({ host: '127.0.0.1', port: 1, secure: 'none', from: 'a@b.com', to: 'c@d.com\r\nBcc: otro@d.com', subject: 's', text: 't' }), /inválid/);
+  });
+  await step('recuperar la contraseña por correo: enlace de un solo uso, que vence, sin revelar qué correos existen', async () => {
+    if (REMOTE) return; // los correos se leen de la memoria del proceso (mail.outbox): solo en modo local
+    const mail = require('../server/mail');
+    // el tope por correo dura 1 hora: sin limpiarlo, correr la prueba dos veces seguidas lo agota y el primer pedido no manda nada
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE 'forgot-email:smoketest%'").run();
+    const tokenOf = m => m.text.match(/\/restablecer\?token=([0-9a-f]{64})/)[1];
+    const forgot = (email, extra = {}) => client()('POST', '/api/auth/forgot', { email, ...extra });
+    const reset = (token, newPassword) => client()('POST', '/api/auth/reset', { token, newPassword });
+    const nueva = 'Nueva-Clave9!';
+
+    ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_r@example.com', password: pass, username: 'smoketest_r' }));
+    const otraSesion = client();
+    ok(await otraSesion('POST', '/api/auth/login', { identifier: 'smoketest_r', password: pass }));
+
+    ok(await forgot('malo'), 400);
+    // un correo sin cuenta recibe la misma respuesta y no sale ningún correo
+    const antes = mail.outbox.length;
+    const sinCuenta = await forgot('nadie@example.com'); ok(sinCuenta);
+    assert.deepEqual(sinCuenta.body, { ok: true });
+    assert.equal(mail.outbox.length, antes);
+    // con cuenta: la misma respuesta y un correo con el enlace (en el idioma pedido)
+    const conCuenta = await forgot('smoketest_r@example.com', { lang: 'en' }); ok(conCuenta);
+    assert.deepEqual(conCuenta.body, sinCuenta.body);
+    assert.equal(mail.outbox.length, antes + 1);
+    const m1 = mail.outbox.at(-1);
+    assert.equal(m1.to, 'smoketest_r@example.com');
+    assert.match(m1.subject, /Reset your DLCritic password/); assert.match(m1.text, /Hi smoketest_r/);
+    const token1 = tokenOf(m1);
+    assert.ok(!(await db.prepare('SELECT 1 AS x FROM password_resets WHERE token_hash = ?').get(token1)), 'en la base está el hash, no el token');
+    // un enlace nuevo anula el anterior
+    ok(await forgot('smoketest_r@example.com'));
+    const token2 = tokenOf(mail.outbox.at(-1));
+    assert.notEqual(token1, token2);
+    assert.equal((await reset(token1, nueva)).body.error, 'invalid_token');
+    // inventado o mal formado
+    ok(await reset('x', nueva), 400);
+    ok(await reset('0'.repeat(64), nueva), 400);
+    // una contraseña que no sirve no gasta el enlace
+    assert.equal((await reset(token2, 'debil')).body.error, 'weak_password');
+    assert.equal((await reset(token2, nueva + '😀')).body.error, 'password_emoji');
+    // la buena: cambia la clave, cierra todas las sesiones y avisa por correo
+    ok(await reset(token2, nueva));
+    assert.equal((await otraSesion('GET', '/api/auth/me')).body.user, null, 'las sesiones abiertas se cierran');
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: pass }), 401);
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: nueva }));
+    const aviso = mail.outbox.at(-1);
+    assert.equal(aviso.to, 'smoketest_r@example.com'); assert.match(aviso.subject, /Cambió la contraseña/);
+    // y el enlace no sirve dos veces
+    assert.equal((await reset(token2, 'Otra-Clave98!')).body.error, 'invalid_token');
+    // vencido
+    ok(await forgot('smoketest_r@example.com'));
+    const token3 = tokenOf(mail.outbox.at(-1));
+    await db.prepare("UPDATE password_resets SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM users WHERE username = 'smoketest_r')").run();
+    assert.equal((await reset(token3, 'Otra-Clave98!')).body.error, 'invalid_token');
+    // tope por correo: 3 pedidos por hora (van 3); el cuarto responde igual pero no manda nada
+    const n = mail.outbox.length;
+    ok(await forgot('smoketest_r@example.com'));
+    assert.equal(mail.outbox.length, n);
+    // la página del enlace se sirve sin pasar el token a otros sitios, y solo en el dominio público
+    const page = await client()('GET', '/restablecer'); ok(page);
+    assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
+  });
+  await step('cabeceras de seguridad en las páginas', async () => {
+    const h = await anon('GET', '/');
+    assert.equal(h.headers.get('x-frame-options'), 'DENY');
+    assert.equal(h.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    assert.equal(h.headers.get('x-content-type-options'), 'nosniff');
   });
   await step('rutas protegidas devuelven 401 sin sesión', async () => {
     for (const [m, u] of [['PUT', `/api/reviews/${gameId}`], ['GET', '/api/notifications'], ['GET', '/api/lists/mine'], ['GET', '/api/daily?date=' + today]]) {
@@ -166,7 +363,7 @@ const today = new Date().toISOString().slice(0, 10);
   });
   await step('editar perfil: usuario/email repetidos = 409, cambio válido se refleja', async () => {
     assert.equal((await a('PUT', '/api/profile', { username: 'smoketest_b' })).status, 409);
-    assert.equal((await a('PUT', '/api/profile', { email: 'smoketest_b@example.com' })).status, 409);
+    assert.equal((await a('PUT', '/api/profile', { email: 'smoketest_b@example.com', currentPassword: pass })).status, 409);
     const r = await a('PUT', '/api/profile', { bio: 'Nueva bio', socialLinks: { steam: 'https://steamcommunity.com/id/x', x: 'javascript:alert(1)' } }); ok(r);
     assert.equal(r.body.user.bio, 'Nueva bio');
     assert.deepEqual(r.body.user.socialLinks, { steam: 'https://steamcommunity.com/id/x' });
@@ -224,7 +421,75 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
     await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin'").run();
     ok(await admin('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass }));
+    // sin verificación en dos pasos el panel no abre: la cuenta admin tiene que activarla primero
+    const sinDosPasos = await admin('GET', '/api/admin/games');
+    ok(sinDosPasos, 403); assert.equal(sinDosPasos.body.error, 'two_factor_required');
+    adminTwoFactor = await enableTwoFactor(admin);
     ok(await admin('GET', '/api/admin/games'));
+  });
+  await step('2FA: los códigos salen como el estándar (vectores del RFC 6238) y se aceptan una sola vez', async () => {
+    const secret = totp.base32Encode(Buffer.from('12345678901234567890')); // la clave de prueba del RFC (el RFC da 8 dígitos; acá, los últimos 6)
+    for (const [segundos, esperado] of [[59, '287082'], [1111111109, '081804'], [1111111111, '050471'], [1234567890, '005924'], [2000000000, '279037'], [20000000000, '353130']]) {
+      assert.equal(totp.codeForStep(secret, Math.floor(segundos / 30)), esperado, 't=' + segundos);
+    }
+    const now = Date.now(), step = Math.floor(now / 30000), code = totp.codeForStep(secret, step);
+    assert.equal(totp.verifyCode(secret, code, 0, now), step);
+    assert.equal(totp.verifyCode(secret, code, step, now), null, 'ya usado');
+    assert.equal(totp.verifyCode(secret, totp.codeForStep(secret, step - 2), 0, now), null, 'fuera de la ventana');
+  });
+  await step('2FA: el alta pide la contraseña y un código bueno, y solo la hace un admin', async () => {
+    ok(await aOnAdmin('POST', '/api/admin/2fa/setup', { currentPassword: pass }), 403); // usuario común
+    const a2 = client('admin');
+    ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_admin2@example.com', password: pass, username: 'smoketest_admin2' }));
+    await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin2'").run();
+    ok(await a2('POST', '/api/auth/login', { identifier: 'smoketest_admin2', password: pass }));
+    ok(await a2('POST', '/api/admin/2fa/setup', { currentPassword: 'incorrecta1!' }), 401);
+    ok(await a2('POST', '/api/admin/2fa/enable', { code: '123456' }), 400); // todavía no empezó
+    const s = await a2('POST', '/api/admin/2fa/setup', { currentPassword: pass }); ok(s);
+    assert.match(s.body.otpauthUri, /^otpauth:\/\/totp\/DLCritic:smoketest_admin2\?secret=[A-Z2-7]{32}&/);
+    ok(await a2('POST', '/api/admin/2fa/enable', { code: '000000' }), 401);
+    const e = await a2('POST', '/api/admin/2fa/enable', { code: totp.codeForStep(s.body.secret, Math.floor(Date.now() / 30000)) }); ok(e);
+    assert.equal(e.body.recoveryCodes.length, 8);
+    ok(await a2('POST', '/api/admin/2fa/setup', { currentPassword: pass }), 409); // ya activada
+    ok(await a2('GET', '/api/admin/games'));
+    // la base guarda hashes de los códigos de recuperación, no los códigos
+    const row = await db.prepare("SELECT totp_recovery FROM users WHERE lower(username) = 'smoketest_admin2'").get();
+    assert.ok(!e.body.recoveryCodes.some(c => row.totp_recovery.includes(c)));
+  });
+  await step('2FA: el login pide el código, no se puede repetir, los de recuperación sirven una vez y hay tope de intentos', async () => {
+    const { secret, recoveryCodes } = adminTwoFactor;
+    const codeNow = () => totp.codeForStep(secret, Math.floor(Date.now() / 30000));
+    const nuevoPaso = () => db.prepare("UPDATE users SET totp_last_step = 0 WHERE lower(username) = 'smoketest_admin'").run(); // como si hubieran pasado 30 s
+    const login = (c, extra = {}) => c('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass, ...extra });
+    // sin código: avisa que falta y no abre sesión
+    const c1 = client('admin'), r1 = await login(c1);
+    ok(r1, 401); assert.equal(r1.body.error, 'two_factor_required');
+    assert.equal((await c1('GET', '/api/auth/me')).body.user, null);
+    // contraseña mala: sigue siendo bad_login (no revela si hay 2FA)
+    assert.equal((await client('admin')('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: 'incorrecta1!', code: codeNow() })).body.error, 'bad_login');
+    // código malo
+    await nuevoPaso();
+    ok(await login(client('admin'), { code: '000000' }), 401);
+    // código bueno: abre sesión y esa sesión entra al panel
+    const c2 = client('admin');
+    await nuevoPaso();
+    const r2 = await login(c2, { code: codeNow() }); ok(r2);
+    assert.equal(r2.body.user.twoFactor, true);
+    assert.ok(!JSON.stringify(r2.body).includes(secret), 'la respuesta no lleva la clave');
+    ok(await c2('GET', '/api/admin/games'));
+    // el mismo código no sirve dos veces
+    const r3 = await login(client('admin'), { code: codeNow() }); ok(r3, 401); assert.equal(r3.body.error, 'bad_code');
+    // recuperación: una sola vez, sin importar mayúsculas, guion o espacios
+    const rec = recoveryCodes[0];
+    ok(await login(client('admin'), { code: rec.toLowerCase().replace('-', ' ') }));
+    ok(await login(client('admin'), { code: rec }), 401);
+    ok(await login(client('admin'), { code: recoveryCodes[1] }));
+    // tope: 10 intentos cada 15 minutos por cuenta (ya van 6); ni el código bueno entra mientras dura
+    for (let i = 0; i < 4; i++) ok(await login(client('admin'), { code: '000000' }), 401);
+    const bloqueado = await login(client('admin'), { code: '000000' });
+    ok(bloqueado, 429); assert.ok(bloqueado.headers.get('retry-after'));
+    await nuevoPaso();
+    ok(await login(client('admin'), { code: codeNow() }), 429);
   });
   await step('juegos: crear, editar, ocultar y borrar', async () => {
     const c = await admin('POST', '/api/admin/games', { title: 'Smoketest Game', genres: ['Acción', 'Indie'], platforms: ['steam'], releaseYear: '2025', description: 'd', isNewRelease: true, newReleaseDate: '2025-05-05' }); ok(c);
@@ -302,7 +567,8 @@ const today = new Date().toISOString().slice(0, 10);
     const css = await adm('GET', '/admin/assets/admin.css'); ok(css); assert.ok(css.text.length > 500);
     assert.ok((await adm('GET', '/admin/assets/js/02-views-login-and-api.js')).text.includes('apiPost'));
     ok(await adm('GET', '/api/auth/me'), 200);
-    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad']) ok(await adm('GET', route), 404);
+    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad', '/restablecer']) ok(await adm('GET', route), 404);
+    ok(await adm('POST', '/api/auth/forgot', { email: 'x@example.com' }), 404);
     ok(await adm('POST', '/api/auth/register', { acceptTerms: true, email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
     // los archivos del panel no están en public/: tampoco salen por el CDN del sitio público
     for (const f of ['/admin.html', '/css/admin.css', '/admin-js/01-state-and-icons.js']) assert.notEqual((await pub('GET', f)).status, 200, f);

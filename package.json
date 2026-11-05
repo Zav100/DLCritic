@@ -14,6 +14,7 @@
     "db:restore": "node --env-file-if-exists=.env.local scripts/restore.js",
     "db:import": "node --env-file-if-exists=.env.local scripts/import-sqlite.js",
     "make-admin": "node --env-file-if-exists=.env.local server/make-admin.js",
+    "db:reset-2fa": "node --env-file-if-exists=.env.local scripts/reset-2fa.js",
     "test:smoke": "node --env-file-if-exists=.env.local scripts/smoke-test.js",
     "db:migrate-uploads": "node --env-file-if-exists=.env.local scripts/migrate-uploads.js"
   },
