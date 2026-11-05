@@ -47,6 +47,8 @@ let state = { user:null, games:[], reviews:[], characters:[], characterReviews:[
 // Id único cortito para cosas que se crean en el cliente (ids de elementos temporales, etc.).
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 // Escapa texto antes de inyectarlo como HTML (protección básica contra XSS). Usar SIEMPRE al insertar texto de usuario/servidor en un template string de HTML.
+// Texto "plano" para buscar: sin mayúsculas ni tildes, así "ragnarok" encuentra "Ragnarök" y "pokemon" encuentra "Pokémon".
+function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
 function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Formatea una fecha ISO al formato lindo ("04 sept 2026" / "Sep 04, 2026" según el idioma).
 function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(state.lang==='en'?'en-US':'es-ES',{day:'2-digit',month:'short',year:'numeric'}); }

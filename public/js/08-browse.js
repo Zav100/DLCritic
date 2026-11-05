@@ -77,8 +77,8 @@ function removeBrowseLoadMore(){
 function paintBrowseGrid(keepPage){
   if(!keepPage) state.browseVisibleCount = BROWSE_PAGE_SIZE;
   const grid=document.getElementById('browseGrid');
-  const q=(document.getElementById('browseSearch').value||'').toLowerCase().trim();
-  let games = allGames().filter(g=> g.title.toLowerCase().includes(q));
+  const q=foldText(document.getElementById('browseSearch').value).trim();
+  let games = allGames().filter(g=> foldText(g.title).includes(q));
   if(state.browseFilter.size>0) games = games.filter(g=> g.platforms && g.platforms.some(p=>state.browseFilter.has(p)));
   if(state.browseGenres.size>0) games = games.filter(g=> (g.genres && g.genres.length ? g.genres : [g.genre]).some(x=>state.browseGenres.has(x)));
   grid.classList.toggle('list-mode', state.browseViewMode==='list');

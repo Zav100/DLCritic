@@ -41,6 +41,8 @@ function renderRegisterStep2Fields(){
   `).join('');
   document.getElementById('registerAvatarPreview').innerHTML = ICONS.user;
 }
+// Los enlaces a redes tienen que empezar con http:// o https://. El servidor descarta en silencio los que no, y la pantalla igual decía "guardado".
+function hasBadSocialLink(links){ return Object.values(links).some(v=> !/^https?:\/\/\S+$/i.test(v)); }
 // Cambia entre la pestaña "Iniciar sesión" y "Registrarme" de la vista /cuenta, reseteando el registro al paso 1 y limpiando errores visibles.
 function setAuthTab(tab){
   state.authTab=tab;
@@ -182,6 +184,7 @@ async function handleRegisterSubmit(){
   if(!document.getElementById('r-terms').checked){ errEl.textContent=t('err_terms_required'); errEl.hidden=false; return; }
   const socialLinks = {};
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
+  if(hasBadSocialLink(socialLinks)){ errEl.textContent=t('err_social_link'); errEl.hidden=false; return; }
 
   const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;

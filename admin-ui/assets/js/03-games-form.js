@@ -166,7 +166,7 @@ async function loadGames(){
 }
 
 document.getElementById('gameSearch').addEventListener('input', (e)=>{
-  state.gameSearch = e.target.value.toLowerCase().trim();
+  state.gameSearch = foldText(e.target.value).trim();
   renderGamesTable();
 });
 
@@ -196,7 +196,7 @@ function renderGamesTable(){
   document.getElementById('gameCountBreakdown').textContent =
     `${state.games.length - hiddenCount} visibles en la página · ${hiddenCount} ocultos`;
   const body = document.getElementById('gamesTableBody');
-  let filtered = state.gameSearch ? state.games.filter(g=> g.title.toLowerCase().includes(state.gameSearch)) : state.games.slice();
+  let filtered = state.gameSearch ? state.games.filter(g=> foldText(g.title).includes(state.gameSearch)) : state.games.slice();
   if(state.gameVisFilter==='visible') filtered = filtered.filter(g=> !g.hidden);
   else if(state.gameVisFilter==='hidden') filtered = filtered.filter(g=> g.hidden);
   filtered.sort(GAME_SORTS[state.gameSortMode] || GAME_SORTS.title);

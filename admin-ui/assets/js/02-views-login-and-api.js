@@ -56,6 +56,8 @@ async function shrinkImage(file, maxSide = 2000){
   }catch(e){ return file; }
 }
 
+// Texto "plano" para buscar: sin mayúsculas ni tildes (igual que foldText de public/js/03-state-and-utils.js).
+function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---- login / logout ---- */

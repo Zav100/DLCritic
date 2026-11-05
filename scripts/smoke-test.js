@@ -406,7 +406,8 @@ const today = new Date().toISOString().slice(0, 10);
   await step('páginas con meta Open Graph (juego, personaje, usuario) y rutas del SPA', async () => {
     const title = (await anon('GET', '/api/games')).body.games.find(g => g.id === gameId).title;
     const g = await anon('GET', `/juego/${gameId}`); ok(g);
-    assert.ok(g.text.includes(`<title>${title} — DLCritic</title>`) || g.text.includes('&amp;'), 'título del juego en <title>');
+    const html = x => x.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); // el servidor escribe el título escapado (ej. "Baldur's" -> "Baldur&#39;s")
+    assert.ok(g.text.includes(`<title>${html(title)} — DLCritic</title>`), 'título del juego en <title>');
     const c = await anon('GET', `/personaje/${charId}`); ok(c); assert.ok(/<title>.+ — DLCritic<\/title>/.test(c.text));
     const u = await anon('GET', '/usuario/smoketest_a'); ok(u); assert.ok(u.text.includes('smoketest_a — DLCritic'));
     for (const route of ['/explorar', '/personajes', '/reto-del-dia', '/juego/no-existe']) ok(await anon('GET', route));
@@ -560,6 +561,8 @@ const today = new Date().toISOString().slice(0, 10);
     // dominio público: sin panel (ni siquiera con sesión de admin)
     for (const route of ['/admin', '/admin/assets/admin.css', '/api/admin/games']) ok(await pub('GET', route), 404);
     ok(await pub('GET', '/'), 200); ok(await pub('GET', '/api/games'), 200);
+    const noExiste = await pub('GET', '/esta-pagina-no-existe'); ok(noExiste, 404); assert.ok(noExiste.text.includes('data-lang="en"') && noExiste.text.includes('Página no encontrada'), 'la página de "no existe" es la del sitio, no el error pelado');
+    const fav = await pub('GET', '/favicon.ico'); ok(fav, 301); assert.equal(fav.headers.get('location'), '/img/favicon-32.png');
     for (const route of ['/terminos', '/privacidad']) { const legal = await pub('GET', route); ok(legal, 200); assert.ok(legal.text.includes('data-lang="en"'), route + ' trae las dos versiones de idioma'); }
     // dominio del dashboard: solo panel y login
     const root = await adm('GET', '/'); ok(root, 302); assert.equal(root.headers.get('location'), '/admin');

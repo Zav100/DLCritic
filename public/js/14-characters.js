@@ -109,10 +109,10 @@ function renderCharactersBrowse(){
 // animate=true: las cards entran escalonadas (carga de la vista o cambio de filtro/orden). Se pasa false al tipear en el buscador, para que no "parpadee" con cada letra.
 function paintCharactersGrid(animate){
   const grid = document.getElementById('charactersGrid');
-  const q = (document.getElementById('charactersSearch').value||'').toLowerCase().trim();
+  const q = foldText(document.getElementById('charactersSearch').value).trim();
   const all = allCharacters();
   let list = all.filter(c=>
-    c.name.toLowerCase().includes(q)
+    foldText(c.name).includes(q)
     && (!charView.category || (c.categories||[]).includes(charView.category))
     && (!charView.game || characterGames(c).some(g=>g.id===charView.game)));
   document.getElementById('charactersCount').textContent = list.length;
@@ -396,9 +396,10 @@ function renderQuickRateChar(scope, characterId, currentValue){
       paintQuickRate(wrap, i);
       updateQuickReadout(scope, i, true, MOOD_CHARACTER);
       b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
-      await saveCharRating(characterId, i);
-      if(i>=9) celebrateFavorite(wrap);
-      toast(t('toast_rating_saved'));
+      if(await saveCharRating(characterId, i)){
+        if(i>=9) celebrateFavorite(wrap);
+        toast(t('toast_rating_saved'));
+      }
       renderCharacterDetail();
     });
     wrap.appendChild(b);
@@ -409,18 +410,18 @@ function renderQuickRateChar(scope, characterId, currentValue){
   if(clearBtn) clearBtn.onclick = ()=> deleteCharRating(characterId);
 }
 async function saveCharRating(characterId, rating){
-  if(!state.user) return;
+  if(!state.user) return false;
   let rv = state.characterReviews.find(r=>r.characterId===characterId && r.username===state.user.username);
   if(rv){ rv.rating=rating; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), characterId, username:state.user.username, rating, text:'', date:new Date().toISOString() }; state.characterReviews.push(rv); }
-  try{ await apiPut('/character-reviews/'+encodeURIComponent(characterId), { rating }); }catch(e){ toast(t('err_save_review')); }
+  return persistOrResync(()=> apiPut('/character-reviews/'+encodeURIComponent(characterId), { rating }));
 }
 async function saveCharReviewText(characterId, text){
-  if(!state.user) return;
+  if(!state.user) return false;
   let rv = state.characterReviews.find(r=>r.characterId===characterId && r.username===state.user.username);
   if(rv){ rv.text=text; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), characterId, username:state.user.username, rating:null, text, date:new Date().toISOString() }; state.characterReviews.push(rv); }
-  try{ await apiPut('/character-reviews/'+encodeURIComponent(characterId), { text }); }catch(e){ toast(t('err_save_review')); }
+  return persistOrResync(()=> apiPut('/character-reviews/'+encodeURIComponent(characterId), { text }));
 }
 async function deleteCharReviewText(characterId){
   if(!await confirmDialog(t('confirm_delete_review_only'))) return;
@@ -428,8 +429,7 @@ async function deleteCharReviewText(characterId){
   if(!rv) return;
   rv.text = '';
   if(rv.rating==null) state.characterReviews = state.characterReviews.filter(r=>r.id!==rv.id);
-  try{ await apiDelete('/character-reviews/'+encodeURIComponent(characterId)+'/text'); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_review_deleted'));
+  if(await persistOrResync(()=> apiDelete('/character-reviews/'+encodeURIComponent(characterId)+'/text'))) toast(t('toast_review_deleted'));
   renderCharacterDetail();
 }
 async function deleteCharRating(characterId){
@@ -438,15 +438,13 @@ async function deleteCharRating(characterId){
   if(!rv) return;
   rv.rating = null;
   if(!rv.text || !rv.text.trim()) state.characterReviews = state.characterReviews.filter(r=>r.id!==rv.id);
-  try{ await apiDelete('/character-reviews/'+encodeURIComponent(characterId)+'/rating'); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_rating_removed'));
+  if(await persistOrResync(()=> apiDelete('/character-reviews/'+encodeURIComponent(characterId)+'/rating'))) toast(t('toast_rating_removed'));
   renderCharacterDetail();
 }
 async function deleteCharacterReview(id){
   if(!await confirmDialog(t('confirm_delete'))) return;
   state.characterReviews = state.characterReviews.filter(r=>r.id!==id);
-  try{ await apiDelete('/character-reviews/id/'+encodeURIComponent(id)); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_review_deleted'));
+  if(await persistOrResync(()=> apiDelete('/character-reviews/id/'+encodeURIComponent(id)))) toast(t('toast_review_deleted'));
   renderCharacterDetail();
 }
 // Bloque de texto de la reseña en la ficha de un personaje — mismos 3 estados que renderReviewBlock (escribir/ver/editar), pero leyendo y escribiendo en state.charReviewEditing en vez de state.reviewEditing.
@@ -481,7 +479,7 @@ function renderCharReviewBlock(characterId, myReview){
       const errEl=document.getElementById('charReviewError');
       const text=input.value.trim();
       if(text.length<10){ errEl.textContent=t('toast_write_more'); errEl.hidden=false; return; }
-      await saveCharReviewText(characterId, text);
+      if(!await saveCharReviewText(characterId, text)){ errEl.textContent=t('err_save_review'); errEl.hidden=false; return; } // el texto escrito queda en el cuadro para reintentar
       state.charReviewEditing=false;
       toast(t('toast_review_published'));
       renderCharacterDetail();

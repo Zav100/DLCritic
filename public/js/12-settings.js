@@ -23,7 +23,7 @@ function renderSettingsView(){
     <div class="card" style="margin-bottom:18px;">
       <h3 style="margin-top:0;">${esc(t('settings_profile_section'))}</h3>
       <div class="field">
-        <label>${esc(t('profile_avatar_label'))}</label>
+        <label for="st-avatar-file">${esc(t('profile_avatar_label'))}</label>
         <div class="cover-picker" style="display:flex; align-items:center; gap:14px;">
           <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
           <div style="min-width:0; flex:1;">
@@ -114,6 +114,7 @@ function renderSettingsView(){
     const bio = document.getElementById('st-bio').value.trim();
     const socialLinks = {};
     SOCIAL_KEYS.forEach(k=>{ const v=document.getElementById('st-social-'+k).value.trim(); if(v) socialLinks[k]=v; });
+    if(hasBadSocialLink(socialLinks)){ errEl.textContent = t('err_social_link'); errEl.hidden = false; return; }
     try{
       if(pendingSettingsAvatarFile){
         const fd = new FormData();
@@ -131,7 +132,7 @@ function renderSettingsView(){
       renderUserBadge();
       toast(t('toast_profile_saved'));
     }catch(e){
-      errEl.textContent = (e.body && e.body.error==='username_taken') ? t('err_username_taken')
+      errEl.textContent = (e.body && e.body.error==='username_taken') ? t('err_username_taken_settings')
         : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : t('err_save_user');
       errEl.hidden = false;
     }
