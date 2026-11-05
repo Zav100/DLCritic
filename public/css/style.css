@@ -635,6 +635,33 @@ main {
   min-width: 0;
 }
 
+/* Género y Año: una etiqueta puede ocupar dos líneas y la otra una; los campos se apoyan abajo para que queden a la misma altura. */
+.suggest-modal .field-row {
+  align-items: flex-end;
+}
+
+/* el selector nativo mide 2px más que el campo de texto: los dos con la misma altura */
+.suggest-modal .field-row select,
+.suggest-modal .field-row input {
+  height: 40px;
+}
+
+/* El cuadro es claro en los dos temas (en el oscuro, vidrio lavanda), así que los botones usan los tonos de tinta: texto oscuro, un contorno fino y un fondo un poco más marcado que el del cuadro. */
+.suggest-modal .plat-chip:not(.active) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 26%, transparent);
+}
+
+.confirm-box.suggest-modal .btn-ghost {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+
+.confirm-box.suggest-modal .btn-ghost:hover {
+  border-color: var(--red);
+}
+
 .confirm-box.list-detail-modal {
   max-width: 900px;
 }
