@@ -18,6 +18,7 @@ const REMOTE = !!process.env.BASE_URL;
 const PUBLIC_HOST = 'public.test', ADMIN_HOST = 'admin.test';
 if (!REMOTE) process.env.ADMIN_HOST = ADMIN_HOST; // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar)
 const db = require('../server/db');
+const totp = require('../server/totp');
 const { uploadsDir } = require('../server/upload');
 const server = REMOTE ? null : require('../server/index.js').listen(0);
 const publicBase = REMOTE ? process.env.BASE_URL : `http://localhost:${server.address().port}`;
@@ -61,7 +62,13 @@ const today = new Date().toISOString().slice(0, 10);
 (async () => {
   const a = client(), b = client(), anon = client(), admin = client('admin'), aOnAdmin = client('admin');
   const pass = 'Smoketest123!';
-  let gameId, otherGameId, charId, reviewId, listId;
+  let gameId, otherGameId, charId, reviewId, listId, adminTwoFactor;
+  // Activa la verificación en dos pasos de la cuenta con la que está iniciada la sesión de ese cliente (admin).
+  const enableTwoFactor = async c => {
+    const s = await c('POST', '/api/admin/2fa/setup', { currentPassword: pass }); ok(s);
+    const e = await c('POST', '/api/admin/2fa/enable', { code: totp.codeForStep(s.body.secret, Math.floor(Date.now() / 30000)) }); ok(e);
+    return { secret: s.body.secret, recoveryCodes: e.body.recoveryCodes };
+  };
 
   console.log('Catálogo');
   await step('hay juegos y personajes', async () => {
@@ -308,7 +315,75 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_admin@example.com', password: pass, username: 'smoketest_admin' }));
     await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin'").run();
     ok(await admin('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass }));
+    // sin verificación en dos pasos el panel no abre: la cuenta admin tiene que activarla primero
+    const sinDosPasos = await admin('GET', '/api/admin/games');
+    ok(sinDosPasos, 403); assert.equal(sinDosPasos.body.error, 'two_factor_required');
+    adminTwoFactor = await enableTwoFactor(admin);
     ok(await admin('GET', '/api/admin/games'));
+  });
+  await step('2FA: los códigos salen como el estándar (vectores del RFC 6238) y se aceptan una sola vez', async () => {
+    const secret = totp.base32Encode(Buffer.from('12345678901234567890')); // la clave de prueba del RFC (el RFC da 8 dígitos; acá, los últimos 6)
+    for (const [segundos, esperado] of [[59, '287082'], [1111111109, '081804'], [1111111111, '050471'], [1234567890, '005924'], [2000000000, '279037'], [20000000000, '353130']]) {
+      assert.equal(totp.codeForStep(secret, Math.floor(segundos / 30)), esperado, 't=' + segundos);
+    }
+    const now = Date.now(), step = Math.floor(now / 30000), code = totp.codeForStep(secret, step);
+    assert.equal(totp.verifyCode(secret, code, 0, now), step);
+    assert.equal(totp.verifyCode(secret, code, step, now), null, 'ya usado');
+    assert.equal(totp.verifyCode(secret, totp.codeForStep(secret, step - 2), 0, now), null, 'fuera de la ventana');
+  });
+  await step('2FA: el alta pide la contraseña y un código bueno, y solo la hace un admin', async () => {
+    ok(await aOnAdmin('POST', '/api/admin/2fa/setup', { currentPassword: pass }), 403); // usuario común
+    const a2 = client('admin');
+    ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_admin2@example.com', password: pass, username: 'smoketest_admin2' }));
+    await db.prepare("UPDATE users SET is_admin = 1 WHERE lower(username) = 'smoketest_admin2'").run();
+    ok(await a2('POST', '/api/auth/login', { identifier: 'smoketest_admin2', password: pass }));
+    ok(await a2('POST', '/api/admin/2fa/setup', { currentPassword: 'incorrecta1!' }), 401);
+    ok(await a2('POST', '/api/admin/2fa/enable', { code: '123456' }), 400); // todavía no empezó
+    const s = await a2('POST', '/api/admin/2fa/setup', { currentPassword: pass }); ok(s);
+    assert.match(s.body.otpauthUri, /^otpauth:\/\/totp\/DLCritic:smoketest_admin2\?secret=[A-Z2-7]{32}&/);
+    ok(await a2('POST', '/api/admin/2fa/enable', { code: '000000' }), 401);
+    const e = await a2('POST', '/api/admin/2fa/enable', { code: totp.codeForStep(s.body.secret, Math.floor(Date.now() / 30000)) }); ok(e);
+    assert.equal(e.body.recoveryCodes.length, 8);
+    ok(await a2('POST', '/api/admin/2fa/setup', { currentPassword: pass }), 409); // ya activada
+    ok(await a2('GET', '/api/admin/games'));
+    // la base guarda hashes de los códigos de recuperación, no los códigos
+    const row = await db.prepare("SELECT totp_recovery FROM users WHERE lower(username) = 'smoketest_admin2'").get();
+    assert.ok(!e.body.recoveryCodes.some(c => row.totp_recovery.includes(c)));
+  });
+  await step('2FA: el login pide el código, no se puede repetir, los de recuperación sirven una vez y hay tope de intentos', async () => {
+    const { secret, recoveryCodes } = adminTwoFactor;
+    const codeNow = () => totp.codeForStep(secret, Math.floor(Date.now() / 30000));
+    const nuevoPaso = () => db.prepare("UPDATE users SET totp_last_step = 0 WHERE lower(username) = 'smoketest_admin'").run(); // como si hubieran pasado 30 s
+    const login = (c, extra = {}) => c('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass, ...extra });
+    // sin código: avisa que falta y no abre sesión
+    const c1 = client('admin'), r1 = await login(c1);
+    ok(r1, 401); assert.equal(r1.body.error, 'two_factor_required');
+    assert.equal((await c1('GET', '/api/auth/me')).body.user, null);
+    // contraseña mala: sigue siendo bad_login (no revela si hay 2FA)
+    assert.equal((await client('admin')('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: 'incorrecta1!', code: codeNow() })).body.error, 'bad_login');
+    // código malo
+    await nuevoPaso();
+    ok(await login(client('admin'), { code: '000000' }), 401);
+    // código bueno: abre sesión y esa sesión entra al panel
+    const c2 = client('admin');
+    await nuevoPaso();
+    const r2 = await login(c2, { code: codeNow() }); ok(r2);
+    assert.equal(r2.body.user.twoFactor, true);
+    assert.ok(!JSON.stringify(r2.body).includes(secret), 'la respuesta no lleva la clave');
+    ok(await c2('GET', '/api/admin/games'));
+    // el mismo código no sirve dos veces
+    const r3 = await login(client('admin'), { code: codeNow() }); ok(r3, 401); assert.equal(r3.body.error, 'bad_code');
+    // recuperación: una sola vez, sin importar mayúsculas, guion o espacios
+    const rec = recoveryCodes[0];
+    ok(await login(client('admin'), { code: rec.toLowerCase().replace('-', ' ') }));
+    ok(await login(client('admin'), { code: rec }), 401);
+    ok(await login(client('admin'), { code: recoveryCodes[1] }));
+    // tope: 10 intentos cada 15 minutos por cuenta (ya van 6); ni el código bueno entra mientras dura
+    for (let i = 0; i < 4; i++) ok(await login(client('admin'), { code: '000000' }), 401);
+    const bloqueado = await login(client('admin'), { code: '000000' });
+    ok(bloqueado, 429); assert.ok(bloqueado.headers.get('retry-after'));
+    await nuevoPaso();
+    ok(await login(client('admin'), { code: codeNow() }), 429);
   });
   await step('juegos: crear, editar, ocultar y borrar', async () => {
     const c = await admin('POST', '/api/admin/games', { title: 'Smoketest Game', genres: ['Acción', 'Indie'], platforms: ['steam'], releaseYear: '2025', description: 'd', isNewRelease: true, newReleaseDate: '2025-05-05' }); ok(c);

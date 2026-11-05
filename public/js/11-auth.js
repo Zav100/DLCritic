@@ -62,6 +62,8 @@ function renderAuthForm(){
   document.getElementById('a-identifier').value='';
   document.getElementById('a-password').value='';
   document.getElementById('a-remember').checked=false;
+  document.getElementById('aCodeField').hidden=true;
+  document.getElementById('a-code').value='';
   document.getElementById('r-email').value='';
   document.getElementById('r-password').value='';
   document.getElementById('r-password2').value='';
@@ -99,11 +101,20 @@ async function handleLogin(){
   const identifier = document.getElementById('a-identifier').value.trim();
   const password = document.getElementById('a-password').value;
   if(!identifier || !password){ errEl.textContent=t('err_bad_login'); errEl.hidden=false; return; }
-  const ERR_MSG = { bad_login:'err_bad_login', too_many_requests:'err_too_many' };
+  const ERR_MSG = { bad_login:'err_bad_login', bad_code:'err_bad_code', too_many_requests:'err_too_many' };
+  const codeField = document.getElementById('aCodeField');
   let user;
   try{
-    ({ user } = await apiPost('/auth/login', { identifier, password, remember: document.getElementById('a-remember').checked }));
-  }catch(e){ errEl.textContent = t(ERR_MSG[e.body&&e.body.error] || 'err_bad_login'); errEl.hidden=false; return; }
+    // code (de la app de autenticación o de recuperación) solo va si la cuenta tiene verificación en dos pasos: el servidor avisa con two_factor_required.
+    const body = { identifier, password, remember: document.getElementById('a-remember').checked };
+    if(!codeField.hidden) body.code = document.getElementById('a-code').value.trim();
+    ({ user } = await apiPost('/auth/login', body));
+  }catch(e){
+    const code = e.body && e.body.error;
+    if(code==='two_factor_required'){ codeField.hidden=false; document.getElementById('a-code').focus(); errEl.textContent=t('err_two_factor_required'); errEl.hidden=false; return; }
+    if(code==='bad_login'){ codeField.hidden=true; document.getElementById('a-code').value=''; }
+    errEl.textContent = t(ERR_MSG[code] || 'err_bad_login'); errEl.hidden=false; return;
+  }
   toast(t('toast_welcome_back')+' '+user.username+'!');
   await afterAuthSuccess(user);
 }

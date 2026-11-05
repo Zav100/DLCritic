@@ -6,6 +6,7 @@ const { Readable } = require('node:stream');
 const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
 const { rateLimit } = require('./rateLimit');
+const { checkSecondFactor } = require('./twofactor');
 const {
   hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
   setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
@@ -61,6 +62,7 @@ function publicUser(u) {
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
+    twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
     avatarUrl: u.avatar_url || null,
     bio: u.bio || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
@@ -189,6 +191,16 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (password.length > 200) return res.status(401).json({ error: 'bad_login' });
   if (!user) { spendLoginTime(password); return res.status(401).json({ error: 'bad_login' }); }
   if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
+
+  // Cuenta con verificación en dos pasos: sin código se responde que falta (la contraseña ya estaba bien); con código se comprueba. No se abre ninguna sesión hasta que el código sirva.
+  if (user.totp_enabled) {
+    if (!String(req.body.code || '').trim()) return res.status(401).json({ error: 'two_factor_required' });
+    const second = await checkSecondFactor(user, req.body.code);
+    if (!second.ok) {
+      if (second.retryAfter) res.setHeader('Retry-After', String(second.retryAfter));
+      return res.status(second.error === 'too_many_requests' ? 429 : 401).json({ error: second.error, ...(second.retryAfter && { retryAfter: second.retryAfter }) });
+    }
+  }
 
   // remember: la casilla "Recordar este dispositivo". Solo vale el booleano true.
   setSessionCookie(res, await createSession(user.id, req.body.remember === true ? 'remember' : 'short'));

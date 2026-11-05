@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS users (
   bio TEXT,
   social_links TEXT NOT NULL DEFAULT '{}'
 );
+-- Verificación en dos pasos (TOTP) de las cuentas admin. totp_secret queda guardada tal cual (como el hash de la contraseña: una copia de la base
+-- o de los backups la incluye, así que hay que cuidarlos). totp_enabled pasa a 1 recién cuando se confirma un primer código. totp_last_step
+-- es el último paso de 30 s ya usado (un código no se puede usar dos veces). totp_recovery es un arreglo JSON con los hashes de los códigos de recuperación sin usar.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_recovery TEXT NOT NULL DEFAULT '[]';
 -- Varias cuentas sin email siguen permitidas (NULL no choca con NULL en un índice único).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- Los nombres de usuario no distinguen mayúsculas (la app los busca con lower()).

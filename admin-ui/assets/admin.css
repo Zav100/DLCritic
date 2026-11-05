@@ -47,6 +47,8 @@
   /* Casilla con texto (recordar el dispositivo): texto normal, no el estilo de etiqueta en mayúsculas. */
   .field label.check-row{ display:flex; align-items:flex-start; gap:8px; margin-bottom:0; font-family:inherit; font-size:13px; line-height:1.45; text-transform:none; letter-spacing:0; cursor:pointer; }
   .check-row input{ margin-top:2px; flex-shrink:0; }
+  /* Cajita para una clave o una lista de códigos (activar la verificación en dos pasos). */
+  .keybox{ font-family:'Space Mono',monospace; font-size:13px; letter-spacing:1px; line-height:1.7; background:var(--paper-alt); color:var(--ink); border:1px solid var(--line-dark); border-radius:8px; padding:10px 12px; margin:6px 0 10px; word-break:break-all; white-space:pre-wrap; user-select:all; }
   input[type=text], input[type=search], input[type=password], input[type=number], input[type=url], input[type=date], select, textarea{
     width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line-dark);
     background:var(--paper-alt); color:var(--ink); font-family:'Space Grotesk',sans-serif; font-size:14px;
