@@ -284,14 +284,19 @@ function userReminders(){
   if(d && !d.solved && !d.failed) out.push({ icon:ICONS.dice, key:'tip_daily', go:'daily' });
   const streak = computeStreak(u.username);
   if(streak>0 && !userActivityDays(u.username).includes(localDateKey())) out.push({ icon:ICONS.flame, key:'tip_streak', n:streak, go:'browse' });
+  if(!u.email) out.push({ icon:ICONS.lock, key:'tip_email', go:'settings', more:true });
   if(!u.favoriteGameId) out.push({ icon:ICONS.heart, key:'tip_favorite', go:'shelf' });
   if(!state.reviews.some(r=>r.username===u.username)) out.push({ icon:ICONS.star, key:'tip_first_rating', go:'browse' });
   if(!(u.wishlist||[]).length) out.push({ icon:ICONS.bookmark, key:'tip_wishlist', go:'browse' });
   if(!state.characterReviews.some(r=>r.username===u.username)) out.push({ icon:ICONS.user, key:'tip_char_rating', go:'characters' });
   if(!u.avatarUrl || !u.bio) out.push({ icon:ICONS.edit, key:'tip_profile', go:'settings' });
+  if(!Object.values(u.socialLinks||{}).some(Boolean)) out.push({ icon:ICONS.link, key:'tip_social', go:'settings', more:true });
+  const mine = state.reviews.filter(r=>r.username===u.username);
+  if(mine.some(r=>r.rating!=null) && !mine.some(r=>r.text)) out.push({ icon:ICONS.messageCircle, key:'tip_write_review', go:'browse', more:true });
   return out;
 }
 // Consejos de uso. views: en qué páginas se muestran primero; sin views son generales y rotan según el día.
+// more: los que se sumaron para llegar a 8 tips; el inicio (Novedades) no los usa y se queda con los de siempre.
 const STATIC_TIPS = [
   { icon:ICONS.search, key:'tip_filters', go:'browse', views:['browse'] },
   { icon:ICONS.sword, key:'tip_versus', go:'characters', views:['characters','character'] },
@@ -304,17 +309,30 @@ const STATIC_TIPS = [
   { icon:ICONS.trophy, key:'tip_ranking', go:'characters' },
   { icon:ICONS.globe, key:'tip_lang' },
   { icon:ICONS.moon, key:'tip_theme' },
+  { icon:ICONS.search, key:'tip_search_accents', views:['browse','characters'], more:true },
+  { icon:ICONS.map, key:'tip_stores', views:['game'], more:true },
+  { icon:ICONS.globe, key:'tip_news', go:'news', more:true },
+  { icon:ICONS.flame, key:'tip_streak_info', more:true },
+  { icon:ICONS.heart, key:'tip_follow', more:true },
+  { icon:ICONS.bell, key:'tip_notifications', more:true },
+  { icon:ICONS.book, key:'tip_about', go:'about', more:true },
+  { icon:ICONS.gamepad, key:'tip_logo', go:'feed', more:true },
 ];
-const TIPS_MAX = 4;
+const TIPS_MAX = 4;        // inicio (Novedades)
+const TIPS_MAX_OTHER = 8;  // el resto de las páginas
 // view: la vista actual ('feed', 'browse', 'shelf'…). Un recordatorio no se muestra en la propia vista a la que apunta.
 function tipsFor(view){
   const here = view==='profile' ? 'shelf' : view;
-  const reminders = userReminders().filter(r=> r.go!==here).slice(0, TIPS_MAX-1);
-  const own = STATIC_TIPS.filter(x=> x.views && x.views.includes(view));
-  const general = STATIC_TIPS.filter(x=> !x.views);
+  const home = view==='feed';
+  const max = home ? TIPS_MAX : TIPS_MAX_OTHER;
+  const pool = home ? STATIC_TIPS.filter(x=> !x.more) : STATIC_TIPS;
+  // los recordatorios van primero, pero dejan lugar a los tips propios de la página
+  const reminders = userReminders().filter(r=> r.go!==here && !(home && r.more)).slice(0, home ? TIPS_MAX-1 : 5);
+  const own = pool.filter(x=> x.views && x.views.includes(view));
+  const general = pool.filter(x=> !x.views);
   const shift = Math.floor(Date.now()/86400000) % general.length;
   const rotated = general.slice(shift).concat(general.slice(0, shift));
-  return reminders.concat(own, rotated).slice(0, TIPS_MAX);
+  return reminders.concat(own, rotated).slice(0, max);
 }
 function tipsCardHTML(view){
   const rows = tipsFor(view).map(tip=> railItemHTML({
