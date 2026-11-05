@@ -19,6 +19,10 @@
  */
 /* ---------- auth ---------- */
 // Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida acá TAMBIÉN en el cliente para dar el error al toque, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
+// Sin emojis (misma regla que EMOJI_RE en server/index.js): cualquier carácter con aspecto de emoji, tonos de piel, banderas, ZWJ y selector de emoji; © ® ™ valen.
+const EMOJI_RE_CLIENT = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
+// Devuelve la clave del texto de error de una contraseña rechazada, o null si sirve.
+function passwordProblemClient(p){ return EMOJI_RE_CLIENT.test(p) ? 'err_password_emoji' : isStrongPasswordClient(p) ? null : 'err_weak_password'; }
 function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200 && /\p{Lu}/u.test(p) && /[0-9]/.test(p) && /[^\p{L}\p{N}\s]/u.test(p); }
 let registerAvatarFile = null; // el File elegido en el paso 2 del registro, o null; se sube recién después de crear la cuenta (ver handleRegisterSubmit)
 // Muestra el paso 1 o el paso 2 del formulario de registro (los dos <div> ya existen en el HTML, esto solo cambia cuál está oculto).
@@ -111,7 +115,8 @@ function handleRegisterStep1Next(){
   const password = document.getElementById('r-password').value;
   const password2 = document.getElementById('r-password2').value;
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent=t('err_invalid_email'); errEl.hidden=false; return; }
-  if(!isStrongPasswordClient(password)){ errEl.textContent=t('err_weak_password'); errEl.hidden=false; return; }
+  const pwProblem = passwordProblemClient(password);
+  if(pwProblem){ errEl.textContent=t(pwProblem); errEl.hidden=false; return; }
   if(password!==password2){ errEl.textContent=t('err_password_mismatch'); errEl.hidden=false; return; }
   showRegisterStep(2);
 }
@@ -132,7 +137,7 @@ async function handleRegisterSubmit(){
   const socialLinks = {};
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
     ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));

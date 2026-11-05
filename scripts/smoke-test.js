@@ -142,18 +142,23 @@ const today = new Date().toISOString().slice(0, 10);
     assert.ok(blocked.headers.get('retry-after'));
   });
   await step('contraseña: libre, pero con mayúscula, número y carácter especial; una kilométrica no se hashea', async () => {
-    const x = client();
-    const reg = (email, password) => x('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
+    // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y acá se prueban más de 8
+    const reg = (email, password) => client()('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
     for (const [n, mala] of [['sin mayúscula', 'abcdef1!'], ['sin número', 'Abcdefg!'], ['sin carácter especial', 'Abcdefg1'], ['corta', 'Ab1!'], ['solo letras y números', 'Password123']]) {
       assert.equal((await reg(`p_${n.length}@example.com`, mala)).body.error, 'weak_password', n);
     }
-    // todo lo demás vale, también lo que antes se rechazaba por "común" (el resultado se frena en el 409 de usuario repetido: pasó la validación)
-    const libre = await x('POST', '/api/auth/register', { acceptTerms: true, email: 'p_libre@example.com', password: 'password123!A', username: 'smoketest_a' });
+    // sin emojis (ni tonos de piel, banderas ni el unir-emojis)
+    for (const emoji of ['Abcdef1!😀', 'Abcdef1!❤️', 'Abcdef1!👍🏽', 'Abcdef1!🇦🇷', 'Abcdef1!\u200D']) {
+      assert.equal((await reg('p_emoji@example.com', emoji)).body.error, 'password_emoji', emoji);
+    }
+    // todo lo demás vale (el resultado se frena en el 409 de usuario repetido: pasó la validación)
+    assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_sim@example.com', password: 'Abcdef1©✓€→', username: 'smoketest_a' })).body.error, 'username_taken');
+    const libre = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_libre@example.com', password: 'password123!A', username: 'smoketest_a' });
     assert.equal(libre.body.error, 'username_taken');
-    ok(await x('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
-    ok(await x('POST', '/api/auth/login', { identifier: 'no_existe_nadie', password: pass }), 401);
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
+    ok(await client()('POST', '/api/auth/login', { identifier: 'no_existe_nadie', password: pass }), 401);
   });
-  await step('"recordar este dispositivo": 20 días con cookie persistente; si no, cookie de sesión y 24 horas', async () => {
+  await step('"recordar este dispositivo": 20 días con cookie persistente; si no, cookie de sesión y 24 horas; crear la cuenta, 24 horas con cookie persistente', async () => {
     // horas que le quedan a la sesión que abrió esa respuesta (en la base está el hash del token, no el token)
     const hoursLeft = async res => {
       const raw = decodeURIComponent(res.headers.getSetCookie()[0].split(';')[0].split('=')[1]);
@@ -168,10 +173,10 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal(await hoursLeft(plain), 24);
     const texto = await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass, remember: 'true' }); ok(texto);
     assert.doesNotMatch(texto.headers.getSetCookie()[0], /Expires=/, 'solo vale el booleano true');
-    // crear la cuenta deja la sesión recordada
+    // crear la cuenta deja una sesión de 24 horas, pero con cookie persistente
     const d = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_d@example.com', password: pass, username: 'smoketest_d' }); ok(d);
     assert.match(d.headers.getSetCookie()[0], /Expires=/);
-    assert.equal(await hoursLeft(d), 20 * 24);
+    assert.equal(await hoursLeft(d), 24);
   });
   await step('cabeceras de seguridad en las páginas', async () => {
     const h = await anon('GET', '/');

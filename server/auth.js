@@ -1,12 +1,17 @@
 const crypto = require('node:crypto');
 const db = require('./db');
 
-// Sesión corta (no se marcó "Recordar este dispositivo"): la cookie dura hasta que se cierre el navegador y, por si el navegador
-// nunca se cierra, la sesión vence a las 24 horas en el servidor.
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-// Con "Recordar este dispositivo": 20 días desde que se inicia sesión (no se renuevan), con cookie persistente. Si se cambia, cambiar también
-// los "20 días" de los textos: auth_remember_label en 02-i18n.js, el login del panel (admin.html) y la política de privacidad.
-const REMEMBER_TTL_MS = 20 * 24 * 60 * 60 * 1000;
+// Tipos de sesión (ttl: cuánto dura en el servidor; persistent: si la cookie sobrevive al cierre del navegador):
+//  - short: el login sin marcar "Recordar este dispositivo". Cookie "de sesión" (el navegador la borra al cerrarse) y, por si nunca se cierra, vence a las 24 horas.
+//  - day: la que se abre al crear la cuenta. Cookie persistente, 24 horas como máximo.
+//  - remember: el login con "Recordar este dispositivo". Cookie persistente, 20 días desde el inicio de sesión (no se renuevan).
+// Si se cambian los tiempos, cambiar también los textos: auth_remember_label en 02-i18n.js, el login del panel (admin.html) y la política de privacidad.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SESSION_KINDS = {
+  short: { ttl: DAY_MS, persistent: false },
+  day: { ttl: DAY_MS, persistent: true },
+  remember: { ttl: 20 * DAY_MS, persistent: true },
+};
 const SESSION_COOKIE = 'cartridge_session';
 
 // Una contraseña falsa para gastar el mismo tiempo cuando el usuario no existe (si no, la respuesta rápida delata qué cuentas existen).
@@ -41,12 +46,13 @@ const deleteOtherSessions = db.prepare('DELETE FROM sessions WHERE user_id = ? A
 const deleteAllSessions = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const deleteExpired = db.prepare('DELETE FROM sessions WHERE expires_at < ?');
 
-async function createSession(userId, remember = false) {
+async function createSession(userId, kind = 'short') {
+  const { ttl, persistent } = SESSION_KINDS[kind];
   const token = crypto.randomBytes(32).toString('hex');
   const now = new Date();
-  const expires = new Date(now.getTime() + (remember ? REMEMBER_TTL_MS : SESSION_TTL_MS));
+  const expires = new Date(now.getTime() + ttl);
   await insertSession.run(sha256(token), userId, now.toISOString(), expires.toISOString());
-  return { token, expires, remember };
+  return { token, expires, persistent };
 }
 
 // Cierra la sesión de ese token (el de la cookie).
@@ -71,14 +77,14 @@ function parseCookies(header) {
 const sessionToken = req => parseCookies(req.headers.cookie)[SESSION_COOKIE];
 
 // session: lo que devuelve createSession. Sin Expires la cookie es "de sesión": el navegador la borra al cerrarse.
-function setSessionCookie(res, { token, expires, remember }) {
+function setSessionCookie(res, { token, expires, persistent }) {
   const attrs = [
     `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
   ];
-  if (remember) attrs.push(`Expires=${expires.toUTCString()}`);
+  if (persistent) attrs.push(`Expires=${expires.toUTCString()}`);
   if (process.env.NODE_ENV === 'production') attrs.push('Secure');
   res.setHeader('Set-Cookie', attrs.join('; '));
 }

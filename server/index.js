@@ -89,6 +89,14 @@ function isStrongPassword(val) {
   return typeof val === 'string' && val.length >= 8 && val.length <= 200
     && /\p{Lu}/u.test(val) && /[0-9]/.test(val) && /[^\p{L}\p{N}\s]/u.test(val);
 }
+// La contraseña no puede tener emojis: cambian según el teclado y el sistema, y es fácil quedarse sin poder escribirla en otro dispositivo.
+// Cuenta cualquier carácter con aspecto de emoji, los tonos de piel, las banderas, el unir-emojis (ZWJ) y el selector de emoji. © ® ™ sí valen.
+const EMOJI_RE = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
+// Devuelve el código de error de una contraseña rechazada ('password_emoji' o 'weak_password'), o null si sirve.
+function passwordProblem(val) {
+  if (typeof val === 'string' && EMOJI_RE.test(val)) return 'password_emoji';
+  return isStrongPassword(val) ? null : 'weak_password';
+}
 function sanitizeSocialLinks(input) {
   const out = {};
   if (!input || typeof input !== 'object') return out;
@@ -147,7 +155,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
   if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(password);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
   if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
   if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
@@ -162,8 +171,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ error: /email/.test(e.constraint || '') ? 'email_taken' : 'username_taken' });
     throw e;
   }
-  // Al crear la cuenta la sesión queda recordada (20 días): sería raro que se cerrara apenas se cierra la pestaña.
-  setSessionCookie(res, await createSession(created.id, true));
+  // Al crear la cuenta la sesión se recuerda 24 horas: no se cierra apenas se cierra la pestaña, pero para los 20 días hay que iniciar sesión y marcar la casilla.
+  setSessionCookie(res, await createSession(created.id, 'day'));
   res.json({ user: publicUser(await findUserByNameCI.get(username)) });
 });
 
@@ -182,7 +191,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
 
   // remember: la casilla "Recordar este dispositivo". Solo vale el booleano true.
-  setSessionCookie(res, await createSession(user.id, req.body.remember === true));
+  setSessionCookie(res, await createSession(user.id, req.body.remember === true ? 'remember' : 'short'));
   res.json({ user: publicUser(user) });
 });
 
@@ -191,7 +200,8 @@ app.post('/api/account/password', requireAuth, passwordCheckLimiter, writeLimite
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (!verifyPin(currentPassword, req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
-  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(newPassword);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   await setPasswordHash.run(hashPin(newPassword), req.user.id);
   await endOtherSessions(req.user.id, sessionToken(req));
   res.json({ ok: true });

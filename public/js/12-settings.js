@@ -164,7 +164,8 @@ function renderSettingsView(){
     const currentPassword = document.getElementById('st-current-password').value;
     const newPassword = document.getElementById('st-new-password').value;
     const newPassword2 = document.getElementById('st-new-password2').value;
-    if(!isStrongPasswordClient(newPassword)){ errEl.textContent=t('err_weak_password'); errEl.hidden=false; return; }
+    const pwProblem = passwordProblemClient(newPassword);
+    if(pwProblem){ errEl.textContent=t(pwProblem); errEl.hidden=false; return; }
     if(newPassword!==newPassword2){ errEl.textContent=t('err_password_mismatch'); errEl.hidden=false; return; }
     try{
       await apiPost('/account/password', { currentPassword, newPassword });
@@ -174,7 +175,7 @@ function renderSettingsView(){
       document.getElementById('st-new-password2').value='';
     }catch(e){
       const code = e.body && e.body.error;
-      errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password')
+      errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password') : code==='password_emoji' ? t('err_password_emoji')
         : code==='too_many_requests' ? t('err_too_many') : t('err_weak_password');
       errEl.hidden = false;
     }
