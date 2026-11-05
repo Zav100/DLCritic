@@ -68,6 +68,17 @@
   .btn.gold:hover{ box-shadow:0 6px 18px rgba(123,97,255,0.42); }
   .btn.red{ background:var(--red); box-shadow:0 4px 14px rgba(224,64,91,0.34); }
   .btn.red:hover{ box-shadow:0 6px 18px rgba(224,64,91,0.42); }
+  /* Selector de archivos (portadas y fotos): el botón del navegador con el estilo de los botones violetas del panel (.btn.gold), chico y con una flecha de subida. */
+  input[type=file]{ font-family:inherit; font-size:12px; color:var(--ink-soft); }
+  input[type=file]::file-selector-button{
+    font-family:inherit; font-weight:700; font-size:12px; color:#fff; background-color:var(--gold);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='19' x2='12' y2='5'/%3E%3Cpolyline points='5 12 12 5 19 12'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:10px center; background-size:12px;
+    border:none; border-radius:11px; padding:6px 12px 6px 28px; margin-right:8px; cursor:pointer;
+    box-shadow:0 3px 10px rgba(123,97,255,0.32);
+    transition:transform .25s var(--spring), box-shadow .25s var(--spring), filter .2s ease;
+  }
+  input[type=file]::file-selector-button:hover{ filter:brightness(1.07); transform:translateY(-1px); box-shadow:0 5px 14px rgba(123,97,255,0.42); }
+  input[type=file]::file-selector-button:active{ transform:scale(0.96); box-shadow:0 2px 8px rgba(123,97,255,0.32); }
   .btn.ghost{ background:var(--paper-alt); color:var(--ink); box-shadow:none; border:1px solid var(--line-dark); }
   .btn.ghost:hover{ box-shadow:none; border-color:var(--teal); }
   .btn.wide{ width:100%; }
