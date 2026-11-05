@@ -43,6 +43,8 @@ function client(kind = 'public') {
     try { json = JSON.parse(text); } catch { /* html */ }
     return { status: res.status, body: json, text, headers: res.headers };
   };
+  call.getCookie = () => cookie;
+  call.setCookie = c => { cookie = c; };
   return call;
 }
 
@@ -99,6 +101,59 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await b('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Nueva12345' }), 401);
     ok(await b('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Nueva12345' }));
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_b', password: 'Nueva12345' }));
+  });
+  await step('sesiones: el logout las cierra de verdad y en la base solo queda el hash del token', async () => {
+    const s = client();
+    ok(await s('POST', '/api/auth/login', { identifier: 'smoketest_a', password: pass }));
+    const raw = decodeURIComponent(s.getCookie().split('=')[1]);
+    assert.ok(!(await db.prepare('SELECT 1 AS x FROM sessions WHERE token = ?').get(raw)), 'el token no se guarda tal cual');
+    const copy = client(); copy.setCookie(s.getCookie());
+    assert.equal((await copy('GET', '/api/auth/me')).body.user.username, 'smoketest_a');
+    ok(await s('POST', '/api/auth/logout'));
+    assert.equal((await copy('GET', '/api/auth/me')).body.user, null, 'la cookie copiada ya no sirve');
+  });
+  await step('cambiar la contraseña cierra las otras sesiones; "cerrar en todos los dispositivos" cierra todas', async () => {
+    const c = client(), s2 = client(), s3 = client();
+    ok(await c('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_c@example.com', password: pass, username: 'smoketest_c' }));
+    ok(await s2('POST', '/api/auth/login', { identifier: 'smoketest_c', password: pass }));
+    ok(await c('POST', '/api/account/password', { currentPassword: pass, newPassword: 'Tercera98765' }));
+    assert.equal((await s2('GET', '/api/auth/me')).body.user, null, 'la otra sesión se cerró');
+    assert.equal((await c('GET', '/api/auth/me')).body.user.username, 'smoketest_c', 'la sesión actual sigue abierta');
+    ok(await s3('POST', '/api/auth/login', { identifier: 'smoketest_c', password: 'Tercera98765' }));
+    ok(await c('POST', '/api/auth/logout-all'));
+    assert.equal((await c('GET', '/api/auth/me')).body.user, null);
+    assert.equal((await s3('GET', '/api/auth/me')).body.user, null);
+    ok(await anon('POST', '/api/auth/logout-all'), 401);
+  });
+  await step('cambiar el correo pide la contraseña actual, y comparar contraseñas tiene tope de intentos', async () => {
+    const c = client();
+    ok(await c('POST', '/api/auth/login', { identifier: 'smoketest_c', password: 'Tercera98765' }));
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com' }), 401);
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', currentPassword: 'incorrecta1' }), 401);
+    const r = await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', currentPassword: 'Tercera98765' }); ok(r);
+    assert.equal(r.body.user.email, 'smoketest_c2@example.com');
+    ok(await c('PUT', '/api/profile', { bio: 'sin tocar el correo' })); // lo que no es el correo no pide contraseña
+    ok(await c('PUT', '/api/profile', { email: 'smoketest_c2@example.com', bio: 'mismo correo' }));
+    // ya van 4 comparaciones de las 5 permitidas (una fue el cambio de contraseña del paso anterior)
+    ok(await c('POST', '/api/account/password', { currentPassword: 'incorrecta1', newPassword: 'Cuarta987654' }), 401);
+    const blocked = await c('POST', '/api/account/password', { currentPassword: 'Tercera98765', newPassword: 'Cuarta987654' });
+    ok(blocked, 429);
+    assert.ok(blocked.headers.get('retry-after'));
+  });
+  await step('contraseñas comunes o con tu nombre se rechazan; una contraseña kilométrica no se hashea', async () => {
+    const x = client();
+    const reg = (email, password) => x('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
+    assert.equal((await reg('p1@example.com', 'password123')).body.error, 'common_password');
+    assert.equal((await reg('p2@example.com', 'Smoketest_x99')).body.error, 'common_password');
+    assert.equal((await reg('p3@example.com', 'corta1')).body.error, 'weak_password');
+    ok(await x('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
+    ok(await x('POST', '/api/auth/login', { identifier: 'no_existe_nadie', password: pass }), 401);
+  });
+  await step('cabeceras de seguridad en las páginas', async () => {
+    const h = await anon('GET', '/');
+    assert.equal(h.headers.get('x-frame-options'), 'DENY');
+    assert.equal(h.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    assert.equal(h.headers.get('x-content-type-options'), 'nosniff');
   });
   await step('rutas protegidas devuelven 401 sin sesión', async () => {
     for (const [m, u] of [['PUT', `/api/reviews/${gameId}`], ['GET', '/api/notifications'], ['GET', '/api/lists/mine'], ['GET', '/api/daily?date=' + today]]) {
@@ -166,7 +221,7 @@ const today = new Date().toISOString().slice(0, 10);
   });
   await step('editar perfil: usuario/email repetidos = 409, cambio válido se refleja', async () => {
     assert.equal((await a('PUT', '/api/profile', { username: 'smoketest_b' })).status, 409);
-    assert.equal((await a('PUT', '/api/profile', { email: 'smoketest_b@example.com' })).status, 409);
+    assert.equal((await a('PUT', '/api/profile', { email: 'smoketest_b@example.com', currentPassword: pass })).status, 409);
     const r = await a('PUT', '/api/profile', { bio: 'Nueva bio', socialLinks: { steam: 'https://steamcommunity.com/id/x', x: 'javascript:alert(1)' } }); ok(r);
     assert.equal(r.body.user.bio, 'Nueva bio');
     assert.deepEqual(r.body.user.socialLinks, { steam: 'https://steamcommunity.com/id/x' });

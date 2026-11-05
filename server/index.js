@@ -7,14 +7,23 @@ const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
 const { rateLimit } = require('./rateLimit');
 const {
-  hashPin, verifyPin, createSession, currentUser, requireAuth,
-  setSessionCookie, clearSessionCookie, deleteSession, parseCookies, SESSION_COOKIE,
+  hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
+  setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
 } = require('./auth');
 
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
+// X-Frame-Options evita que otro sitio meta DLCritic en un iframe (clickjacking sobre el login y los botones de la cuenta).
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  next();
+});
 app.use(express.json());
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
@@ -38,6 +47,8 @@ app.use((req, res, next) => {
 });
 
 const authLimiter = rateLimit({ name: 'auth', windowMs: 10 * 60 * 1000, max: 8 });
+// Los endpoints que comparan la contraseña actual (cambiar contraseña o correo) tienen su propio tope, más bajo: a quien tuviera una sesión robada no le sirve para adivinar la contraseña.
+const passwordCheckLimiter = rateLimit({ name: 'pwcheck', windowMs: 15 * 60 * 1000, max: 5, keyFn: req => 'u:' + req.user.id });
 const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
 
 function publicUser(u) {
@@ -74,6 +85,25 @@ function isValidEmail(val) {
 // 4-digit PIN system are never forced to meet it to keep logging in.
 function isStrongPassword(val) {
   return typeof val === 'string' && val.length >= 8 && val.length <= 200 && /[a-zA-Z]/.test(val) && /[0-9]/.test(val);
+}
+// Contraseñas que cumplen el mínimo (8 caracteres, letras y números) pero están en todas las listas de las primeras que prueba un atacante.
+const COMMON_PASSWORDS = new Set([
+  'password1', 'password01', 'password12', 'password123', 'password1234', 'passw0rd', 'p@ssw0rd', 'qwerty12', 'qwerty123',
+  'qwerty1234', 'qwertyuiop1', 'qwer1234', '1234qwer', 'abc12345', 'abc123456', 'abcd1234', 'abcd12345', '1234abcd', 'a1b2c3d4',
+  'asdf1234', 'asdfgh123', 'zxcv1234', 'zxcvbnm1', '1q2w3e4r', 'q1w2e3r4', '1qaz2wsx', 'zaq12wsx', '12345678a', '123456789a',
+  'a123456789', 'a1234567', '1234567a', 'iloveyou1', 'iloveyou123', 'welcome1', 'welcome123', 'admin123', 'admin1234',
+  'letmein123', 'monkey123', 'dragon123', 'football1', 'baseball1', 'master123', 'sunshine1', 'princess1', 'superman1',
+  'test1234', 'user1234', 'login123', 'pass1234', 'changeme1', 'changeme123', 'contrasena1', 'contrasena123', 'contraseña1',
+  'hola1234', 'holamundo1', 'gamer123', 'gaming123', 'minecraft1', 'fortnite1', 'steam1234', 'xbox1234', 'playstation1',
+  'nintendo1', 'dlcritic1', 'dlcritic123',
+]);
+// Devuelve el código de error de una contraseña rechazada ('weak_password' o 'common_password'), o null si sirve.
+// personal: datos de la propia cuenta (usuario, parte local del correo) que no pueden formar parte de la contraseña.
+function passwordProblem(val, ...personal) {
+  if (!isStrongPassword(val)) return 'weak_password';
+  const low = val.toLowerCase();
+  if (COMMON_PASSWORDS.has(low) || personal.some(p => p && p.length >= 4 && low.includes(p.toLowerCase()))) return 'common_password';
+  return null;
 }
 function sanitizeSocialLinks(input) {
   const out = {};
@@ -133,7 +163,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
   if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(password, username, email.split('@')[0]);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
   if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
   if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
@@ -162,26 +193,39 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const user = identifier.includes('@')
     ? await findUserByEmail.get(identifier.toLowerCase())
     : await findUserByNameCI.get(identifier);
-  if (!user || !verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
+  // Más de 200 caracteres no puede ser una contraseña de esta página (el registro lo impide): ni se gasta tiempo en hashearla.
+  if (password.length > 200) return res.status(401).json({ error: 'bad_login' });
+  if (!user) { spendLoginTime(password); return res.status(401).json({ error: 'bad_login' }); }
+  if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
 
   const { token, expires } = await createSession(user.id);
   setSessionCookie(res, token, expires);
   res.json({ user: publicUser(user) });
 });
 
-app.post('/api/account/password', requireAuth, writeLimiter, async (req, res) => {
+// Cambia la contraseña y cierra las sesiones de los demás dispositivos (la de quien la cambia sigue abierta).
+app.post('/api/account/password', requireAuth, passwordCheckLimiter, writeLimiter, async (req, res) => {
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (!verifyPin(currentPassword, req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
-  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'weak_password' });
+  const passwordError = passwordProblem(newPassword, req.user.username, (req.user.email || '').split('@')[0]);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   await setPasswordHash.run(hashPin(newPassword), req.user.id);
+  await endOtherSessions(req.user.id, sessionToken(req));
   res.json({ ok: true });
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  const cookies = parseCookies(req.headers.cookie);
-  const token = cookies[SESSION_COOKIE];
-  if (token) deleteSession.run(token);
+// Se espera el borrado: en Vercel la función puede congelarse apenas responde, y la sesión quedaría viva en el servidor.
+app.post('/api/auth/logout', async (req, res) => {
+  const token = sessionToken(req);
+  if (token) await endSession(token);
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// "Cerrar sesión en todos los dispositivos", incluido este.
+app.post('/api/auth/logout-all', requireAuth, async (req, res) => {
+  await endAllSessions(req.user.id);
   clearSessionCookie(res);
   res.json({ ok: true });
 });
@@ -561,7 +605,17 @@ app.get('/api/users/:username', async (req, res) => {
   res.json({ user: await shapePublicProfile(user, await currentUser(req)) });
 });
 
-app.put('/api/profile', requireAuth, writeLimiter, async (req, res) => {
+// Cambiar el correo pide la contraseña actual: sin eso, una sesión robada alcanzaría para quedarse con la cuenta (el correo es por donde se recupera).
+async function requirePasswordForEmailChange(req, res, next) {
+  const email = req.body.email;
+  if (typeof email !== 'string' || email.trim().toLowerCase() === (req.user.email || '')) return next();
+  await passwordCheckLimiter(req, res, () => {
+    if (!verifyPin(String(req.body.currentPassword || ''), req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
+    next();
+  });
+}
+
+app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter, async (req, res) => {
   const b = req.body || {};
   let username = req.user.username;
   if (typeof b.username === 'string') {

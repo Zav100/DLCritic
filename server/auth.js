@@ -4,6 +4,13 @@ const db = require('./db');
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const SESSION_COOKIE = 'cartridge_session';
 
+// Una contraseña falsa para gastar el mismo tiempo cuando el usuario no existe (si no, la respuesta rápida delata qué cuentas existen).
+let dummyHash;
+function spendLoginTime(password) {
+  dummyHash ??= hashPin('contrasena-que-no-existe');
+  verifyPin(password, dummyHash);
+}
+
 function hashPin(pin) {
   const salt = crypto.randomBytes(16).toString('hex');
   const derived = crypto.scryptSync(pin, salt, 64).toString('hex');
@@ -18,19 +25,30 @@ function verifyPin(pin, stored) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// En la base se guarda el hash (SHA-256) del token, no el token: si alguien se llevara una copia de la base, no podría usar las sesiones.
+// El token en sí solo vive en la cookie del navegador.
+const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 const insertSession = db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)');
 // Sesión y usuario en una sola consulta: cada request autenticado hace un viaje a la base, no dos.
 const findSessionUser = db.prepare('SELECT u.*, s.expires_at AS session_expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?');
 const deleteSession = db.prepare('DELETE FROM sessions WHERE token = ?');
+const deleteOtherSessions = db.prepare('DELETE FROM sessions WHERE user_id = ? AND token <> ?');
+const deleteAllSessions = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const deleteExpired = db.prepare('DELETE FROM sessions WHERE expires_at < ?');
 
 async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const now = new Date();
   const expires = new Date(now.getTime() + SESSION_TTL_MS);
-  await insertSession.run(token, userId, now.toISOString(), expires.toISOString());
+  await insertSession.run(sha256(token), userId, now.toISOString(), expires.toISOString());
   return { token, expires };
 }
+
+// Cierra la sesión de ese token (el de la cookie).
+const endSession = token => deleteSession.run(sha256(token));
+// Cierra todas las sesiones de la persona menos la actual (al cambiar la contraseña) o todas, también la actual.
+const endOtherSessions = (userId, token) => deleteOtherSessions.run(userId, sha256(token));
+const endAllSessions = userId => deleteAllSessions.run(userId);
 
 function parseCookies(header) {
   const out = {};
@@ -44,6 +62,8 @@ function parseCookies(header) {
   });
   return out;
 }
+
+const sessionToken = req => parseCookies(req.headers.cookie)[SESSION_COOKIE];
 
 function setSessionCookie(res, token, expires) {
   const attrs = [
@@ -71,14 +91,14 @@ async function purgeExpiredSessions() {
 }
 
 async function currentUser(req) {
-  const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+  const token = sessionToken(req);
   if (!token) return null; // visitante sin sesión: ni siquiera se consulta la base
   await purgeExpiredSessions();
-  const row = await findSessionUser.get(token);
+  const row = await findSessionUser.get(sha256(token));
   if (!row) return null;
   const { session_expires_at, ...user } = row;
   if (new Date(session_expires_at) < new Date()) {
-    await deleteSession.run(token);
+    await endSession(token);
     return null;
   }
   return user;
@@ -92,6 +112,6 @@ async function requireAuth(req, res, next) {
 }
 
 module.exports = {
-  hashPin, verifyPin, createSession, currentUser, requireAuth,
-  setSessionCookie, clearSessionCookie, deleteSession, parseCookies, SESSION_COOKIE,
+  hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
+  setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
 };

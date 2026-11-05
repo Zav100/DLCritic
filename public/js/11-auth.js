@@ -131,7 +131,7 @@ async function handleRegisterSubmit(){
   const socialLinks = {};
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', common_password:'err_common_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
     ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));

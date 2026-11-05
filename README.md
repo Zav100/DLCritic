@@ -45,7 +45,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/db.js` — acceso a PostgreSQL (driver `pg`; Neon en producción). Mantiene la forma que tenía SQLite, `db.prepare(sql).get/all/run(...)`, pero asíncrona (`await`).
 - `server/schema.sql` — el esquema de la base. `npm run db:migrate` lo aplica (es seguro repetirlo).
 - `scripts/` — `migrate.js`, `seed.js`, `import-sqlite.js`, `smoke-test.js` y `local-env.js` (modo local con Postgres embebido).
-- `server/auth.js` — hash de PIN (scrypt) y sesiones por cookie httpOnly.
+- `server/auth.js` — hash de contraseñas (scrypt) y sesiones por cookie httpOnly (en la base se guarda solo el hash del token).
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
 - `server/admin.js` — API del panel de administración (requiere sesión + `is_admin`).
 - `server/make-admin.js` — script de línea de comandos para promover un usuario a admin.
@@ -94,9 +94,11 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
 | GET | `/api/auth/me` | — | usuario de la sesión actual |
-| POST | `/api/auth/register` | — | crear cuenta `{username, pin}` |
-| POST | `/api/auth/login` | — | iniciar sesión `{username, pin}` |
+| POST | `/api/auth/register` | — | crear cuenta `{email, password, username, acceptTerms, bio?, socialLinks?}` |
+| POST | `/api/auth/login` | — | iniciar sesión `{identifier, password}` (correo o, en cuentas viejas, usuario) |
 | POST | `/api/auth/logout` | — | cerrar sesión |
+| POST | `/api/auth/logout-all` | sesión | cerrar sesión en todos los dispositivos, incluido este |
+| POST | `/api/account/password` | sesión | cambiar la contraseña `{currentPassword, newPassword}`; cierra las sesiones de los otros dispositivos |
 | GET | `/api/games` | — | catálogo completo visible (todo lo no oculto) |
 | POST | `/api/games` | ✔ | agregar juego manual (título + género, básico) |
 | GET | `/api/date-events` | — | calendario de fechas importantes |
@@ -156,6 +158,8 @@ Neon solo conserva 6 horas de historial en el plan gratuito, así que las copias
 
 ## Notas de seguridad
 
-- El PIN de 4 dígitos se guarda con hash (scrypt + salt), nunca en texto plano.
-- Las sesiones usan cookies `HttpOnly` + `SameSite=Lax` (no accesibles desde JS, mitigan XSS/CSRF básicos).
-- Sigue sin ser un sistema de autenticación "serio" (PIN de 4 dígitos = 10,000 combinaciones) — están bien las advertencias que ya tenía la UI al respecto.
+- Las contraseñas se guardan con hash (scrypt + salt), nunca en texto plano. Se piden 8+ caracteres con letras y números, y se rechazan las más comunes (lista `COMMON_PASSWORDS` en `server/index.js`) y las que incluyen el usuario o la parte local del correo. Las cuentas viejas con PIN de 4 dígitos siguen entrando, pero no se les exige cambiarlo.
+- Las sesiones usan cookies `HttpOnly` + `SameSite=Lax` (+ `Secure` en producción), duran 30 días y en la base se guarda el SHA-256 del token, no el token: una copia de la base no sirve para entrar a las cuentas. Cambiar la contraseña cierra las sesiones de los otros dispositivos, y Ajustes tiene "cerrar sesión en todos los dispositivos".
+- Cambiar el correo o la contraseña pide la contraseña actual y tiene su propio tope (5 intentos cada 15 minutos por usuario). El login limita por IP (8 cada 10 minutos); no hay bloqueo por cuenta a propósito, porque cualquiera podría dejar afuera a un usuario (o al admin) a base de intentos fallidos.
+- Cabeceras: `X-Frame-Options: DENY` (sin clickjacking), `Referrer-Policy`, `Permissions-Policy` y `nosniff`. No hay Content-Security-Policy todavía: la página usa scripts y estilos en línea.
+- Falta, y está pendiente: recuperación de contraseña por correo, verificación del correo, login con Google y verificación en dos pasos para las cuentas admin.
