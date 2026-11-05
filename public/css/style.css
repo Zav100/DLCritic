@@ -2683,7 +2683,7 @@ input[type=search]::-webkit-search-cancel-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--paper-alt);
+  background: var(--paper);
   border: none;
   color: var(--ink);
   font-family: 'Space Grotesk', sans-serif;
@@ -2693,6 +2693,8 @@ input[type=search]::-webkit-search-cancel-button {
   border-radius: 20px;
   cursor: pointer;
   margin-bottom: 16px;
+  /* un contorno fino y una sombra suave, para que no se pierda con el fondo de la página */
+  box-shadow: 0 0 0 1px var(--line-dark), 0 2px 8px var(--shadow-strong);
   transition: transform .3s var(--spring), background .2s ease, box-shadow .3s var(--spring);
 }
 
@@ -2707,7 +2709,7 @@ input[type=search]::-webkit-search-cancel-button {
   background: var(--paper);
   color: var(--gold);
   transform: translateX(-3px);
-  box-shadow: 0 4px 12px var(--shadow-soft);
+  box-shadow: 0 0 0 1px var(--line-dark), 0 5px 14px var(--shadow-strong);
 }
 
 .backlink:hover svg {
@@ -5108,4 +5110,13 @@ html.splash-on #headerLogo {
 
 @keyframes sp-type {
   to { clip-path: inset(-20% -20% -20% -20%); }
+}
+
+/* En pantallas anchas la ficha de un juego o personaje se ensancha con su columna derecha y sale del ancho normal de la página: el botón "Volver"
+   se alinea con el borde izquierdo de la ficha (la misma cuenta que .layout-rail) en vez de quedar más adentro. */
+@media(min-width:1400px) {
+  #gameBackBtn,
+  #characterBackBtn {
+    margin-left: calc((100% - min(calc(var(--col) + var(--rail-w) + var(--layout-gap)), calc(100vw - 80px))) / 2);
+  }
 }
