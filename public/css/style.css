@@ -646,21 +646,6 @@ main {
   height: 40px;
 }
 
-/* El cuadro es claro en los dos temas (en el oscuro, vidrio lavanda), así que los botones usan los tonos de tinta: texto oscuro, un contorno fino y un fondo un poco más marcado que el del cuadro. */
-.suggest-modal .plat-chip:not(.active) {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 9%, var(--paper));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 26%, transparent);
-}
-
-.confirm-box.suggest-modal .btn-ghost {
-  color: var(--ink);
-  border-color: color-mix(in srgb, var(--ink) 32%, transparent);
-}
-
-.confirm-box.suggest-modal .btn-ghost:hover {
-  border-color: var(--red);
-}
 
 .confirm-box.list-detail-modal {
   max-width: 900px;
@@ -2365,8 +2350,9 @@ main {
   padding: 7px 12px;
   border-radius: 20px;
   border: none;
-  background: var(--paper-alt);
-  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 9%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 26%, transparent);
+  color: var(--ink);
   cursor: pointer;
   letter-spacing: 0.3px;
   transition: background .15s ease, color .15s ease, transform .15s var(--spring);
@@ -2379,6 +2365,7 @@ main {
 
 .chip.active {
   background: var(--gold);
+  box-shadow: none;
   color: #fff;
   font-weight: 700;
 }
@@ -2398,8 +2385,10 @@ main {
   padding: 6px 14px 6px 6px;
   border-radius: 22px;
   border: none;
-  background: var(--paper-alt);
-  color: var(--fg-soft);
+  /* tonos de tinta (no fg-soft, que en el tema oscuro es lavanda claro sobre fondo claro): texto oscuro, fondo un poco más marcado que la superficie y un contorno fino */
+  background: color-mix(in srgb, var(--ink) 9%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 26%, transparent);
+  color: var(--ink);
   cursor: pointer;
   letter-spacing: 0.3px;
   transition: background .18s ease, color .18s ease, transform .15s var(--spring), box-shadow .18s ease;
@@ -2494,9 +2483,15 @@ textarea {
   font-size: 14px;
 }
 
+/* No se estira a mano: crece con lo que se escribe (field-sizing; 03-state-and-utils.js lo respalda en navegadores sin soporte) entre 2 y 5 renglones, y pasado el tope aparece el scroll.
+   22px = padding (10 + 10) + borde (1 + 1). */
 textarea {
-  resize: vertical;
-  min-height: 90px;
+  resize: none;
+  line-height: 1.4;
+  field-sizing: content;
+  min-height: calc(2 * 1.4em + 22px);
+  max-height: calc(5 * 1.4em + 22px);
+  overflow-y: auto;
 }
 
 /* el ✕ propio (.search-clear) reemplaza al nativo de type=search */
@@ -3868,7 +3863,13 @@ input[type=search]::-webkit-search-cancel-button {
 
 .card .btn-ghost,
 .confirm-box .btn-ghost {
-  color: var(--ink-soft);
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+
+.card .btn-ghost:hover,
+.confirm-box .btn-ghost:hover {
+  border-color: var(--red);
 }
 
 .confirm-actions {

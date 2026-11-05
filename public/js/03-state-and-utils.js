@@ -189,3 +189,12 @@ function MOOD_CHARACTER(r){ return r<=2? t('char_mood1') : r<=4? t('char_mood3')
 const MOOD_COLOR = (r)=> r<=2?'var(--red)': r<=4?'var(--teal-dim)': r<=6?'var(--teal)': r<=8?'var(--gold)':'var(--pink)';
 // Color de texto a juego con MOOD_COLOR (para que el número sea legible arriba del gauge).
 const MOOD_TEXT_COLOR = (r)=> r<=2?'var(--red-dim)': r<=6?'var(--teal-dim)': r<=8?'var(--gold-dim)':'var(--pink-dim)';
+
+// Respaldo de "field-sizing: content" (ver textarea en public/css/style.css) para los navegadores que no lo tienen: la casilla crece al escribir; el tope de 5 renglones lo pone el CSS (max-height).
+if(!CSS.supports('field-sizing','content')){
+  const fit = el=>{ if(!el.offsetParent) return; el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; };
+  document.addEventListener('input', e=>{ if(e.target.matches('textarea')) fit(e.target); });
+  document.addEventListener('focusin', e=>{ if(e.target.matches('textarea')) fit(e.target); });
+  // las que aparecen ya con texto (reseña, bio, descripción al editar) o se muestran después
+  new MutationObserver(()=> document.querySelectorAll('textarea').forEach(fit)).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['hidden','class'] });
+}

@@ -55,7 +55,8 @@
     transition:border-color .15s ease, box-shadow .15s ease;
   }
   input:focus-visible, select:focus-visible, textarea:focus-visible{ outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(76,125,240,0.18); }
-  textarea{ resize:vertical; min-height:80px; }
+  /* No se estira a mano: crece con lo que se escribe entre 2 y 5 renglones; pasado el tope aparece el scroll (22px = padding + borde). */
+  textarea{ resize:none; line-height:1.4; field-sizing:content; min-height:calc(2 * 1.4em + 22px); max-height:calc(5 * 1.4em + 22px); overflow-y:auto; }
 
   .btn{
     font-weight:700; font-size:13px; background:var(--teal); color:#fff; border:none; padding:11px 20px;
