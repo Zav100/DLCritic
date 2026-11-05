@@ -147,9 +147,10 @@ function renderQuickRate(scope, gameId, currentValue){
       paintQuickRate(wrap, i);
       updateQuickReadout(scope, i, true);
       b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
-      await saveRating(gameId, i);
-      if(i>=9) celebrateFavorite(wrap);
-      toast(t('toast_rating_saved'));
+      if(await saveRating(gameId, i)){
+        if(i>=9) celebrateFavorite(wrap);
+        toast(t('toast_rating_saved'));
+      }
       renderGameDetail();
     });
     wrap.appendChild(b);
@@ -159,21 +160,35 @@ function renderQuickRate(scope, gameId, currentValue){
   const clearBtn = document.getElementById(scope+'ClearBtn');
   if(clearBtn) clearBtn.onclick = ()=> deleteRating(gameId);
 }
+// Guardar es "optimista": la pantalla cambia al toque y recién después se le avisa al servidor. Si el servidor no lo acepta (sin conexión, límite de
+// intentos, sesión vencida) se avisa con un solo mensaje de error y se vuelve a pedir el estado real de las reseñas, para que la pantalla no siga
+// mostrando como guardado algo que no lo está. Devuelve true si se guardó. Lo usan también 10-lists.js y 14-characters.js.
+async function persistOrResync(request){
+  try{ await request(); return true; }
+  catch(e){
+    toast(t(e && e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_review'));
+    try{
+      const [rv, crv] = await Promise.all([apiGet('/reviews'), apiGet('/character-reviews')]);
+      state.reviews = rv.reviews; state.characterReviews = crv.characterReviews;
+    }catch(e2){ /* sin conexión: queda como está */ }
+    return false;
+  }
+}
 // Guarda (o crea) la nota de state.user para un juego: actualiza el estado local al toque (optimista) y recién después pega al servidor; si falla, avisa por toast pero no revierte el cambio local.
 async function saveRating(gameId, rating){
-  if(!state.user) return;
+  if(!state.user) return false;
   let rv = state.reviews.find(r=>r.gameId===gameId && r.username===state.user.username);
   if(rv){ rv.rating=rating; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), gameId, username:state.user.username, rating, text:'', platforms:[], date:new Date().toISOString() }; state.reviews.push(rv); }
-  try{ await apiPut('/reviews/'+encodeURIComponent(gameId), { rating }); }catch(e){ toast(t('err_save_review')); }
+  return persistOrResync(()=> apiPut('/reviews/'+encodeURIComponent(gameId), { rating }));
 }
 // Igual que saveRating pero para el texto de la reseña.
 async function saveReviewText(gameId, text){
-  if(!state.user) return;
+  if(!state.user) return false;
   let rv = state.reviews.find(r=>r.gameId===gameId && r.username===state.user.username);
   if(rv){ rv.text=text; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), gameId, username:state.user.username, rating:null, text, platforms:[], date:new Date().toISOString() }; state.reviews.push(rv); }
-  try{ await apiPut('/reviews/'+encodeURIComponent(gameId), { text }); }catch(e){ toast(t('err_save_review')); }
+  return persistOrResync(()=> apiPut('/reviews/'+encodeURIComponent(gameId), { text }));
 }
 // Borra solo el texto de la reseña (pide confirmación); si la reseña queda sin nota, sin texto y sin plataformas, la elimina del todo — nunca se deja un registro completamente vacío.
 async function deleteReviewText(gameId){
@@ -183,8 +198,7 @@ async function deleteReviewText(gameId){
   rv.text = '';
   const isEmpty = rv.rating==null && (!rv.platforms || rv.platforms.length===0);
   if(isEmpty){ state.reviews = state.reviews.filter(r=>r.id!==rv.id); }
-  try{ await apiDelete('/reviews/'+encodeURIComponent(gameId)+'/text'); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_review_deleted'));
+  if(await persistOrResync(()=> apiDelete('/reviews/'+encodeURIComponent(gameId)+'/text'))) toast(t('toast_review_deleted'));
   renderGameDetail();
 }
 // Borra solo la nota (pide confirmación), con la misma lógica de "si queda todo vacío, borrar la reseña entera" que deleteReviewText.
@@ -195,20 +209,19 @@ async function deleteRating(gameId){
   rv.rating = null;
   const isEmpty = (!rv.text || !rv.text.trim()) && (!rv.platforms || rv.platforms.length===0);
   if(isEmpty){ state.reviews = state.reviews.filter(r=>r.id!==rv.id); }
-  try{ await apiDelete('/reviews/'+encodeURIComponent(gameId)+'/rating'); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_rating_removed'));
+  if(await persistOrResync(()=> apiDelete('/reviews/'+encodeURIComponent(gameId)+'/rating'))) toast(t('toast_rating_removed'));
   renderGameDetail();
 }
 // Guarda qué plataformas jugó el usuario ese juego (checkboxes de la ficha).
 async function saveReviewPlatforms(gameId, platforms){
-  if(!state.user) return;
+  if(!state.user) return false;
   let rv = state.reviews.find(r=>r.gameId===gameId && r.username===state.user.username);
   if(rv){
     rv.platforms=platforms;
     if(rv.rating==null && !rv.text.trim() && platforms.length===0){ state.reviews = state.reviews.filter(r=>r.id!==rv.id); }
   }
   else if(platforms.length>0){ rv = { id:uid(), gameId, username:state.user.username, rating:null, text:'', platforms, date:new Date().toISOString() }; state.reviews.push(rv); }
-  try{ await apiPut('/reviews/'+encodeURIComponent(gameId), { platforms }); }catch(e){ toast(t('err_save_review')); }
+  return persistOrResync(()=> apiPut('/reviews/'+encodeURIComponent(gameId), { platforms }));
 }
 // Pinta los chips de plataforma seleccionables en la ficha de un juego (usa las plataformas del juego si las tiene cargadas, si no ofrece todas).
 function renderQuickPlatforms(gameId, g, myReview){
@@ -258,7 +271,7 @@ function renderReviewBlock(gameId, myReview){
       const errEl=document.getElementById('reviewError');
       const text=input.value.trim();
       if(text.length<10){ errEl.textContent=t('toast_write_more'); errEl.hidden=false; return; }
-      await saveReviewText(gameId, text);
+      if(!await saveReviewText(gameId, text)){ errEl.textContent=t('err_save_review'); errEl.hidden=false; return; } // el texto escrito queda en el cuadro para reintentar
       state.reviewEditing=false;
       toast(t('toast_review_published'));
       renderGameDetail();

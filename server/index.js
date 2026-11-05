@@ -1087,6 +1087,12 @@ app.use(express.static(publicDir, {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'not_found' }));
 
+// Los navegadores piden /favicon.ico por su cuenta (aunque la página declare sus íconos): se los manda al PNG.
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/img/favicon-32.png'));
+
+// Cualquier otra dirección que no existe: una página con el estilo del sitio y la salida al inicio (en vez del "Cannot GET" pelado de Express).
+app.use((req, res) => res.status(404).set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', '404.html')));
+
 // Último manejador: sin esto Express devolvía una página HTML con el stack trace (rutas internas incluidas) ante
 // un JSON mal formado o cualquier excepción.
 app.use((err, req, res, next) => {

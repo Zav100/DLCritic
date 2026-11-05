@@ -266,9 +266,9 @@ function renderShelfReviewsList(keepPage){
 /* ---------- selector de "juego favorito" del perfil ---------- */
 // Grilla buscable de TODO el catálogo para elegir tu juego favorito (el que se muestra destacado en tu perfil); resalta el que ya está elegido.
 function paintFavPickGrid(){
-  const q=(document.getElementById('favSearch').value||'').toLowerCase().trim();
+  const q=foldText(document.getElementById('favSearch').value).trim();
   const grid=document.getElementById('favPickGrid');
-  const games = allGames().filter(g=> g.title.toLowerCase().includes(q)).slice(0,60);
+  const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
   if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_pick_t'), t('empty_browse_s')); return; }
   grid.innerHTML='';
   games.forEach(g=>{
@@ -414,9 +414,9 @@ function openAddToWishlistModal(){
     </div>`;
   document.body.appendChild(overlay);
   function paint(){
-    const q=(document.getElementById('wishlistPickSearch').value||'').toLowerCase().trim();
+    const q=foldText(document.getElementById('wishlistPickSearch').value).trim();
     const grid=document.getElementById('wishlistPickGrid');
-    const games = allGames().filter(g=> g.title.toLowerCase().includes(q)).slice(0,60);
+    const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
     if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_pick_t'), t('empty_browse_s')); return; }
     grid.innerHTML='';
     games.forEach(g=>{
@@ -467,8 +467,7 @@ function jumpToRate(gameId){
 async function deleteReview(id){
   if(!await confirmDialog(t('confirm_delete'))) return;
   state.reviews = state.reviews.filter(r=>r.id!==id);
-  try{ await apiDelete('/reviews/id/'+encodeURIComponent(id)); }catch(e){ toast(t('err_save_review')); }
-  toast(t('toast_review_deleted'));
+  if(await persistOrResync(()=> apiDelete('/reviews/id/'+encodeURIComponent(id)))) toast(t('toast_review_deleted'));
   goView(state.view==='game'?'game':state.view);
 }
 
