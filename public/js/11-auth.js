@@ -40,6 +40,7 @@ function renderRegisterStep2Fields(){
 // Cambia entre la pestaña "Iniciar sesión" y "Registrarme" de la vista /cuenta, reseteando el registro al paso 1 y limpiando errores visibles.
 function setAuthTab(tab){
   state.authTab=tab;
+  if(state.view==='auth') document.title = titleForView('auth'); // el título sigue a la pestaña (Iniciar sesión / Registrarme)
   state.authStep=1;
   for(const [id, t] of [['tabLogin','login'], ['tabRegister','register']]){
     const el = document.getElementById(id);

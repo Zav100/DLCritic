@@ -79,7 +79,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
   - **Destacar/quitar de "Juegos nuevos"** (🆕) — es un flag independiente de ocultar: un juego puede dejar de estar en "Juegos nuevos" y seguir apareciendo normalmente en "Explorar" junto a todos los demás.
   - Borrar un juego definitivamente.
   - Hay un buscador arriba de la tabla porque son ~90+ juegos.
-- **📅 Fechas importantes** — CRUD del calendario que se ve en Novedades (mes, día, título/descripción en ES y EN, y opcionalmente un juego relacionado buscando por título).
+- **📅 Fechas importantes** — CRUD del calendario que se ve en Inicio (mes, día, título/descripción en ES y EN, y opcionalmente un juego relacionado buscando por título).
 - **📰 Noticias** — CRUD de la sección "Noticias del mundo gamer" (título, resumen, fuente, link, color de la insignia; las iniciales se autogeneran de la fuente si las dejás vacías).
 
 **Para habilitar tu cuenta como admin:**

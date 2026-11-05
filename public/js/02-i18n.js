@@ -18,7 +18,7 @@
 const I18N = {
   es: {
     tagline:"Cada opinión es un DLC",
-    nav_feed:"Novedades", nav_browse:"Explorar", nav_shelf:"Mi estantería", nav_daily:"Reto del día", nav_about:"Acerca de", nav_characters:"Personajes",
+    nav_feed:"Inicio", nav_browse:"Explorar", nav_shelf:"Mi estantería", nav_daily:"Reto del día", nav_about:"Acerca de", nav_characters:"Personajes",
     nav_daily_short:"Reto",
     feed_eyebrow:"Catálogo, notas y reseñas",
     feed_h1:'Descubre, califica y comparte <span>cada juego que jugaste</span>.',
@@ -26,7 +26,7 @@ const I18N = {
     hero_cta_explore:"Explorar catálogo", hero_cta_about:"Cómo funciona DLCritic",
     flow_step1_label:"01 · Explorar", flow_step2_label:"02 · Calificar", flow_step3_label:"03 · Reseñar",
     flow_card1_title:"Explora el catálogo",
-    flow_card1_text:"Busca un juego en Explorar o mira los que están recién agregados en Novedades. Filtra por plataforma para encontrar algo rápido.",
+    flow_card1_text:"Busca un juego en Explorar o mira los que están recién agregados en Inicio. Filtra por plataforma para encontrar algo rápido.",
     flow_card2_title:"Pon tu nota",
     flow_card2_text:"Entra a la ficha del juego y califícalo del 1 al 10 con el selector — se guarda al instante, sin pasos extra.",
     flow_card3_title:"Cuenta tu experiencia",
@@ -89,7 +89,7 @@ const I18N = {
     auth_next_btn:"Continuar",
     auth_submit:"Entrar",
     auth_submit_register:"Crear cuenta",
-    back_generic:"Volver", back_explore:"Volver a Explorar", back_news:"Volver a Novedades", back_daily:"Volver al Reto del día", back_shelf:"Volver a Mi estantería",
+    back_generic:"Volver", back_explore:"Volver a Explorar", back_news:"Volver al Inicio", back_daily:"Volver al Reto del día", back_shelf:"Volver a Mi estantería",
     empty_feed_t:"La estantería está vacía", empty_feed_s:"Elige un juego del catálogo y sé el primero en calificarlo.",
     empty_browse_t:"Sin resultados", empty_browse_s:"Prueba con otro título o quita algún filtro.",
     empty_pick_t:"No encontramos ese título",
@@ -247,7 +247,7 @@ const I18N = {
   },
   en: {
     tagline:"Every opinion is a DLC",
-    nav_feed:"News", nav_browse:"Browse", nav_shelf:"My Shelf", nav_daily:"Daily Challenge", nav_about:"About", nav_characters:"Characters",
+    nav_feed:"Home", nav_browse:"Browse", nav_shelf:"My Shelf", nav_daily:"Daily Challenge", nav_about:"About", nav_characters:"Characters",
     nav_daily_short:"Daily",
     feed_eyebrow:"Catalog, ratings and reviews",
     feed_h1:'Discover, rate and share <span>every game you played</span>.',
@@ -255,7 +255,7 @@ const I18N = {
     hero_cta_explore:"Browse the catalog", hero_cta_about:"How DLCritic works",
     flow_step1_label:"01 · Browse", flow_step2_label:"02 · Rate", flow_step3_label:"03 · Review",
     flow_card1_title:"Browse the catalog",
-    flow_card1_text:"Search for a game in Browse or check what's new in News. Filter by platform to find something quick.",
+    flow_card1_text:"Search for a game in Browse or check what's new on Home. Filter by platform to find something quick.",
     flow_card2_title:"Give it a score",
     flow_card2_text:"Open the game's page and rate it from 1 to 10 with the picker — it saves instantly, no extra steps.",
     flow_card3_title:"Share your take",
@@ -318,7 +318,7 @@ const I18N = {
     auth_next_btn:"Continue",
     auth_submit:"Log in",
     auth_submit_register:"Create account",
-    back_generic:"Back", back_explore:"Back to Browse", back_news:"Back to News", back_daily:"Back to Daily Challenge", back_shelf:"Back to My Shelf",
+    back_generic:"Back", back_explore:"Back to Browse", back_news:"Back to Home", back_daily:"Back to Daily Challenge", back_shelf:"Back to My Shelf",
     empty_feed_t:"The shelf is empty", empty_feed_s:"Pick a game from the catalog and be the first to rate it.",
     empty_browse_t:"No results", empty_browse_s:"Try another title or remove a filter.",
     empty_pick_t:"We couldn't find that title",
@@ -480,6 +480,7 @@ function t(key){ return (I18N[state.lang] && I18N[state.lang][key]) ?? I18N.es[k
 // Aplica el idioma actual a TODO lo que ya está en el DOM: actualiza <html lang>, todos los data-i18n*, el botón ES/EN y el badge de usuario. Se llama al arrancar y cada vez que se cambia de idioma.
 function applyI18n(){
   document.documentElement.lang = state.lang;
+  if(appReady) document.title = titleForView(state.view); // al cambiar de idioma, el título de la pestaña también (antes de que arranque la app, queda el del servidor)
   document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.dataset.i18nHtml); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
