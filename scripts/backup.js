@@ -10,7 +10,7 @@ const zlib = require('node:zlib');
 const db = require('../server/db');
 
 const DIR = path.resolve(process.env.BACKUP_DIR || path.join(__dirname, '..', 'backups'));
-const SKIP = new Set(['sessions', 'rate_limits']);
+const SKIP = new Set(['sessions', 'rate_limits', 'password_resets']);
 const KEEP = 30; // al ritmo de una por día, un mes de historia
 
 const read = file => JSON.parse(zlib.gunzipSync(fs.readFileSync(file)));

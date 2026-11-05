@@ -51,6 +51,7 @@ function setAuthTab(tab){
     el.setAttribute('aria-selected', tab===t);
   }
   document.getElementById('authLoginFields').hidden = tab!=='login';
+  document.getElementById('authForgot').hidden = true;
   document.getElementById('authRegisterStep1').hidden = tab!=='register';
   document.getElementById('authRegisterStep2').hidden = true;
   document.getElementById('authError').hidden=true;
@@ -74,6 +75,11 @@ function renderAuthForm(){
   registerAvatarFile = null;
   setAuthTab(state.authTab||'login');
   document.getElementById('authSubmit').onclick = handleLogin;
+  document.getElementById('authForgotLink').onclick = showForgot;
+  document.getElementById('forgotSubmit').onclick = handleForgot;
+  document.getElementById('forgotBack').onclick = hideForgot;
+  document.getElementById('f-email').value = '';
+  document.getElementById('authForgot').hidden = true;
   document.getElementById('registerStep1Next').onclick = handleRegisterStep1Next;
   document.getElementById('registerStep2Back').onclick = ()=> showRegisterStep(1);
   document.getElementById('registerStep2Submit').onclick = handleRegisterSubmit;
@@ -93,6 +99,34 @@ async function afterAuthSuccess(user){
   try{ const r=await apiGet('/notifications'); state.notifications = r.notifications; }catch(e){ state.notifications=[]; }
   renderUserBadge();
   goView('feed');
+}
+// "¿Olvidaste tu contraseña?": cambia el login por el pedido del enlace (y vuelve). El servidor responde lo mismo exista o no el correo, así que el mensaje también.
+function showForgot(){
+  document.getElementById('authLoginFields').hidden = true;
+  document.getElementById('authForgot').hidden = false;
+  document.getElementById('forgotError').hidden = true;
+  document.getElementById('forgotSent').hidden = true;
+  const typed = document.getElementById('a-identifier').value.trim();
+  if(typed.includes('@')) document.getElementById('f-email').value = typed;
+  document.getElementById('f-email').focus();
+}
+function hideForgot(){
+  document.getElementById('authForgot').hidden = true;
+  document.getElementById('authLoginFields').hidden = false;
+}
+async function handleForgot(){
+  const errEl = document.getElementById('forgotError'), sentEl = document.getElementById('forgotSent'), btn = document.getElementById('forgotSubmit');
+  errEl.hidden = true; sentEl.hidden = true;
+  const email = document.getElementById('f-email').value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent = t('err_invalid_email'); errEl.hidden = false; return; }
+  btn.disabled = true;
+  try{
+    await apiPost('/auth/forgot', { email, lang: state.lang });
+    sentEl.textContent = t('auth_forgot_sent'); sentEl.hidden = false;
+  }catch(e){
+    errEl.textContent = e.body && e.body.error==='too_many_requests' ? t('err_too_many') : t(e.body && e.body.error==='invalid_email' ? 'err_invalid_email' : 'err_forgot');
+    errEl.hidden = false;
+  }finally{ btn.disabled = false; }
 }
 // Botón "Entrar" del login. El campo `identifier` acepta tanto un email (cuentas nuevas) como un nombre de usuario (cuentas viejas con PIN) — el servidor decide cuál es cuál.
 async function handleLogin(){

@@ -124,6 +124,6 @@ async function requireAuth(req, res, next) {
 }
 
 module.exports = {
-  hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
+  sha256, hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
   setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
 };

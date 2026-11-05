@@ -5,10 +5,11 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
-const { rateLimit } = require('./rateLimit');
+const { rateLimit, consume } = require('./rateLimit');
+const { sendMail, publicUrl, resetEmail, passwordChangedEmail } = require('./mail');
 const { checkSecondFactor } = require('./twofactor');
 const {
-  hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
+  sha256, hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
   setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
 } = require('./auth');
 
@@ -216,6 +217,66 @@ app.post('/api/account/password', requireAuth, passwordCheckLimiter, writeLimite
   if (passwordError) return res.status(400).json({ error: passwordError });
   await setPasswordHash.run(hashPin(newPassword), req.user.id);
   await endOtherSessions(req.user.id, sessionToken(req));
+  res.json({ ok: true });
+});
+
+/* ---- recuperar la contraseña por correo ---- */
+
+const RESET_TTL_MS = 60 * 60 * 1000; // el enlace vale 1 hora
+// Tiempo mínimo que tarda en responder "te mandamos un correo", exista o no la cuenta: así la demora tampoco delata qué correos están registrados.
+const FORGOT_MIN_MS = Number(process.env.FORGOT_MIN_MS ?? 1500);
+const forgotLimiter = rateLimit({ name: 'forgot', windowMs: 15 * 60 * 1000, max: 5 });
+const resetLimiter = rateLimit({ name: 'reset', windowMs: 10 * 60 * 1000, max: 10 });
+const deleteResetsOf = db.prepare('DELETE FROM password_resets WHERE user_id = ?');
+const deleteExpiredResets = db.prepare('DELETE FROM password_resets WHERE expires_at < ?');
+const insertReset = db.prepare('INSERT INTO password_resets (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)');
+const findReset = db.prepare('SELECT * FROM password_resets WHERE token_hash = ?');
+const useReset = db.prepare('DELETE FROM password_resets WHERE token_hash = ?');
+const findUserForReset = db.prepare('SELECT * FROM users WHERE id = ?');
+
+// Pide el enlace. Responde siempre lo mismo (la dirección exista o no) para no revelar qué correos tienen cuenta. Las cuentas viejas sin
+// correo no pueden recuperarse así: primero tienen que agregar uno en Ajustes.
+app.post('/api/auth/forgot', forgotLimiter, async (req, res) => {
+  const started = Date.now();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
+  const lang = req.body.lang === 'en' ? 'en' : 'es';
+  const user = await findUserByEmail.get(email);
+  // Tope por correo: 3 pedidos por hora, para que nadie pueda llenarle la bandeja a otra persona.
+  if (user && !(await consume('forgot-email', email, 60 * 60 * 1000, 3)).limited) {
+    try {
+      const token = crypto.randomBytes(32).toString('hex');
+      const now = new Date();
+      await deleteExpiredResets.run(now.toISOString());
+      await deleteResetsOf.run(user.id); // un enlace nuevo anula el anterior
+      await insertReset.run(sha256(token), user.id, now.toISOString(), new Date(now.getTime() + RESET_TTL_MS).toISOString());
+      await sendMail({ to: user.email, ...resetEmail(lang, user.username, `${publicUrl()}/restablecer?token=${token}`) });
+    } catch (e) {
+      console.error('No se pudo mandar el correo de recuperación:', e.message); // el token nunca se imprime
+    }
+  }
+  await new Promise(resolve => setTimeout(resolve, Math.max(0, FORGOT_MIN_MS - (Date.now() - started))));
+  res.json({ ok: true });
+});
+
+// Elige la contraseña nueva con el token del correo. Cierra todas las sesiones (quien la perdió o se la robaron no queda adentro) y avisa por correo.
+// La verificación en dos pasos de un admin no se toca: restablecer la contraseña no alcanza para entrar.
+app.post('/api/auth/reset', resetLimiter, async (req, res) => {
+  const token = String(req.body.token || '');
+  const newPassword = String(req.body.newPassword || '');
+  const row = /^[0-9a-f]{64}$/.test(token) ? await findReset.get(sha256(token)) : null;
+  if (!row || new Date(row.expires_at) < new Date()) return res.status(400).json({ error: 'invalid_token' });
+  // La contraseña se valida antes de gastar el token: si no sirve, el mismo enlace permite probar con otra.
+  const passwordError = passwordProblem(newPassword);
+  if (passwordError) return res.status(400).json({ error: passwordError });
+  // Se gasta el token con un DELETE: si dos pedidos llegan juntos, solo a uno le queda una fila borrada.
+  if ((await useReset.run(sha256(token))).changes !== 1) return res.status(400).json({ error: 'invalid_token' });
+  const user = await findUserForReset.get(row.user_id);
+  await setPasswordHash.run(hashPin(newPassword), user.id);
+  await endAllSessions(user.id);
+  await deleteResetsOf.run(user.id);
+  try { await sendMail({ to: user.email, ...passwordChangedEmail(req.body.lang === 'en' ? 'en' : 'es', user.username) }); }
+  catch (e) { console.error('No se pudo mandar el aviso de cambio de contraseña:', e.message); }
   res.json({ ok: true });
 });
 
@@ -1004,6 +1065,8 @@ app.get('/usuario/:username', async (req, res) => {
 [['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html']].forEach(([route, file]) => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', file)));
 });
+// La página donde se elige la contraseña nueva. La dirección lleva el token: Referrer-Policy: no-referrer evita que viaje en el Referer a otros sitios.
+app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).sendFile(path.join(__dirname, 'views', 'restablecer.html')));
 
 /* ---------------- admin dashboard ---------------- */
 

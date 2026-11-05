@@ -45,6 +45,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - `server/db.js` — acceso a PostgreSQL (driver `pg`; Neon en producción). Mantiene la forma que tenía SQLite, `db.prepare(sql).get/all/run(...)`, pero asíncrona (`await`).
 - `server/schema.sql` — el esquema de la base. `npm run db:migrate` lo aplica (es seguro repetirlo).
 - `scripts/` — `migrate.js`, `seed.js`, `import-sqlite.js`, `smoke-test.js` y `local-env.js` (modo local con Postgres embebido).
+- `server/mail.js` y `server/smtp.js` — envío de correos (recuperación de contraseña): textos, configuración por variables de entorno y un cliente SMTP sin dependencias.
 - `server/totp.js` y `server/twofactor.js` — verificación en dos pasos de las cuentas admin (códigos TOTP y su comprobación contra la base).
 - `server/auth.js` — hash de contraseñas (scrypt) y sesiones por cookie httpOnly (en la base se guarda solo el hash del token).
 - `server/rateLimit.js` — límite de intentos por IP/usuario en endpoints sensibles.
@@ -100,6 +101,8 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF
 | POST | `/api/auth/logout` | — | cerrar sesión |
 | POST | `/api/admin/2fa/setup` | admin | empieza a activar la verificación en dos pasos `{currentPassword}`; devuelve la clave y la dirección `otpauth://` |
 | POST | `/api/admin/2fa/enable` | admin | la activa con un código de prueba `{code}`; devuelve los códigos de recuperación (una sola vez) |
+| POST | `/api/auth/forgot` | — | pide el enlace de recuperación `{email, lang?}` (responde igual exista o no la cuenta) |
+| POST | `/api/auth/reset` | — | elige la contraseña nueva `{token, newPassword}` con el token del correo |
 | POST | `/api/auth/logout-all` | sesión | cerrar sesión en todos los dispositivos, incluido este |
 | POST | `/api/account/password` | sesión | cambiar la contraseña `{currentPassword, newPassword}`; cierra las sesiones de los otros dispositivos |
 | GET | `/api/games` | — | catálogo completo visible (todo lo no oculto) |
@@ -138,6 +141,8 @@ Variables de entorno del proyecto en Vercel:
 | `DATABASE_URL` | URL **pooled** de la rama de Neon (`production` en producción) |
 | `BLOB_READ_WRITE_TOKEN` | token del Blob store (o conectar el store al proyecto en Vercel > Storage) |
 | `ADMIN_HOST` | dominio del dashboard, ej. `dlcritic-admin.vercel.app` (varios, separados por coma) |
+| `PUBLIC_URL` | dirección pública del sitio, ej. `https://dlcritic.vercel.app`; va en los enlaces de los correos (en producción es obligatoria) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | el servidor de correo con el que se mandan los mensajes de recuperación de contraseña (con Gmail: `smtp.gmail.com`, `465`, la cuenta y una "contraseña de aplicación" de Google). Opcionales: `SMTP_SECURE` (`tls` / `starttls`), `MAIL_REPLY_TO`. Sin `SMTP_HOST` en producción, el correo falla; en local se imprime en la consola |
 
 Pasos: `vercel link` (una vez) → cargar las variables → `npm run db:migrate`, `npm run db:import -- data.db` y `npm run db:migrate-uploads` contra la rama de Neon que use el despliegue → `vercel deploy --prod`. Para probar un despliegue: `BASE_URL=https://… ADMIN_URL=https://… npm run test:smoke` (solo contra una base de pruebas, nunca producción).
 
@@ -166,4 +171,5 @@ Neon solo conserva 6 horas de historial en el plan gratuito, así que las copias
 - Cambiar el correo o la contraseña pide la contraseña actual y tiene su propio tope (5 intentos cada 15 minutos por usuario). El login limita por IP (8 cada 10 minutos); no hay bloqueo por cuenta a propósito, porque cualquiera podría dejar afuera a un usuario (o al admin) a base de intentos fallidos.
 - Cabeceras: `X-Frame-Options: DENY` (sin clickjacking), `Referrer-Policy`, `Permissions-Policy` y `nosniff`. No hay Content-Security-Policy todavía: la página usa scripts y estilos en línea.
 - **Verificación en dos pasos (TOTP) obligatoria para las cuentas admin.** Sin ella, `/api/admin/*` responde `403 two_factor_required` y el panel muestra la pantalla de activación (contraseña → clave para la app de autenticación → código de prueba → 8 códigos de recuperación, que se muestran una sola vez). Con ella, `POST /api/auth/login` responde `401 two_factor_required` hasta que llega `code` (6 dígitos de la app o un código de recuperación) y recién ahí abre la sesión. Cada código sirve una sola vez (`totp_last_step`), hay un tope de 10 intentos cada 15 minutos por cuenta y la activación pide la contraseña de nuevo. Código en `server/totp.js` (cálculo, probado con los vectores del RFC 6238) y `server/twofactor.js` (la base y los topes). Los datos están en las columnas `totp_*` de `users`: la clave queda guardada tal cual, como el hash de la contraseña, así que los backups hay que cuidarlos igual. Si el admin pierde el teléfono y los códigos: `npm run db:reset-2fa -- <usuario>` (en producción: `node --env-file=.env.backup scripts/reset-2fa.js <usuario>`).
-- Falta, y está pendiente: recuperación de contraseña por correo, verificación del correo y login con Google.
+- **Recuperar la contraseña por correo.** "¿Olvidaste tu contraseña?" en el login pide el correo y `POST /api/auth/forgot` responde siempre lo mismo (exista o no la cuenta, y tardando al menos 1,5 s) y manda un enlace `/restablecer?token=...`. El token son 32 bytes al azar: en la base (`password_resets`) queda su hash, vale 1 hora, se gasta una sola vez y un enlace nuevo anula el anterior. Topes: 5 pedidos cada 15 minutos por IP y 3 por hora por correo. `POST /api/auth/reset` valida la contraseña antes de gastar el enlace, cierra todas las sesiones y avisa por correo; la verificación en dos pasos de un admin no se toca. La página `/restablecer` saca el token de la barra de direcciones y no manda `Referer`. Las cuentas viejas sin correo no pueden recuperarse así: primero tienen que agregar uno en Ajustes. Los correos salen por `server/smtp.js` (cliente SMTP mínimo, sin dependencias; conexión cifrada con TLS o STARTTLS) y los textos están en `server/mail.js`.
+- Falta, y está pendiente: verificación del correo (hoy no se comprueba que la persona sea dueña de la dirección) y login con Google.

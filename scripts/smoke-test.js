@@ -16,7 +16,11 @@ const crypto = require('node:crypto');
 const { del } = require('@vercel/blob');
 const REMOTE = !!process.env.BASE_URL;
 const PUBLIC_HOST = 'public.test', ADMIN_HOST = 'admin.test';
-if (!REMOTE) process.env.ADMIN_HOST = ADMIN_HOST; // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar)
+if (!REMOTE) { // en proceso se simulan dos dominios (la app lee ADMIN_HOST al cargar), no hay servidor de correo y no se espera de más
+  process.env.ADMIN_HOST = ADMIN_HOST;
+  process.env.FORGOT_MIN_MS = '0';
+  process.env.MAIL_QUIET = '1';
+}
 const db = require('../server/db');
 const totp = require('../server/totp');
 const { uploadsDir } = require('../server/upload');
@@ -184,6 +188,106 @@ const today = new Date().toISOString().slice(0, 10);
     const d = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_d@example.com', password: pass, username: 'smoketest_d' }); ok(d);
     assert.match(d.headers.getSetCookie()[0], /Expires=/);
     assert.equal(await hoursLeft(d), 24);
+  });
+  await step('correo: el cliente SMTP autentica, arma bien el mensaje y no manda sin cifrar fuera de localhost', async () => {
+    const net = require('node:net');
+    const smtp = require('../server/smtp');
+    const log = [];
+    const server = net.createServer(sock => {
+      let inData = false, body = '', buf = '';
+      sock.write('220 falso ESMTP\r\n');
+      sock.on('data', chunk => {
+        buf += chunk;
+        let i;
+        while ((i = buf.indexOf('\r\n')) >= 0) {
+          const line = buf.slice(0, i); buf = buf.slice(i + 2);
+          if (inData) { if (line === '.') { inData = false; log.push(['CUERPO', body]); sock.write('250 en cola\r\n'); } else body += line + '\r\n'; continue; }
+          log.push(['CMD', line]);
+          if (line.startsWith('EHLO')) sock.write('250-falso\r\n250-AUTH PLAIN\r\n250 8BITMIME\r\n');
+          else if (line.startsWith('AUTH PLAIN')) sock.write('235 ok\r\n');
+          else if (line.startsWith('MAIL FROM') || line.startsWith('RCPT TO')) sock.write('250 ok\r\n');
+          else if (line === 'DATA') { inData = true; sock.write('354 sigue\r\n'); }
+          else if (line === 'QUIT') sock.end('221 chau\r\n');
+        }
+      });
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const subject = 'Restablece tu contraseña de DLCritic', text = 'Hola ñandú\n.\npunto solo\n' + 'x'.repeat(200);
+      await smtp.send({ host: '127.0.0.1', port: server.address().port, secure: 'none', user: 'cuenta@ejemplo.com', pass: 'secreta', from: 'DLCritic <dlcritic@ejemplo.com>', replyTo: 'ayuda@ejemplo.com', to: 'persona@ejemplo.com', subject, text });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const cmds = log.filter(l => l[0] === 'CMD').map(l => l[1]);
+      assert.ok(cmds.includes('AUTH PLAIN ' + Buffer.from('\0cuenta@ejemplo.com\0secreta').toString('base64')), 'autenticó');
+      assert.ok(cmds.includes('MAIL FROM:<dlcritic@ejemplo.com>') && cmds.includes('RCPT TO:<persona@ejemplo.com>'), 'remitente y destinatario');
+      assert.ok(cmds.includes('QUIT'));
+      const [head, ...rest] = log.find(l => l[0] === 'CUERPO')[1].split('\r\n\r\n');
+      assert.ok(head.includes('From: DLCritic <dlcritic@ejemplo.com>') && head.includes('To: persona@ejemplo.com') && head.includes('Reply-To: ayuda@ejemplo.com'));
+      const encoded = head.match(/Subject: =\?UTF-8\?B\?(.+?)\?=/)[1];
+      assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), subject, 'el asunto con tilde va codificado');
+      assert.equal(Buffer.from(rest.join('\r\n\r\n').replace(/\r\n/g, ''), 'base64').toString('utf8'), text, 'el cuerpo (con ñ y un "." solo en una línea) llega intacto');
+    } finally { server.close(); }
+    await assert.rejects(smtp.send({ host: 'mail.ejemplo.com', port: 25, secure: 'none', from: 'a@b.com', to: 'c@d.com', subject: 's', text: 't' }), /localhost/);
+    await assert.rejects(smtp.send({ host: '127.0.0.1', port: 1, secure: 'none', from: 'a@b.com', to: 'c@d.com\r\nBcc: otro@d.com', subject: 's', text: 't' }), /inválid/);
+  });
+  await step('recuperar la contraseña por correo: enlace de un solo uso, que vence, sin revelar qué correos existen', async () => {
+    if (REMOTE) return; // los correos se leen de la memoria del proceso (mail.outbox): solo en modo local
+    const mail = require('../server/mail');
+    const tokenOf = m => m.text.match(/\/restablecer\?token=([0-9a-f]{64})/)[1];
+    const forgot = (email, extra = {}) => client()('POST', '/api/auth/forgot', { email, ...extra });
+    const reset = (token, newPassword) => client()('POST', '/api/auth/reset', { token, newPassword });
+    const nueva = 'Nueva-Clave9!';
+
+    ok(await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_r@example.com', password: pass, username: 'smoketest_r' }));
+    const otraSesion = client();
+    ok(await otraSesion('POST', '/api/auth/login', { identifier: 'smoketest_r', password: pass }));
+
+    ok(await forgot('malo'), 400);
+    // un correo sin cuenta recibe la misma respuesta y no sale ningún correo
+    const antes = mail.outbox.length;
+    const sinCuenta = await forgot('nadie@example.com'); ok(sinCuenta);
+    assert.deepEqual(sinCuenta.body, { ok: true });
+    assert.equal(mail.outbox.length, antes);
+    // con cuenta: la misma respuesta y un correo con el enlace (en el idioma pedido)
+    const conCuenta = await forgot('smoketest_r@example.com', { lang: 'en' }); ok(conCuenta);
+    assert.deepEqual(conCuenta.body, sinCuenta.body);
+    assert.equal(mail.outbox.length, antes + 1);
+    const m1 = mail.outbox.at(-1);
+    assert.equal(m1.to, 'smoketest_r@example.com');
+    assert.match(m1.subject, /Reset your DLCritic password/); assert.match(m1.text, /Hi smoketest_r/);
+    const token1 = tokenOf(m1);
+    assert.ok(!(await db.prepare('SELECT 1 AS x FROM password_resets WHERE token_hash = ?').get(token1)), 'en la base está el hash, no el token');
+    // un enlace nuevo anula el anterior
+    ok(await forgot('smoketest_r@example.com'));
+    const token2 = tokenOf(mail.outbox.at(-1));
+    assert.notEqual(token1, token2);
+    assert.equal((await reset(token1, nueva)).body.error, 'invalid_token');
+    // inventado o mal formado
+    ok(await reset('x', nueva), 400);
+    ok(await reset('0'.repeat(64), nueva), 400);
+    // una contraseña que no sirve no gasta el enlace
+    assert.equal((await reset(token2, 'debil')).body.error, 'weak_password');
+    assert.equal((await reset(token2, nueva + '😀')).body.error, 'password_emoji');
+    // la buena: cambia la clave, cierra todas las sesiones y avisa por correo
+    ok(await reset(token2, nueva));
+    assert.equal((await otraSesion('GET', '/api/auth/me')).body.user, null, 'las sesiones abiertas se cierran');
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: pass }), 401);
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: nueva }));
+    const aviso = mail.outbox.at(-1);
+    assert.equal(aviso.to, 'smoketest_r@example.com'); assert.match(aviso.subject, /Cambió la contraseña/);
+    // y el enlace no sirve dos veces
+    assert.equal((await reset(token2, 'Otra-Clave98!')).body.error, 'invalid_token');
+    // vencido
+    ok(await forgot('smoketest_r@example.com'));
+    const token3 = tokenOf(mail.outbox.at(-1));
+    await db.prepare("UPDATE password_resets SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM users WHERE username = 'smoketest_r')").run();
+    assert.equal((await reset(token3, 'Otra-Clave98!')).body.error, 'invalid_token');
+    // tope por correo: 3 pedidos por hora (van 3); el cuarto responde igual pero no manda nada
+    const n = mail.outbox.length;
+    ok(await forgot('smoketest_r@example.com'));
+    assert.equal(mail.outbox.length, n);
+    // la página del enlace se sirve sin pasar el token a otros sitios, y solo en el dominio público
+    const page = await client()('GET', '/restablecer'); ok(page);
+    assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
   });
   await step('cabeceras de seguridad en las páginas', async () => {
     const h = await anon('GET', '/');
@@ -461,7 +565,8 @@ const today = new Date().toISOString().slice(0, 10);
     const css = await adm('GET', '/admin/assets/admin.css'); ok(css); assert.ok(css.text.length > 500);
     assert.ok((await adm('GET', '/admin/assets/js/02-views-login-and-api.js')).text.includes('apiPost'));
     ok(await adm('GET', '/api/auth/me'), 200);
-    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad']) ok(await adm('GET', route), 404);
+    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad', '/restablecer']) ok(await adm('GET', route), 404);
+    ok(await adm('POST', '/api/auth/forgot', { email: 'x@example.com' }), 404);
     ok(await adm('POST', '/api/auth/register', { acceptTerms: true, email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
     // los archivos del panel no están en public/: tampoco salen por el CDN del sitio público
     for (const f of ['/admin.html', '/css/admin.css', '/admin-js/01-state-and-icons.js']) assert.notEqual((await pub('GET', f)).status, 200, f);

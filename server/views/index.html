@@ -439,6 +439,23 @@
           </div>
           <button class="btn wide" id="authSubmit" data-i18n="auth_submit">Entrar</button>
           <div class="error" id="authError" role="alert" hidden></div>
+          <div style="text-align:center; margin-top:10px;">
+            <button type="button" class="linklike" id="authForgotLink" data-i18n="auth_forgot_link">¿Olvidaste tu contraseña?</button>
+          </div>
+        </div>
+
+        <div id="authForgot" hidden>
+          <p class="hint" style="margin:0 0 14px;" data-i18n="auth_forgot_hint">Escribe el correo de tu cuenta y te mandaremos un enlace para elegir una contraseña nueva.</p>
+          <div class="field">
+            <label for="f-email" data-i18n="auth_email_label">Correo electrónico</label>
+            <input type="email" id="f-email" name="email" spellcheck="false" autocapitalize="none" placeholder="tu@email.com" autocomplete="email">
+          </div>
+          <button class="btn wide" id="forgotSubmit" data-i18n="auth_forgot_btn">Enviar enlace</button>
+          <div class="error" id="forgotError" role="alert" hidden></div>
+          <p class="hint" id="forgotSent" role="status" style="color:var(--success-dim); font-size:13px; line-height:1.45;" hidden></p>
+          <div style="text-align:center; margin-top:10px;">
+            <button type="button" class="linklike" id="forgotBack" data-i18n="auth_forgot_back">Volver a iniciar sesión</button>
+          </div>
         </div>
 
         <div id="authRegisterStep1" hidden>
