@@ -13,7 +13,6 @@
 
   const logo = document.getElementById('splashLogo');
   const bg = splash.querySelector('.splash-bg');
-  const tagline = logo.querySelector('small');
   const target = document.getElementById('headerLogo');
   let finished = false, timer = null, flight = null, origin = null;
 
@@ -33,13 +32,13 @@
   addEventListener('keydown', finish);
 
   // Dónde está el logo real del header y qué tan ancho es su contenido. El de la animación se arma igual (mismas clases, mismo ancho, mismo
-  // lugar), así que al aterrizar los dos son idénticos. markWord es el ícono más el nombre (sin el eslogan), que es lo que se muestra al principio.
+  // lugar), así que al aterrizar los dos son idénticos. markWord es el ícono más el nombre, que es lo que se centra y se agranda al principio.
   function headerGeometry() {
     const box = target.getBoundingClientRect();
-    const [mark, word, tag] = ['svg', '.logo-word', 'small'].map(sel => target.querySelector(sel).getBoundingClientRect());
+    const [mark, word] = ['svg', '.logo-word'].map(sel => target.querySelector(sel).getBoundingClientRect());
     return {
       left: box.left, top: box.top,
-      width: Math.ceil(Math.max(mark.right, word.right, tag.right) - box.left) + 2,
+      width: Math.ceil(Math.max(mark.right, word.right) - box.left) + 2,
       markWord: { left: mark.left, right: Math.max(mark.right, word.right), top: Math.min(mark.top, word.top), bottom: Math.max(mark.bottom, word.bottom) },
     };
   }
@@ -56,14 +55,13 @@
     logo.style.transform = `translate(${innerWidth / 2 - g.left - k * cx}px, ${innerHeight / 2 - g.top - k * cy}px) scale(${k})`;
   }
 
-  // El viaje al header: el logo se achica y se desliza hasta su lugar, el fondo se disuelve y el eslogan aparece al llegar.
+  // El viaje al header: el logo se achica y se desliza hasta su lugar y el fondo se disuelve.
   function fly() {
     if (finished) return;
     const g = headerGeometry(); // se mide de nuevo: mientras tanto pudo cambiar un poco (fuentes, idioma)
     const to = `translate(${g.left - origin.left}px, ${g.top - origin.top}px) scale(1)`;
     flight = logo.animate([{ transform: logo.style.transform }, { transform: to }], { duration: 750, easing: 'cubic-bezier(.7, 0, .25, 1)', fill: 'forwards' });
     bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, delay: 150, easing: 'ease-out', fill: 'forwards' });
-    tagline.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 350, easing: 'ease-out', fill: 'forwards' });
     flight.finished.then(finish, () => { /* cancelada al saltar la animación */ });
   }
 

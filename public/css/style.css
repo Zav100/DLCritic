@@ -225,16 +225,6 @@ a.logo {
   color: var(--pink);
 }
 
-.logo small {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: var(--teal);
-  letter-spacing: 1px;
-  display: block;
-  margin-top: -2px;
-  transform: rotate(0deg);
-}
-
 nav {
   display: -webkit-flex;
   display: flex;
@@ -746,6 +736,38 @@ main {
   color: #fff;
   opacity: 0.85;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+/* El slogan del inicio: una cápsula de vidrio oscuro (se lee igual sobre cualquier parte de la imagen) con "DLC" en una pastilla rosa llena. */
+.hero-slogan {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 6px 7px 6px 15px;
+  border-radius: 999px;
+  background: rgba(10, 9, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  color: #fff;
+  text-shadow: none;
+}
+
+.hero-slogan b {
+  font-family: 'Bungee', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--pink);
+  color: #211E3D;
 }
 
 .hero-image h1 {
@@ -5020,10 +5042,6 @@ html.splash-on #headerLogo {
 }
 
 /* el eslogan aparece recién al llegar al header (splash.js) */
-#splash .splash-logo small {
-  opacity: 0;
-}
-
 /* el cuerpo del control: primero se dibuja el contorno y después se rellena */
 #splash .sp-body {
   fill-opacity: 0;
