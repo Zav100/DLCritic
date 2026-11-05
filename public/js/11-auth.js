@@ -18,8 +18,8 @@
  * 12-settings.js (ahí pueden cambiarlo a una contraseña real si quieren).
  */
 /* ---------- auth ---------- */
-// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con letras y números. Se valida acá TAMBIÉN en el cliente para dar el error al toque, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
-function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && /[a-zA-Z]/.test(p) && /[0-9]/.test(p); }
+// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida acá TAMBIÉN en el cliente para dar el error al toque, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
+function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200 && /\p{Lu}/u.test(p) && /[0-9]/.test(p) && /[^\p{L}\p{N}\s]/u.test(p); }
 let registerAvatarFile = null; // el File elegido en el paso 2 del registro, o null; se sube recién después de crear la cuenta (ver handleRegisterSubmit)
 // Muestra el paso 1 o el paso 2 del formulario de registro (los dos <div> ya existen en el HTML, esto solo cambia cuál está oculto).
 function showRegisterStep(step){
@@ -57,6 +57,7 @@ function setAuthTab(tab){
 function renderAuthForm(){
   document.getElementById('a-identifier').value='';
   document.getElementById('a-password').value='';
+  document.getElementById('a-remember').checked=false;
   document.getElementById('r-email').value='';
   document.getElementById('r-password').value='';
   document.getElementById('r-password2').value='';
@@ -97,7 +98,7 @@ async function handleLogin(){
   const ERR_MSG = { bad_login:'err_bad_login', too_many_requests:'err_too_many' };
   let user;
   try{
-    ({ user } = await apiPost('/auth/login', { identifier, password }));
+    ({ user } = await apiPost('/auth/login', { identifier, password, remember: document.getElementById('a-remember').checked }));
   }catch(e){ errEl.textContent = t(ERR_MSG[e.body&&e.body.error] || 'err_bad_login'); errEl.hidden=false; return; }
   toast(t('toast_welcome_back')+' '+user.username+'!');
   await afterAuthSuccess(user);
@@ -131,7 +132,7 @@ async function handleRegisterSubmit(){
   const socialLinks = {};
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', common_password:'err_common_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
     ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));

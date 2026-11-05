@@ -1,7 +1,12 @@
 const crypto = require('node:crypto');
 const db = require('./db');
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Sesión corta (no se marcó "Recordar este dispositivo"): la cookie dura hasta que se cierre el navegador y, por si el navegador
+// nunca se cierra, la sesión vence a las 24 horas en el servidor.
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+// Con "Recordar este dispositivo": 20 días desde que se inicia sesión (no se renuevan), con cookie persistente. Si se cambia, cambiar también
+// los "20 días" de los textos: auth_remember_label en 02-i18n.js, el login del panel (admin.html) y la política de privacidad.
+const REMEMBER_TTL_MS = 20 * 24 * 60 * 60 * 1000;
 const SESSION_COOKIE = 'cartridge_session';
 
 // Una contraseña falsa para gastar el mismo tiempo cuando el usuario no existe (si no, la respuesta rápida delata qué cuentas existen).
@@ -36,12 +41,12 @@ const deleteOtherSessions = db.prepare('DELETE FROM sessions WHERE user_id = ? A
 const deleteAllSessions = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const deleteExpired = db.prepare('DELETE FROM sessions WHERE expires_at < ?');
 
-async function createSession(userId) {
+async function createSession(userId, remember = false) {
   const token = crypto.randomBytes(32).toString('hex');
   const now = new Date();
-  const expires = new Date(now.getTime() + SESSION_TTL_MS);
+  const expires = new Date(now.getTime() + (remember ? REMEMBER_TTL_MS : SESSION_TTL_MS));
   await insertSession.run(sha256(token), userId, now.toISOString(), expires.toISOString());
-  return { token, expires };
+  return { token, expires, remember };
 }
 
 // Cierra la sesión de ese token (el de la cookie).
@@ -65,14 +70,15 @@ function parseCookies(header) {
 
 const sessionToken = req => parseCookies(req.headers.cookie)[SESSION_COOKIE];
 
-function setSessionCookie(res, token, expires) {
+// session: lo que devuelve createSession. Sin Expires la cookie es "de sesión": el navegador la borra al cerrarse.
+function setSessionCookie(res, { token, expires, remember }) {
   const attrs = [
     `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
-    `Expires=${expires.toUTCString()}`,
   ];
+  if (remember) attrs.push(`Expires=${expires.toUTCString()}`);
   if (process.env.NODE_ENV === 'production') attrs.push('Secure');
   res.setHeader('Set-Cookie', attrs.join('; '));
 }

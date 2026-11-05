@@ -174,7 +174,7 @@ function renderSettingsView(){
       document.getElementById('st-new-password2').value='';
     }catch(e){
       const code = e.body && e.body.error;
-      errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password') : code==='common_password' ? t('err_common_password')
+      errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password')
         : code==='too_many_requests' ? t('err_too_many') : t('err_weak_password');
       errEl.hidden = false;
     }

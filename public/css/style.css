@@ -2389,8 +2389,8 @@ main {
   margin-bottom: 14px;
 }
 
-/* Casilla de aceptar los Términos en el registro: texto normal (no el estilo de etiqueta en mayúsculas) y links visibles. */
-.field label.terms-check {
+/* Casillas con texto (aceptar los Términos, recordar el dispositivo): texto normal, no el estilo de etiqueta en mayúsculas, y links visibles. */
+.field label.check-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -2403,12 +2403,12 @@ main {
   cursor: pointer;
 }
 
-.terms-check input {
+.check-row input {
   margin-top: 2px;
   flex-shrink: 0;
 }
 
-.terms-check a {
+.check-row a {
   color: var(--gold-dim);
   text-decoration: underline;
 }

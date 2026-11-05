@@ -81,29 +81,13 @@ function isSafeHttpUrl(val) {
 function isValidEmail(val) {
   return typeof val === 'string' && val.length <= 254 && EMAIL_RE.test(val);
 }
-// New accounts are held to this bar; users grandfathered in from the old
-// 4-digit PIN system are never forced to meet it to keep logging in.
+// Las cuentas nuevas y los cambios de contraseña tienen que cumplir esto; quienes quedaron de la época del PIN de 4 dígitos
+// no están obligados a cambiarlo para seguir entrando. Fuera de estas reglas la contraseña es libre: de 8 a 200 caracteres,
+// con al menos una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio).
+// La misma regla está en isStrongPasswordClient (11-auth.js), para dar el error al toque.
 function isStrongPassword(val) {
-  return typeof val === 'string' && val.length >= 8 && val.length <= 200 && /[a-zA-Z]/.test(val) && /[0-9]/.test(val);
-}
-// Contraseñas que cumplen el mínimo (8 caracteres, letras y números) pero están en todas las listas de las primeras que prueba un atacante.
-const COMMON_PASSWORDS = new Set([
-  'password1', 'password01', 'password12', 'password123', 'password1234', 'passw0rd', 'p@ssw0rd', 'qwerty12', 'qwerty123',
-  'qwerty1234', 'qwertyuiop1', 'qwer1234', '1234qwer', 'abc12345', 'abc123456', 'abcd1234', 'abcd12345', '1234abcd', 'a1b2c3d4',
-  'asdf1234', 'asdfgh123', 'zxcv1234', 'zxcvbnm1', '1q2w3e4r', 'q1w2e3r4', '1qaz2wsx', 'zaq12wsx', '12345678a', '123456789a',
-  'a123456789', 'a1234567', '1234567a', 'iloveyou1', 'iloveyou123', 'welcome1', 'welcome123', 'admin123', 'admin1234',
-  'letmein123', 'monkey123', 'dragon123', 'football1', 'baseball1', 'master123', 'sunshine1', 'princess1', 'superman1',
-  'test1234', 'user1234', 'login123', 'pass1234', 'changeme1', 'changeme123', 'contrasena1', 'contrasena123', 'contraseña1',
-  'hola1234', 'holamundo1', 'gamer123', 'gaming123', 'minecraft1', 'fortnite1', 'steam1234', 'xbox1234', 'playstation1',
-  'nintendo1', 'dlcritic1', 'dlcritic123',
-]);
-// Devuelve el código de error de una contraseña rechazada ('weak_password' o 'common_password'), o null si sirve.
-// personal: datos de la propia cuenta (usuario, parte local del correo) que no pueden formar parte de la contraseña.
-function passwordProblem(val, ...personal) {
-  if (!isStrongPassword(val)) return 'weak_password';
-  const low = val.toLowerCase();
-  if (COMMON_PASSWORDS.has(low) || personal.some(p => p && p.length >= 4 && low.includes(p.toLowerCase()))) return 'common_password';
-  return null;
+  return typeof val === 'string' && val.length >= 8 && val.length <= 200
+    && /\p{Lu}/u.test(val) && /[0-9]/.test(val) && /[^\p{L}\p{N}\s]/u.test(val);
 }
 function sanitizeSocialLinks(input) {
   const out = {};
@@ -163,8 +147,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
   if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid_email' });
-  const passwordError = passwordProblem(password, username, email.split('@')[0]);
-  if (passwordError) return res.status(400).json({ error: passwordError });
+  if (!isStrongPassword(password)) return res.status(400).json({ error: 'weak_password' });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
   if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
   if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
@@ -179,8 +162,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ error: /email/.test(e.constraint || '') ? 'email_taken' : 'username_taken' });
     throw e;
   }
-  const { token, expires } = await createSession(created.id);
-  setSessionCookie(res, token, expires);
+  // Al crear la cuenta la sesión queda recordada (20 días): sería raro que se cerrara apenas se cierra la pestaña.
+  setSessionCookie(res, await createSession(created.id, true));
   res.json({ user: publicUser(await findUserByNameCI.get(username)) });
 });
 
@@ -198,8 +181,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (!user) { spendLoginTime(password); return res.status(401).json({ error: 'bad_login' }); }
   if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
 
-  const { token, expires } = await createSession(user.id);
-  setSessionCookie(res, token, expires);
+  // remember: la casilla "Recordar este dispositivo". Solo vale el booleano true.
+  setSessionCookie(res, await createSession(user.id, req.body.remember === true));
   res.json({ user: publicUser(user) });
 });
 
@@ -208,8 +191,7 @@ app.post('/api/account/password', requireAuth, passwordCheckLimiter, writeLimite
   const currentPassword = String(req.body.currentPassword || '');
   const newPassword = String(req.body.newPassword || '');
   if (!verifyPin(currentPassword, req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
-  const passwordError = passwordProblem(newPassword, req.user.username, (req.user.email || '').split('@')[0]);
-  if (passwordError) return res.status(400).json({ error: passwordError });
+  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'weak_password' });
   await setPasswordHash.run(hashPin(newPassword), req.user.id);
   await endOtherSessions(req.user.id, sessionToken(req));
   res.json({ ok: true });

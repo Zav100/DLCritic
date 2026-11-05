@@ -70,23 +70,20 @@ document.getElementById('loginBtn').onclick = async ()=>{
   const errEl = document.getElementById('loginError');
   errEl.hidden = true;
   const username = document.getElementById('loginUser').value.trim();
-  const pin = document.getElementById('loginPin').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const remember = document.getElementById('loginRemember').checked;
   try{
-    // POST /api/auth/login espera { identifier, password } (así lo usa el
-    // login de la app principal, que acepta email O usuario); acá se le
-    // manda el usuario como identifier y el PIN de admin como password —
-    // el servidor los valida igual (pin_hash sirve tanto para un PIN
-    // viejo como para una contraseña nueva). Los admins siguen siendo
-    // cuentas con usuario+PIN, no tienen email.
-    const { user } = await apiPost('/auth/login', { identifier: username, password: pin });
+    // POST /api/auth/login espera { identifier, password }: el identifier es el correo o el usuario (el servidor distingue por la @;
+    // las cuentas viejas, de la época del PIN, entran con su usuario y su PIN). remember es la casilla "Recordar este dispositivo".
+    const { user } = await apiPost('/auth/login', { identifier: username, password, remember });
     state.user = user;
     await afterLogin();
   }catch(e){
-    errEl.textContent = e.status===401 ? 'Usuario o PIN incorrectos.' : 'Error al iniciar sesión.';
+    errEl.textContent = e.status===401 ? 'Usuario o contraseña incorrectos.' : e.status===429 ? 'Demasiados intentos. Esperá unos minutos y volvé a intentar.' : 'Error al iniciar sesión.';
     errEl.hidden = false;
   }
 };
-document.getElementById('loginPin').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
 
 // Cierra sesión y vuelve a la pantalla de login (se usa desde el botón "Salir" normal y desde la pantalla de "acceso denegado").
 async function doLogout(){
