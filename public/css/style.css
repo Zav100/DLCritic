@@ -4949,6 +4949,8 @@ input[type=search]::-webkit-search-cancel-button {
 @media(min-width:1400px) {
   .layout-rail>[data-tips-rail] {
     display: flex;
+    /* baja la tarjeta hasta el primer bloque de la vista (ver setupTipsRails en 15-side-panels.js) */
+    margin-top: var(--rail-offset, 0px);
   }
 
   /* Reto del día: con la columna de tips al costado, las dos secciones ocupan toda la columna central */

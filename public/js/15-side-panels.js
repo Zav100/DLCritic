@@ -358,6 +358,17 @@ function setupTipsRails(){
     layout.append(main, newRail());
     sec.appendChild(layout);
   });
+  // además de al mostrar la vista (fillTipsRail), se recalcula cuando cambia el tamaño de la columna: idioma, ancho de la ventana…
+  document.querySelectorAll('.layout-rail>[data-tips-rail]').forEach(rail=>{
+    const main = rail.parentElement.querySelector('.rail-main');
+    if(main) new ResizeObserver(()=> alignTipsRail(rail)).observe(main);
+  });
+}
+// La tarjeta de tips arranca a la altura del primer bloque de la vista (el que lleva data-rail-start), no del título ni del "Volver" que van encima: baja --rail-offset (ver style.css, desde 1400px).
+function alignTipsRail(rail){
+  const main = rail.parentElement.querySelector('.rail-main'), start = main && main.querySelector('[data-rail-start]');
+  if(!start) return;
+  rail.style.setProperty('--rail-offset', (main.offsetParent ? start.getBoundingClientRect().top - main.getBoundingClientRect().top : 0) + 'px');
 }
 // Llena la columna de tips de la vista que se acaba de mostrar (applyView, 05-navigation.js).
 // Vistas que no llevan la columna de tips (Acerca de, Mi estantería y el inicio de sesión / registro). 'shelf' y 'profile' comparten #view-profile, por eso se decide en cada visita: la clase no-rail le saca a la vista el hueco de la derecha (ver style.css).
@@ -371,4 +382,5 @@ function fillTipsRail(view){
   if(layout) layout.classList.toggle('no-rail', noTips);
   el.innerHTML = noTips ? '' : tipsCardHTML(view);
   wireRail(el);
+  alignTipsRail(el);
 }
