@@ -232,6 +232,8 @@ const today = new Date().toISOString().slice(0, 10);
   await step('recuperar la contraseña por correo: enlace de un solo uso, que vence, sin revelar qué correos existen', async () => {
     if (REMOTE) return; // los correos se leen de la memoria del proceso (mail.outbox): solo en modo local
     const mail = require('../server/mail');
+    // el tope por correo dura 1 hora: sin limpiarlo, correr la prueba dos veces seguidas lo agota y el primer pedido no manda nada
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE 'forgot-email:smoketest%'").run();
     const tokenOf = m => m.text.match(/\/restablecer\?token=([0-9a-f]{64})/)[1];
     const forgot = (email, extra = {}) => client()('POST', '/api/auth/forgot', { email, ...extra });
     const reset = (token, newPassword) => client()('POST', '/api/auth/reset', { token, newPassword });
