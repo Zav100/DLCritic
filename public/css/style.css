@@ -4900,6 +4900,19 @@ input[type=search]::-webkit-search-cancel-button {
   }
 }
 
+/* vistas sin tips (NO_TIPS_VIEWS en 15-side-panels.js): sin la columna de la derecha el contenido queda centrado, igual que en pantallas más chicas */
+@media(min-width:1400px) {
+  .layout-rail.no-rail {
+    display: block;
+    width: auto;
+    margin-left: 0;
+  }
+
+  .layout-rail.no-rail>[data-tips-rail] {
+    display: none;
+  }
+}
+
 /* con barra lateral de filtros hacen falta 3 columnas: 250 + 1040 + 300 + márgenes */
 @media(min-width:1730px) {
   .layout-side {

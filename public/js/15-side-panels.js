@@ -342,10 +342,15 @@ function setupTipsRails(){
   });
 }
 // Llena la columna de tips de la vista que se acaba de mostrar (applyView, 05-navigation.js).
+// Vistas que no llevan la columna de tips (Acerca de y Mi estantería). 'shelf' y 'profile' comparten #view-profile, por eso se decide en cada visita: la clase no-rail le saca a la vista el hueco de la derecha (ver style.css).
+const NO_TIPS_VIEWS = ['about', 'shelf'];
 function fillTipsRail(view){
   const sec = document.getElementById(view==='shelf' ? 'view-profile' : 'view-'+view);
   const el = sec && sec.querySelector('[data-tips-rail]');
   if(!el) return;
-  el.innerHTML = tipsCardHTML(view);
+  const noTips = NO_TIPS_VIEWS.includes(view);
+  const layout = el.closest('.layout-rail');
+  if(layout) layout.classList.toggle('no-rail', noTips);
+  el.innerHTML = noTips ? '' : tipsCardHTML(view);
   wireRail(el);
 }
