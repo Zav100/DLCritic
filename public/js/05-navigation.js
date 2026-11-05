@@ -81,6 +81,20 @@ window.addEventListener('popstate', ()=>{
 // la URL, y llama a la función renderX() de esa vista para que pinte su
 // contenido. Ojo: si agregás una vista nueva, tiene que tener su propio
 // "if(target===...)" acá abajo llamando a su render, si no queda en blanco.
+// Título de la pestaña. El servidor lo arma al cargar la página de un juego, personaje o usuario; la navegación dentro del sitio no pasa por el
+// servidor, así que hay que actualizarlo en cada cambio de vista: si no, queda el del primero que se abrió.
+// Solo el inicio lleva el título completo (el mismo que el <title> de server/views/index.html); el resto, "Nombre de la vista — DLCritic".
+const DEFAULT_TITLE = 'DLCritic — Tu estantería de juegos';
+// El nombre de cada vista, como aparece en el menú o en su encabezado (clave de traducción: sigue el idioma elegido).
+const VIEW_TITLE_KEYS = { browse:'nav_browse', characters:'nav_characters', shelf:'nav_shelf', daily:'nav_daily', about:'nav_about', news:'feed_news_title', lists:'lists_title', notifications:'notifications_title', settings:'settings_title' };
+function titleForView(v){
+  if(v==='game' && state.currentGame){ const g=findGame(state.currentGame); if(g) return g.title+' — DLCritic'; }
+  if(v==='character' && state.currentCharacter){ const c=findCharacter(state.currentCharacter); if(c) return c.name+' — DLCritic'; }
+  if(v==='profile' && state.profileUsername) return state.profileUsername+' — DLCritic';
+  if(v==='auth') return t(state.authTab==='register' ? 'auth_register_tab' : 'auth_login_tab')+' — DLCritic';
+  if(VIEW_TITLE_KEYS[v]) return t(VIEW_TITLE_KEYS[v])+' — DLCritic';
+  return DEFAULT_TITLE;
+}
 function applyView(v){
   state.view=v;
   document.querySelectorAll('.viewsec').forEach(s=>s.hidden=true);
@@ -89,6 +103,7 @@ function applyView(v){
   document.getElementById(sectionId).hidden=false;
   document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
   syncUrl(target);
+  document.title = titleForView(target);
   if(target==='feed'){ renderDateWidget(); renderNewGames(); renderNews(); renderFeed(); renderFeedRail(); }
   if(target==='browse') renderBrowse();
   if(target==='game') renderGameDetail();

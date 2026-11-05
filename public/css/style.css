@@ -209,6 +209,12 @@ header {
   justify-self: start;
 }
 
+/* El logo del header es un enlace al inicio: sin el subrayado ni el azul de los enlaces. */
+a.logo {
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .logo svg {
   width: 28px;
   height: 28px;

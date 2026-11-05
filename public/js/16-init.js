@@ -15,6 +15,12 @@
 /* ---------- init ---------- */
 document.querySelectorAll('.navbtn').forEach(b=> b.addEventListener('click', ()=> goView(b.dataset.view)));
 document.querySelectorAll('.footer-link').forEach(b=> b.addEventListener('click', ()=> goView(b.dataset.view)));
+// El logo del header lleva al inicio. Es un enlace de verdad (href="/") para poder abrirlo en otra pestaña; un clic normal navega adentro del sitio, sin recargar.
+document.getElementById('headerLogo').addEventListener('click', e=>{
+  if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  e.preventDefault();
+  goView('feed');
+});
 document.getElementById('footerSuggestBtn').addEventListener('click', openSuggestModal);
 document.getElementById('newsBackBtn').addEventListener('click', ()=> goView('feed'));
 document.getElementById('heroExploreBtn').addEventListener('click', ()=> goView('browse'));
