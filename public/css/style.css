@@ -4976,3 +4976,118 @@ input[type=search]::-webkit-search-cancel-button {
   border: 2px dashed var(--line);
   color: var(--ink-soft);
 }
+
+/* ---- pantalla de bienvenida (public/js/splash.js) ----
+   Se ve solo si el <head> pone la clase splash-on en <html>. El logo del centro es una copia del del header: ícono y nombre se dibujan
+   con las animaciones de abajo (arrancan con la clase "go") y después splash.js lo hace viajar al header con la API de animaciones. */
+#splash {
+  display: none;
+}
+
+html.splash-on {
+  overflow: hidden;
+}
+
+html.splash-on #splash {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+
+/* mientras dura la pantalla, el logo real del header espera escondido: el de la animación aterriza justo encima */
+html.splash-on #headerLogo {
+  visibility: hidden;
+}
+
+.splash-bg {
+  position: fixed;
+  inset: 0;
+  background: #211E3D;
+}
+
+#splash .splash-logo {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#splash.go .splash-logo {
+  visibility: visible;
+}
+
+/* el eslogan aparece recién al llegar al header (splash.js) */
+#splash .splash-logo small {
+  opacity: 0;
+}
+
+/* el cuerpo del control: primero se dibuja el contorno y después se rellena */
+#splash .sp-body {
+  fill-opacity: 0;
+  stroke: currentColor;
+  stroke-width: 6;
+  stroke-dasharray: 840;
+  stroke-dashoffset: 840;
+}
+
+#splash.go .sp-body {
+  animation: sp-draw .65s cubic-bezier(.5, 0, .3, 1) forwards, sp-fill .35s ease-out .5s forwards;
+}
+
+#splash .sp-tail {
+  opacity: 0;
+}
+
+#splash.go .sp-tail {
+  animation: sp-fade .3s ease-out .6s forwards;
+}
+
+/* la cruz y los botones aparecen con un pequeño rebote */
+#splash .sp-plus,
+#splash .sp-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+}
+
+#splash.go .sp-plus,
+#splash.go .sp-dot {
+  animation: sp-pop .45s cubic-bezier(.34, 1.56, .64, 1) forwards;
+}
+
+#splash.go .sp-p1 { animation-delay: .8s; }
+#splash.go .sp-p2 { animation-delay: .86s; }
+#splash.go .sp-d1 { animation-delay: .98s; }
+#splash.go .sp-d2 { animation-delay: 1.06s; }
+
+/* el nombre se "escribe" letra por letra (8 pasos para las 8 letras) */
+#splash .logo-word {
+  clip-path: inset(-20% 100% -20% -20%);
+}
+
+#splash.go .logo-word {
+  animation: sp-type .6s steps(8, end) 1s forwards;
+}
+
+@keyframes sp-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes sp-fill {
+  to { fill-opacity: 1; stroke-width: 0; }
+}
+
+@keyframes sp-fade {
+  to { opacity: 1; }
+}
+
+@keyframes sp-pop {
+  to { transform: scale(1); }
+}
+
+@keyframes sp-type {
+  to { clip-path: inset(-20% -20% -20% -20%); }
+}
