@@ -162,6 +162,7 @@ Neon solo conserva 6 horas de historial en el plan gratuito, así que las copias
 
 ## Términos y política de privacidad
 
+- **Cambio de idioma desactivado (temporal).** El botón ES/EN está oculto y el sitio queda siempre en español, aunque el navegador tenga guardado inglés. Todo el soporte del inglés sigue en el código (textos `en` de `02-i18n.js`, versión en inglés de términos y privacidad). Para volver a ofrecerlo: `LANG_SWITCH = true` en `public/js/02-i18n.js` y en `public/js/legal.js`, y quitar la regla `.lang-toggle { display: none }` de `public/css/style.css`. Mientras esté apagado, el tip "cambiar idioma" tampoco se muestra.
 - Páginas `/terminos` y `/privacidad`: HTML en `server/views/terminos.html` y `privacidad.html`, estilo en `public/css/legal.css` y idioma/tema en `public/js/legal.js`. Cada una trae el texto en español y en inglés y muestra el que la persona eligió en el sitio (`localStorage` `lang`, el mismo que usa el resto de la app); el botón ES/EN alterna entre los dos.
 - Se enlazan desde el footer del sitio y desde la casilla obligatoria del paso 2 del registro (`#r-terms`). El servidor también la exige: `POST /api/auth/register` responde `400 terms_required` si no llega `acceptTerms: true`. No se guarda cuándo se aceptó: haría falta una columna nueva en `users` y correr la migración en producción.
 - El correo de contacto (`dlcriticweb@gmail.com`) aparece en los dos textos y dentro de los `mailto:`: si cambia, buscarlo con grep en `server/views/terminos.html` y `privacidad.html`.

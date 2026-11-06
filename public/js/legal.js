@@ -8,7 +8,9 @@
   const read = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento: queda solo para esta visita */ } };
 
-  let lang = read('lang') === 'en' ? 'en' : 'es';
+  // Cambio de idioma desactivado por ahora (el botón se oculta en style.css): siempre español. Para volver a ofrecerlo: true acá y en 02-i18n.js.
+  const LANG_SWITCH = false;
+  let lang = LANG_SWITCH && read('lang') === 'en' ? 'en' : 'es';
   let theme = read('theme') === 'dark' ? 'dark' : 'light';
   const langBtn = document.getElementById('langToggle');
   const themeBtn = document.getElementById('themeToggle');

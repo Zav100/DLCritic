@@ -519,8 +519,11 @@ function applyI18n(){
   const lb=document.getElementById('langToggle'); if(lb) lb.textContent = state.lang==='es' ? 'ES' : 'EN';
   renderUserBadge();
 }
+// Interruptor del cambio de idioma. En false el botón ES/EN no se ve (style.css, .lang-toggle) y el sitio queda siempre en español, sin importar lo guardado en localStorage. Para volver a ofrecer el inglés: true acá y en legal.js, y quitar la regla de style.css.
+const LANG_SWITCH = false;
 // Botón ES/EN del header: alterna el idioma, lo guarda en localStorage y vuelve a pintar la vista actual (los textos armados dinámicamente, como listas, necesitan re-renderizarse, no solo los data-i18n).
 function toggleLang(){
+  if(!LANG_SWITCH) return;
   state.lang = state.lang==='es' ? 'en' : 'es';
   try{ localStorage.setItem('lang', state.lang); }catch(e){}
   applyI18n();
@@ -528,7 +531,7 @@ function toggleLang(){
 }
 // Lee el idioma guardado en localStorage al arrancar la app (se llama una sola vez desde el init de 16-init.js).
 function loadLang(){
-  try{ const v=localStorage.getItem('lang'); state.lang = (v==='en'||v==='es') ? v : 'es'; }
+  try{ const v=localStorage.getItem('lang'); state.lang = (LANG_SWITCH && v==='en') ? 'en' : 'es'; }
   catch(e){ state.lang='es'; }
 }
 
