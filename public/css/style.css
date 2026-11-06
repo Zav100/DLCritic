@@ -486,6 +486,11 @@ nav {
   flex-shrink: 0;
 }
 
+/* Cambio de idioma desactivado por ahora: el sitio queda en español. Para volver a mostrarlo, quitar esta regla y poner LANG_SWITCH = true en 02-i18n.js y legal.js. */
+.lang-toggle {
+  display: none;
+}
+
 .lang-toggle:hover {
   background: var(--paper);
   transform: translateY(-1px);

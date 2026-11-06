@@ -307,7 +307,7 @@ const STATIC_TIPS = [
   { icon:ICONS.layers, key:'tip_lists', go:'lists', views:['lists','shelf','profile'] },
   { icon:ICONS.calendar, key:'tip_dates', views:['feed'] },
   { icon:ICONS.trophy, key:'tip_ranking', go:'characters' },
-  { icon:ICONS.globe, key:'tip_lang' },
+  { icon:ICONS.globe, key:'tip_lang', needsLangSwitch:true },
   { icon:ICONS.moon, key:'tip_theme' },
   { icon:ICONS.search, key:'tip_search_accents', views:['browse','characters'], more:true },
   { icon:ICONS.map, key:'tip_stores', views:['game'], more:true },
@@ -325,7 +325,7 @@ function tipsFor(view){
   const here = view==='profile' ? 'shelf' : view;
   const home = view==='feed';
   const max = home ? TIPS_MAX : TIPS_MAX_OTHER;
-  const pool = home ? STATIC_TIPS.filter(x=> !x.more) : STATIC_TIPS;
+  const pool = STATIC_TIPS.filter(x=> (LANG_SWITCH || !x.needsLangSwitch) && !(home && x.more));
   // los recordatorios van primero, pero dejan lugar a los tips propios de la página
   const reminders = userReminders().filter(r=> r.go!==here && !(home && r.more)).slice(0, home ? TIPS_MAX-1 : 5);
   const own = pool.filter(x=> x.views && x.views.includes(view));
