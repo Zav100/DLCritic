@@ -981,7 +981,20 @@ const publicDir = path.join(__dirname, '..', 'public');
 // El HTML de la página vive en server/views/, fuera de public/: Vercel sirve public/ directo desde su CDN, sin pasar por el filtro de
 // dominios, y todas las páginas (también la raíz) tienen que pasar por el servidor para que cada dominio muestre solo lo suyo.
 const indexPath = path.join(__dirname, 'views', 'index.html');
-function getIndexTemplate() { return fs.readFileSync(indexPath, 'utf8'); }
+// Los /js y /css que cargan las páginas llevan ?v=<hash del archivo>: mientras el archivo no cambie la URL es la misma y el navegador lo guarda un año (vercel.json: immutable);
+// si cambia, la URL cambia y baja la versión nueva, sin quedar mezclada con scripts viejos. Si no se puede leer el archivo, la URL queda sin versión y vercel.json le da un caché corto.
+const assetHashes = new Map();
+function assetUrl(url) {
+  let hash = assetHashes.get(url);
+  if (hash === undefined) {
+    try { hash = crypto.createHash('sha1').update(fs.readFileSync(path.join(publicDir, url))).digest('hex').slice(0, 10); } catch { hash = ''; }
+    if (process.env.VERCEL) assetHashes.set(url, hash); // en local se relee, para ver lo último que se edite
+  }
+  return hash ? url + '?v=' + hash : url;
+}
+const withAssetVersions = html => html.replace(/\b(src|href)="(\/(?:js|css)\/[^"?#]+)"/g, (m, attr, url) => attr + '="' + assetUrl(url) + '"');
+const readPage = file => withAssetVersions(fs.readFileSync(file, 'utf8'));
+function getIndexTemplate() { return readPage(indexPath); }
 const avgRatingForGame = db.prepare('SELECT AVG(rating) as avg, COUNT(rating) as n FROM reviews WHERE game_id = ? AND rating IS NOT NULL');
 
 function escapeHtml(s) {
@@ -1063,10 +1076,10 @@ app.get('/usuario/:username', async (req, res) => {
 // Términos y política de privacidad: un HTML por página, con español e inglés adentro (se elige en el navegador).
 // Viven en server/views/ por el mismo motivo que index.html.
 [['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html']].forEach(([route, file]) => {
-  app.get(route, (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', file)));
+  app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(readPage(path.join(__dirname, 'views', file))));
 });
 // La página donde se elige la contraseña nueva. La dirección lleva el token: Referrer-Policy: no-referrer evita que viaje en el Referer a otros sitios.
-app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).sendFile(path.join(__dirname, 'views', 'restablecer.html')));
+app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(readPage(path.join(__dirname, 'views', 'restablecer.html'))));
 
 /* ---------------- admin dashboard ---------------- */
 
@@ -1091,7 +1104,7 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'not_found' }));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/img/favicon-32.png'));
 
 // Cualquier otra dirección que no existe: una página con el estilo del sitio y la salida al inicio (en vez del "Cannot GET" pelado de Express).
-app.use((req, res) => res.status(404).set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'views', '404.html')));
+app.use((req, res) => res.status(404).set('Cache-Control', 'no-store').type('html').send(readPage(path.join(__dirname, 'views', '404.html'))));
 
 // Último manejador: sin esto Express devolvía una página HTML con el stack trace (rutas internas incluidas) ante
 // un JSON mal formado o cualquier excepción.

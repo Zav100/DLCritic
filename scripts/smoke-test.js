@@ -555,6 +555,17 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await aOnAdmin('POST', '/api/admin/upload', form(png, 'x.png')), 403); // usuario común en el dominio del dashboard
   });
 
+  console.log('Archivos estáticos');
+  await step('páginas: sus /js y /css llevan ?v=<hash> y cada archivo existe (así el caché de un año es seguro)', async () => {
+    const pub = client();
+    for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/restablecer', '/esta-pagina-no-existe']) {
+      const page = await pub('GET', route);
+      const refs = [...page.text.matchAll(/(?:src|href)="(\/(?:js|css)\/[^"]+)"/g)].map(m => m[1]);
+      assert.ok(refs.length >= 3, route + ' carga scripts y estilos');
+      for (const ref of refs) { assert.match(ref, /\?v=[0-9a-f]{10}$/, route + ' ' + ref); ok(await pub('GET', ref), 200); }
+    }
+  });
+
   console.log('Dominios y límite de intentos');
   await step('dominios: el panel solo existe en el dominio del dashboard y el sitio solo en el público', async () => {
     const pub = client(), adm = client('admin');

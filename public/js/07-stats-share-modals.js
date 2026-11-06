@@ -729,7 +729,7 @@ function reviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${authorLevel.icon} <span class="rc-author" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta">${authorLevel.icon} <span class="rc-author" role="link" tabindex="0" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>

@@ -5,7 +5,7 @@
   ],
   "functions": {
     "api/index.js": {
-      "includeFiles": "{server/views/*.html,admin-ui/**}",
+      "includeFiles": "{server/views/*.html,admin-ui/**,public/js/*.js,public/css/*.css}",
       "maxDuration": 20
     }
   },
@@ -13,6 +13,22 @@
     {
       "source": "/(.*)",
       "destination": "/api"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(js|css)/(.*)",
+      "has": [{ "type": "query", "key": "v" }],
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(js|css)/(.*)",
+      "missing": [{ "type": "query", "key": "v" }],
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=3600" }]
+    },
+    {
+      "source": "/img/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
     }
   ],
   "installCommand": "npm install --omit=dev"
