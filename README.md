@@ -133,6 +133,8 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF
 
 La app corre como **una sola función de Vercel** (`api/index.js` exporta el servidor de Express; `vercel.json` manda a ella todo lo que no sea un archivo de `public/`), con la base en **Neon** y las imágenes en **Vercel Blob**. Región: `gru1` (São Paulo), la misma que la base.
 
+**Caché de los archivos estáticos.** Las páginas que entrega el servidor (`index.html`, términos, privacidad, restablecer, 404) agregan `?v=<hash del archivo>` a cada `/js/…` y `/css/…` (`withAssetVersions` en `server/index.js`), y `vercel.json` les da `Cache-Control: public, max-age=31536000, immutable` solo cuando llevan ese `?v`: si el archivo cambia, cambia la URL y nadie queda con scripts viejos mezclados con nuevos. Sin `?v` (por ejemplo, si la función no pudo leer el archivo) el caché es corto (5 min), y las imágenes de `/img/` se guardan un día. Para que la función pueda calcular los hashes, `includeFiles` de `vercel.json` incluye `public/js/*.js` y `public/css/*.css`. Si agregás una imagen nueva que reemplaza a otra con el mismo nombre, el navegador puede tardar hasta un día en verla: dale un nombre distinto. El smoke test verifica que cada página apunte a archivos con `?v` que existen.
+
 **Dos dominios, un mismo despliegue.** Si `ADMIN_HOST` está definido, ese dominio sirve solo el panel de administración (`/admin`, `/api/admin` y el login) y cualquier otro dominio sirve solo el sitio público. Ambos usan la misma `DATABASE_URL`, o sea la misma base. El panel vive en `admin-ui/` (fuera de `public/`) para que no salga por el CDN del dominio público.
 
 Variables de entorno del proyecto en Vercel:

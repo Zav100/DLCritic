@@ -177,7 +177,7 @@ function renderCharacterDetail(){
         ? `<div class="game-hero-bg has-cover" style="background-image:url('${esc(c.photoUrl)}')"></div>`
         : '';
   const gamesMetaHTML = games.length
-    ? `${t('character_of_label')} ${games.map(g=>`<span class="rc-author" data-game-id="${esc(g.id)}">${esc(g.title)}</span>`).join(', ')} · `
+    ? `${t('character_of_label')} ${games.map(g=>`<span class="rc-author" role="link" tabindex="0" data-game-id="${esc(g.id)}">${esc(g.title)}</span>`).join(', ')} · `
     : '';
   el.innerHTML = `
     <div class="layout-rail"><div class="rail-main">
@@ -498,7 +498,7 @@ function characterReviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(c.name)}</div>
-        <div class="rc-meta"><span class="rc-author" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta"><span class="rc-author" role="link" tabindex="0" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
       </div>
     </div>
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
