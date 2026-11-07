@@ -558,7 +558,7 @@ const today = new Date().toISOString().slice(0, 10);
   console.log('Archivos estáticos');
   await step('páginas: sus /js y /css llevan ?v=<hash> y cada archivo existe (así el caché de un año es seguro)', async () => {
     const pub = client();
-    for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/restablecer', '/esta-pagina-no-existe']) {
+    for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/creditos', '/restablecer', '/esta-pagina-no-existe']) {
       const page = await pub('GET', route);
       const refs = [...page.text.matchAll(/(?:src|href)="(\/(?:js|css)\/[^"]+)"/g)].map(m => m[1]);
       assert.ok(refs.length >= 3, route + ' carga scripts y estilos');
@@ -574,14 +574,15 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await pub('GET', '/'), 200); ok(await pub('GET', '/api/games'), 200);
     const noExiste = await pub('GET', '/esta-pagina-no-existe'); ok(noExiste, 404); assert.ok(noExiste.text.includes('data-lang="en"') && noExiste.text.includes('Página no encontrada'), 'la página de "no existe" es la del sitio, no el error pelado');
     const fav = await pub('GET', '/favicon.ico'); ok(fav, 301); assert.equal(fav.headers.get('location'), '/img/favicon-32.png');
-    for (const route of ['/terminos', '/privacidad']) { const legal = await pub('GET', route); ok(legal, 200); assert.ok(legal.text.includes('data-lang="en"'), route + ' trae las dos versiones de idioma'); }
+    for (const route of ['/terminos', '/privacidad', '/creditos']) { const legal = await pub('GET', route); ok(legal, 200); assert.ok(legal.text.includes('data-lang="en"'), route + ' trae las dos versiones de idioma'); }
+    for (const route of ['/', '/terminos', '/privacidad']) assert.ok((await pub('GET', route)).text.includes('href="/creditos"'), route + ' enlaza a Créditos');
     // dominio del dashboard: solo panel y login
     const root = await adm('GET', '/'); ok(root, 302); assert.equal(root.headers.get('location'), '/admin');
     const page = await adm('GET', '/admin'); ok(page); assert.ok(page.text.includes('/admin/assets/js/'), 'el HTML del panel carga sus scripts desde /admin/assets');
     const css = await adm('GET', '/admin/assets/admin.css'); ok(css); assert.ok(css.text.length > 500);
     assert.ok((await adm('GET', '/admin/assets/js/02-views-login-and-api.js')).text.includes('apiPost'));
     ok(await adm('GET', '/api/auth/me'), 200);
-    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad', '/restablecer']) ok(await adm('GET', route), 404);
+    for (const route of ['/explorar', '/api/games', '/api/reviews', '/api/image-proxy', '/juego/x', '/terminos', '/privacidad', '/creditos', '/restablecer']) ok(await adm('GET', route), 404);
     ok(await adm('POST', '/api/auth/forgot', { email: 'x@example.com' }), 404);
     ok(await adm('POST', '/api/auth/register', { acceptTerms: true, email: 'x@example.com', password: pass, username: 'smoketest_zz' }), 404);
     // los archivos del panel no están en public/: tampoco salen por el CDN del sitio público
