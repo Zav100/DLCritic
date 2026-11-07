@@ -725,7 +725,7 @@ function openShareCardModal(rv, game){
 
 /* ---------- visor de imagen (la portada de un juego o la foto de un personaje, en grande) ---------- */
 // Abre la imagen ENTERA en una capa que cubre la pantalla. Se cierra con Esc, tocando fuera de la imagen o con la X, y devuelve el foco a lo que la abrió.
-// Trae un enlace para abrir la imagen sola en otra pestaña. El foco queda adentro mientras está abierta (Tab da la vuelta entre la X y el enlace).
+// Sin ningún enlace debajo: el clic derecho sobre la imagen ofrece "Abrir imagen en una pestaña nueva", que es del propio navegador. El foco queda en la X mientras está abierta.
 function openImageLightbox(url, title, opener){
   if(!url) return;
   const overlay = document.createElement('div');
@@ -737,7 +737,7 @@ function openImageLightbox(url, title, opener){
     <button type="button" class="lightbox-close" aria-label="${esc(t('lightbox_close'))}">${ICONS.x}</button>
     <figure class="lightbox-figure">
       <img class="lightbox-img" src="${esc(url)}" alt="${esc(title)}">
-      <figcaption class="lightbox-caption"><span>${esc(title)}</span><a href="${esc(url)}" target="_blank" rel="noopener">${esc(t('lightbox_open_original'))}</a></figcaption>
+      <figcaption class="lightbox-caption">${esc(title)}</figcaption>
     </figure>`;
   const close = ()=>{
     document.removeEventListener('keydown', onKey, true);

@@ -5422,19 +5422,6 @@ a.rc-author:hover {
   text-align: center;
 }
 
-.lightbox-caption a {
-  color: #fff;
-  opacity: 0.85;
-  font-size: 12.5px;
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.lightbox-caption a:hover {
-  opacity: 1;
-}
-
 .lightbox-close {
   position: absolute;
   top: 14px;
