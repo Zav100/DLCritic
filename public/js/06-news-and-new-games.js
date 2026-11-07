@@ -57,7 +57,7 @@ function renderNewsView(){
 
 /* ---------- juegos nuevos: destacados a mano desde /admin (g.isNewRelease) ---------- */
 
-// Grilla "Juegos nuevos": solo los juegos que un admin marcó como isNewRelease, ordenados del más reciente al más viejo (por newReleaseDate, o la fecha de creación si no la tiene).
+// Grilla "Juegos nuevos" (va dentro del panel de Novedades, con la tarjeta de portada + título + nota): solo los juegos que un admin marcó como isNewRelease, ordenados del más reciente al más viejo (por newReleaseDate, o la fecha de creación si no la tiene).
 function renderNewGames(){
   const wrap = document.getElementById('newGamesGrid');
   const items = allGames()
@@ -65,19 +65,19 @@ function renderNewGames(){
     .map(g=>({ game:g, date:g.newReleaseDate || g.createdAt || new Date().toISOString() }))
     .sort((a,b)=> new Date(b.date)-new Date(a.date));
   wrap.innerHTML='';
-  items.forEach(({game:g, date})=>{
+  items.forEach(({game:g})=>{
+    const st = gameStats(g.id);
     const card=document.createElement('div');
-    card.className='card newscard newgamecard has-card-link';
+    card.className='card newscard has-card-link';
     card.innerHTML = `
       ${cardLinkHTML(gameHref(g.id), g.title)}
       <div class="news-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div class="news-title">${esc(g.title)}</div>
-      <div class="ngc-year">${esc(genreLabelList(g))} · ${fmtDate(date)}</div>
-      <button class="btn small ngc-rate">${esc(t('rate_this_game'))}</button>
+      ${st.count? `<div id="ngn-${g.id}"></div>` : `<div><span class="no-rating-tag">${esc(t('no_rating_yet'))}</span></div>`}
     `;
     card.onclick=spa(()=>{ state.currentGame=g.id; state.gameOrigin='feed'; goView('game'); });
-    card.querySelector('.ngc-rate').onclick=(e)=>{ e.stopPropagation(); jumpToRate(g.id); };
     wrap.appendChild(card);
+    if(st.count) renderGauge(document.getElementById(`ngn-${g.id}`), st.avg);
   });
 }
 
@@ -88,7 +88,7 @@ function gamesByPopularity(){
   state.reviews.forEach(r=>{ map[r.gameId] = true; });
   return Object.keys(map).map(gameId=>({ game: findGame(gameId) })).filter(x=>x.game);
 }
-// Grilla "Más valorados": los 6 juegos con más reseñas (y, en caso de empate, mejor nota promedio). Los que superan 50 reseñas y 8.5 de promedio se marcan como "featured" con una estrellita.
+// Grilla "Más valorados" (va suelta entre las tarjetas de "cómo calificar" y las noticias, con la tarjeta grande de portada + título + datos + botón de calificar): los 6 juegos con más reseñas (y, en caso de empate, mejor nota promedio). Los que superan 50 reseñas y 8.5 de promedio se marcan como "featured" con una estrellita.
 function renderFeed(){
   const wrap=document.getElementById('feedList');
   const popular = gamesByPopularity()
@@ -99,17 +99,18 @@ function renderFeed(){
   popular.slice(0, 6).forEach(({game, stats:st})=>{
     const featured = st.count>50 && st.avg>8.5;
     const card=document.createElement('div');
-    card.className='card newscard has-card-link'+(featured?' featured':'');
+    card.className='card newscard newgamecard has-card-link'+(featured?' featured':'');
     card.innerHTML = `
       ${cardLinkHTML(gameHref(game.id), game.title)}
       ${featured? `<div class="star-badge" title="Aclamado por la comunidad">${ICONS.star}</div>` : ''}
       <div class="news-cover ${genreTint(primaryGenre(game))}" data-cover-title="${esc(game.title)}" data-cover-url="${esc(game.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
       <div class="news-title">${esc(game.title)}</div>
-      <div id="ng-${game.id}"></div>
+      <div class="ngc-year">${esc(genreLabelList(game))} · ${reviewsCountText(st.count)} · ${st.avg}/10</div>
+      <button class="btn small ngc-rate">${esc(t('rate_this_game'))}</button>
     `;
     card.onclick=spa(()=>{ state.currentGame=game.id; state.gameOrigin='feed'; goView('game'); });
+    card.querySelector('.ngc-rate').onclick=(e)=>{ e.stopPropagation(); jumpToRate(game.id); };
     wrap.appendChild(card);
-    renderGauge(document.getElementById(`ng-${game.id}`), st.avg);
   });
 }
 

@@ -817,7 +817,7 @@ main {
   padding: 40px 20px 90px;
   background-image:
     linear-gradient(180deg, rgba(10, 9, 22, 0.1) 0%, rgba(10, 9, 22, 0.46) 78%, var(--bg) 98%),
-    url('/img/news-spiderman-skyline.jpg');
+    url('/img/news-spiderman-skyline.webp');
   background-position: center 32%;
 }
 
@@ -2155,22 +2155,22 @@ main {
   gap: 22px;
 }
 
-#feedList,
-#newGamesGrid {
+/* Las dos grillas de la portada: "Más valorados" (suelta, entre las tarjetas de "cómo calificar" y las noticias) y "Juegos nuevos" (dentro del panel de
+   Novedades). Tarjetas centradas que se reparten el ancho. */
+.home-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 22px;
 }
 
-#feedList>*,
-#newGamesGrid>* {
+.home-grid>* {
   flex: 1 1 300px;
   max-width: 330px;
 }
 
-/* "Juegos nuevos": más aire entre tarjetas que "Más valorados"... */
-#newGamesGrid {
+/* La grilla suelta lleva más aire entre tarjetas... */
+.home-grid-wide {
   gap: 30px;
 }
 
@@ -2178,21 +2178,20 @@ main {
    mismo que el panel de Novedades de abajo (mismos bordes): 3 columnas
    que reparten todo el ancho. Si cambia el ancho de .feed-panel, cambiar aquí. */
 @media(min-width:1400px) {
-  .new-games {
+  .home-showcase {
     --w: min(calc(var(--col) + var(--rail-w) + var(--layout-gap) + 48px), calc(100vw - 80px));
     width: var(--w);
     margin-left: calc((100% - var(--w)) / 2);
   }
 
-  #newGamesGrid {
+  .home-grid-wide {
     gap: 36px;
   }
 
-  #newGamesGrid>* {
+  .home-grid-wide>* {
     flex: 1 1 360px;
     max-width: calc((100% - 72px) / 3);
   }
-
 }
 
 .newscard {
@@ -5446,4 +5445,41 @@ a.rc-author:hover {
 .lightbox-close svg {
   width: 20px;
   height: 20px;
+}
+
+/* =====================================================================
+   Celular: texto que se leía muy chico (9 a 10 px) sube a 10,5-11 px, y con
+   la sesión iniciada la cabecera cabe en una sola fila (solo el avatar, sin
+   el nombre; el botón conserva el nombre como aria-label y title).
+   ===================================================================== */
+@media(max-width:560px) {
+  .bn-label {
+    font-size: 11px;
+  }
+
+  .gc-sub,
+  .char-cat-tag,
+  .clue-label,
+  .statbox .l,
+  .infoitem .il,
+  .newgamecard .ngc-year {
+    font-size: 11px;
+  }
+
+  .flow-label,
+  .fd-chip,
+  .source-badge,
+  .plat-chip-icon {
+    font-size: 10.5px;
+  }
+}
+
+@media(max-width:480px) {
+  .user-menu-name {
+    display: none;
+  }
+
+  .user-menu-trigger {
+    padding: 4px 10px 4px 4px;
+  }
 }

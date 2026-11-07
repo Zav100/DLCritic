@@ -194,7 +194,7 @@ function renderUserBadge(){
       : `<span class="user-menu-avatar" style="background:${color}">${esc(u.username[0].toUpperCase())}</span>`;
     const dotHTML = unreadNotifCount()>0 ? `<span class="unread-dot"></span>` : '';
     el.innerHTML = `
-      <button class="user-menu-trigger" id="userMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false">
+      <button class="user-menu-trigger" id="userMenuTrigger" type="button" aria-label="${esc(u.username)}" title="${esc(u.username)}" aria-haspopup="true" aria-expanded="false">
         ${avatarHTML}<span class="user-menu-name">${esc(u.username)}</span>${ICONS.chevronDown}${dotHTML}
       </button>`;
     document.getElementById('userMenuTrigger').onclick = (e)=>{ e.stopPropagation(); toggleUserMenu(e.currentTarget); };
