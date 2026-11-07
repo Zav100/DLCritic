@@ -24,9 +24,9 @@ function renderSettingsView(){
       <h3 style="margin-top:0;">${esc(t('settings_profile_section'))}</h3>
       <div class="field">
         <label for="st-avatar-file">${esc(t('profile_avatar_label'))}</label>
-        <div class="cover-picker" style="display:flex; align-items:center; gap:14px;">
+        <div class="cover-picker" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
           <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
-          <div style="min-width:0; flex:1;">
+          <div style="min-width:0; flex:1 1 200px;">
             <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
             <p class="hint" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
           </div>
