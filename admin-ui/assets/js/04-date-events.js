@@ -9,7 +9,7 @@
  */
 /* ---- fechas importantes ---- */
 
-// Trae todos los eventos del calendario (para el año entero, no filtrado por mes — el filtrado por mes es cosa de la vista pública, acá se administran todos juntos).
+// Trae todos los eventos del calendario (para el año entero, no filtrado por mes — el filtrado por mes es cosa de la vista pública, aquí se administran todos juntos).
 async function loadDates(){
   const { dateEvents } = await apiGet('/admin/date-events');
   state.dateEvents = dateEvents;

@@ -9,7 +9,7 @@
  * botón de editar) vs las que solo aparecen en perfiles ajenos (botón de
  * seguir, contador de seguidores).
  *
- * Las Listas de un usuario se resumen acá (una preview chica dentro del
+ * Las Listas de un usuario se resumen aquí (una preview chica dentro del
  * perfil) pero su CRUD completo (crear/editar/agregar juegos) vive en
  * 10-lists.js — es el archivo siguiente.
  */

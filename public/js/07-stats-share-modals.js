@@ -3,7 +3,7 @@
  *
  * Es el archivo más grande y el más variado a propósito: agrupa varias
  * pantallas secundarias (no una "sección" de la app en sí) que en el
- * código original vivían una atrás de la otra. Se separan acá con
+ * código original vivían una atrás de la otra. Se separan aquí con
  * comentarios de sección bien marcados — usá Ctrl+F por el título de la
  * sección para saltar directo:
  *
@@ -148,7 +148,7 @@ function userStats(username){
 // Lista de logros: cada uno tiene un ícono, sus claves de traducción para
 // título/descripción, y check(stats) — una función que recibe el objeto de
 // userStats() de arriba y devuelve true/false si el logro está desbloqueado.
-// Para agregar un logro nuevo: sumá una entrada acá + sus claves ach_XXX_t /
+// Para agregar un logro nuevo: sumá una entrada aquí + sus claves ach_XXX_t /
 // ach_XXX_d en el diccionario I18N (02-i18n.js), en los dos idiomas.
 const ACHIEVEMENTS = [
   { id:'first',      icon:ICONS.gamepad, titleKey:'ach_first_t',     descKey:'ach_first_d',     check:s=>s.count>=1 },
@@ -405,9 +405,9 @@ function openShareMenu(anchorEl, rv, game){
 // "story" (1080x1920, formato vertical de Instagram/WhatsApp) con la
 // reseña de un juego, para descargar o compartir como imagen. drawShareCard
 // es la función principal; las demás son helpers que usa.
-// Cómo probar cambios acá: abrí el modal de compartir (ícono de link en
+// Cómo probar cambios aquí: abrí el modal de compartir (ícono de link en
 // una reseña) -> "Crear tarjeta", cambiá el color de fondo para forzar un
-// redibujado y ver el resultado al toque.
+// redibujado y ver el resultado al instante.
 
 // Carga una URL como HTMLImageElement, para poder dibujarla en el canvas. Nunca rechaza la promise: si falla, resuelve null (y quien llama dibuja un color de fondo en su lugar).
 function loadImageForCanvas(url){
@@ -509,7 +509,7 @@ async function loadCardFonts(){
 // "DLCritic" -> portada (cuadrada, con fallback a la inicial del título si
 // no hay imagen) -> título del juego -> género/año -> nota grande -> (si
 // hay) el texto de la reseña -> footer con avatar/usuario/nivel/marca de
-// agua. Todas las coordenadas son manuales — si querés mover algo, `y` es
+// agua. Todas las coordenadas son manuales — si quieres mover algo, `y` es
 // la variable que va acumulando la posición vertical a medida que se
 // dibuja cada bloque de arriba hacia abajo.
 async function drawShareCard(canvas, rv, game, bgOption){

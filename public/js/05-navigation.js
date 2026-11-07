@@ -9,12 +9,12 @@
  * llama a applyView(), que es la que realmente esconde/muestra secciones y
  * dispara el render de cada vista.
  *
- * También vive acá el badge de usuario del header (avatar o botón
+ * También vive aquí el badge de usuario del header (avatar o botón
  * "Iniciar sesión") y su menú desplegable.
  */
 /* ---------- nav / views ---------- */
 let navigatingFromPopstate = false; // evita que syncUrl() vuelva a empujar al history cuando el cambio de vista vino de un popstate (atrás/adelante)
-// Mapea un nombre de vista (state.view) a su URL "linda" — debe ser el espejo exacto de routeFromLocation() de acá abajo.
+// Mapea un nombre de vista (state.view) a su URL "linda" — debe ser el espejo exacto de routeFromLocation() de aquí abajo.
 function pathForView(v){
   if(v==='game' && state.currentGame) return '/juego/'+encodeURIComponent(state.currentGame);
   if(v==='character' && state.currentCharacter) return '/personaje/'+encodeURIComponent(state.currentCharacter);
@@ -79,8 +79,8 @@ window.addEventListener('popstate', ()=>{
 // SOLO la sección <div class="viewsec"> que corresponde (todas las demás
 // quedan hidden), actualiza qué botón del nav está resaltado, sincroniza
 // la URL, y llama a la función renderX() de esa vista para que pinte su
-// contenido. Ojo: si agregás una vista nueva, tiene que tener su propio
-// "if(target===...)" acá abajo llamando a su render, si no queda en blanco.
+// contenido. Ojo: si agregas una vista nueva, tiene que tener su propio
+// "if(target===...)" aquí abajo llamando a su render, si no queda en blanco.
 // Título de la pestaña. El servidor lo arma al cargar la página de un juego, personaje o usuario; la navegación dentro del sitio no pasa por el
 // servidor, así que hay que actualizarlo en cada cambio de vista: si no, queda el del primero que se abrió.
 // Solo el inicio lleva el título completo (el mismo que el <title> de server/views/index.html); el resto, "Nombre de la vista — DLCritic".

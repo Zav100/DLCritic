@@ -1,6 +1,6 @@
 /**
  * ARCHIVO 5 de 6 — Pestaña "Noticias": CRUD de las noticias del feed.
- * Mismo patrón formulario+tabla que los dos archivos anteriores. Ojo: acá
+ * Mismo patrón formulario+tabla que los dos archivos anteriores. Ojo: aquí
  * NO hay lógica de tope de 30 noticias con borrado de la más vieja —
  * eso lo hace el SERVIDOR solo, al crear una noticia nueva (ver
  * server/admin.js, trimNews) — el panel no necesita saber nada de eso.

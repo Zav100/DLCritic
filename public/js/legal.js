@@ -1,5 +1,5 @@
 // Idioma y tema de las páginas legales. Lee las mismas preferencias que el sitio (localStorage "lang" y "theme"),
-// así que si la persona ya eligió inglés o tema oscuro en el sitio, acá también.
+// así que si la persona ya eligió inglés o tema oscuro en el sitio, aquí también.
 (function () {
   const ICON = {
     moon: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'/></svg>",
@@ -8,7 +8,7 @@
   const read = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento: queda solo para esta visita */ } };
 
-  // Cambio de idioma desactivado por ahora (el botón se oculta en style.css): siempre español. Para volver a ofrecerlo: true acá y en 02-i18n.js.
+  // Cambio de idioma desactivado por ahora (el botón se oculta en style.css): siempre español. Para volver a ofrecerlo: true aquí y en 02-i18n.js.
   const LANG_SWITCH = false;
   let lang = LANG_SWITCH && read('lang') === 'en' ? 'en' : 'es';
   let theme = read('theme') === 'dark' ? 'dark' : 'light';

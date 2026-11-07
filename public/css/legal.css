@@ -1,5 +1,5 @@
 /* Páginas de términos y privacidad (server/views/terminos.html y privacidad.html).
-   Colores, tipografías, header y footer vienen de style.css; acá solo está el texto corrido. */
+   Colores, tipografías, header y footer vienen de style.css; aquí solo está el texto corrido. */
 a.logo { text-decoration: none; }
 /* Sin el menú del medio, los controles del header (ya estilados en style.css) quedan en la última columna del grid. */
 @media (min-width: 561px) { .headright { grid-column: 3; } }

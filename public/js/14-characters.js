@@ -11,7 +11,7 @@
  * reviews), su propio state (state.characterReviews, no state.reviews), y
  * no tienen plataformas ni votos de "te sirvió" (los juegos sí). Por eso
  * cada pieza (calificación rápida, bloque de reseña, card de reseña) tiene
- * acá su propia versión más simple en vez de generalizar la de juegos.
+ * aquí su propia versión más simple en vez de generalizar la de juegos.
  */
 /* ---------- avatar circular de un personaje (foto real, o iniciales de color si no tiene) ---------- */
 // Mismo patrón que el avatar por-defecto del usuario en el header (ver renderUserBadge en 05-navigation.js): un círculo de color estable según el nombre, con la primera letra. Achica la clase extra (p.ej. "char-avatar-lg") para el tamaño grande de la ficha.
@@ -136,7 +136,7 @@ function paintCharactersGrid(animate){
     card.className = 'card gamecard character-card' + (rank===1? ' featured' : '') + (animate? ' enter' : '');
     if(animate){
       card.style.setProperty('--i', Math.min(i, 12));
-      // animationcancel también: en la card destacada, el hover cambia de animación a mitad de la entrada, y sin quitar .enter acá la entrada se reiniciaría al sacar el mouse.
+      // animationcancel también: en la card destacada, el hover cambia de animación a mitad de la entrada, y sin quitar .enter aquí la entrada se reiniciaría al sacar el mouse.
       const done = e=>{ if(e.target===card) card.classList.remove('enter'); };
       card.addEventListener('animationend', done);
       card.addEventListener('animationcancel', done);

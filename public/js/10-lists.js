@@ -6,7 +6,7 @@
  * separados en el servidor: LISTAS son varias, con nombre y visibilidad
  * pública/privada (game_lists en la base); BIBLIOTECA es una sola lista
  * fija por usuario (el array wishlist en su fila de la tabla users) para
- * marcar juegos que ya tenés/querés tener.
+ * marcar juegos que ya tienes/quieres tener.
  *
  * Al final del archivo hay 3 helpers sueltos (hashStr, jumpToRate,
  * deleteReview) que no tienen que ver con listas — quedaron ahí porque
@@ -315,7 +315,7 @@ async function selectFavoriteGame(gameId){
   renderShelf();
   celebrateFavorite(document.getElementById('favInfoItem'));
 }
-// Frase "le diste X/10, la comunidad promedia Y/10, sos más [generoso/exigente/coincidís]" — compara tu nota con el promedio de todos.
+// Frase "le diste X/10, la comunidad promedia Y/10, sos más [generoso/exigente/coincides]" — compara tu nota con el promedio de todos.
 function vsCommunityText(you, avg){
   const diff = you - avg;
   const key = diff>=1.5? 'vs_sentence_more' : diff<=-1.5? 'vs_sentence_less' : 'vs_sentence_same';
@@ -453,7 +453,7 @@ async function toggleWishlistQuiet(gameId){
   renderWishlistGrid();
 }
 
-/* ---------- helpers sueltos (sin relación con listas, pero vivían acá en el archivo original) ---------- */
+/* ---------- helpers sueltos (sin relación con listas, pero vivían aquí en el archivo original) ---------- */
 // Hash numérico bien simple de un string (para elegir un color de avatar estable a partir de un nombre de usuario/título). No es para nada criptográfico, solo para "elegir siempre el mismo color para el mismo texto".
 function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return h; }
 

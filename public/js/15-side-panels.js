@@ -8,7 +8,7 @@
  * (state.reviews, state.characters, DATE_EVENTS…), sin endpoints nuevos. En
  * pantallas angostas la columna simplemente queda debajo del contenido (ver
  * .layout-rail / .rail en style.css). Las barras laterales de FILTROS de
- * Explorar y Personajes no están acá: viven en 08-browse.js y 14-characters.js.
+ * Explorar y Personajes no están aquí: viven en 08-browse.js y 14-characters.js.
  */
 /* ---------- utilidades compartidas ---------- */
 // "hace 5 minutos" / "5 minutes ago" con Intl (sin librerías); pasados 30 días, la fecha normal.

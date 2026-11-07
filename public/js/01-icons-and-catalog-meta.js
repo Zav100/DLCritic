@@ -2,7 +2,7 @@
  * ARCHIVO 1 de 16 — Íconos y metadata del catálogo.
  * Este es el PRIMER script que carga la página (ver el orden de <script> al
  * final de index.html): no depende de ningún otro archivo, y varios de los
- * siguientes (i18n, navegación, browse, etc.) usan lo que se define acá.
+ * siguientes (i18n, navegación, browse, etc.) usan lo que se define aquí.
  *
  * Contiene:
  *   - ICONS: todos los íconos SVG de la app, como strings HTML listos para

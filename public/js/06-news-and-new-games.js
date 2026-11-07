@@ -1,7 +1,7 @@
 /**
  * ARCHIVO 6 de 16 — Los tres widgets de la página de Novedades (feed):
  * noticias, juegos nuevos destacados, más valorados, y el calendario de
- * fechas importantes que aparece debajo de las noticias. Todo lo de acá
+ * fechas importantes que aparece debajo de las noticias. Todo lo de aquí
  * se pinta desde applyView() (05-navigation.js) cuando target==='feed'.
  */
 /* ---------- noticias del mundo gamer ---------- */

@@ -4,7 +4,7 @@
  * Tres cosas sin relación directa entre sí, pero todas "primitivas" chicas
  * que se usan desde muchos otros archivos:
  *   1. api()/apiGet/apiPost/apiPut/apiDelete: TODA llamada al backend pasa
- *      por acá (ver server/index.js para los endpoints reales). loadAll()
+ *      por aquí (ver server/index.js para los endpoints reales). loadAll()
  *      es la carga inicial de datos al bootear la página.
  *   2. Tema claro/oscuro (botón de la lamparita en el header).
  *   3. El gauge (barra de progreso circular/lineal de una nota) y el
@@ -160,7 +160,7 @@ function renderQuickRate(scope, gameId, currentValue){
   const clearBtn = document.getElementById(scope+'ClearBtn');
   if(clearBtn) clearBtn.onclick = ()=> deleteRating(gameId);
 }
-// Guardar es "optimista": la pantalla cambia al toque y recién después se le avisa al servidor. Si el servidor no lo acepta (sin conexión, límite de
+// Guardar es "optimista": la pantalla cambia al instante y recién después se le avisa al servidor. Si el servidor no lo acepta (sin conexión, límite de
 // intentos, sesión vencida) se avisa con un solo mensaje de error y se vuelve a pedir el estado real de las reseñas, para que la pantalla no siga
 // mostrando como guardado algo que no lo está. Devuelve true si se guardó. Lo usan también 10-lists.js y 14-characters.js.
 async function persistOrResync(request){
@@ -174,7 +174,7 @@ async function persistOrResync(request){
     return false;
   }
 }
-// Guarda (o crea) la nota de state.user para un juego: actualiza el estado local al toque (optimista) y recién después pega al servidor; si falla, avisa por toast pero no revierte el cambio local.
+// Guarda (o crea) la nota de state.user para un juego: actualiza el estado local al instante (optimista) y recién después pega al servidor; si falla, avisa por toast pero no revierte el cambio local.
 async function saveRating(gameId, rating){
   if(!state.user) return false;
   let rv = state.reviews.find(r=>r.gameId===gameId && r.username===state.user.username);

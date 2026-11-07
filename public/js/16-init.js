@@ -1,7 +1,7 @@
 /**
  * ARCHIVO 16 de 16 — Arranque de la app. Es el ÚLTIMO script que carga, a
  * propósito: para este punto, TODO lo de los 14 archivos anteriores ya
- * está definido (funciones, ICONS, I18N, etc.), así que acá ya se puede
+ * está definido (funciones, ICONS, I18N, etc.), así que aquí ya se puede
  * usar cualquier cosa de la app con seguridad.
  *
  * Primero engancha los botones de navegación que ya están en el HTML
@@ -9,7 +9,7 @@
  * carga tema/idioma guardados, muestra esqueletos de carga, pide todos
  * los datos al servidor (loadAll), carga el reto del día, pinta el badge
  * de usuario, y navega a la vista que corresponda según la URL actual
- * (así, si entrás directo a /explorar o le das F5, cae en esa vista y no
+ * (así, si entras directo a /explorar o le das F5, cae en esa vista y no
  * siempre en Novedades).
  */
 /* ---------- init ---------- */

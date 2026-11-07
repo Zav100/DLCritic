@@ -2,7 +2,7 @@
 //
 // Conserva la forma que tenía node:sqlite — db.prepare(sql).get / all / run(...) — pero asíncrona, para que el resto
 // del servidor cambie lo mínimo (solo agregar await). Los parámetros se escriben como antes: ? (por posición) o
-// @nombre (pasando un objeto). Acá se convierten a $1, $2... que es lo que entiende Postgres.
+// @nombre (pasando un objeto). Aquí se convierten a $1, $2... que es lo que entiende Postgres.
 //
 // Conexión:
 //   DATABASE_URL  URL de Neon (usar la "pooled", la de host con -pooler).

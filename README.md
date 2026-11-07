@@ -83,7 +83,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
   - Borrar un juego definitivamente.
   - Hay un buscador arriba de la tabla porque son ~90+ juegos.
 - **📅 Fechas importantes** — CRUD del calendario que se ve en Inicio (mes, día, título/descripción en ES y EN, y opcionalmente un juego relacionado buscando por título).
-- **📰 Noticias** — CRUD de la sección "Noticias del mundo gamer" (título, resumen, fuente, link, color de la insignia; las iniciales se autogeneran de la fuente si las dejás vacías).
+- **📰 Noticias** — CRUD de la sección "Noticias del mundo gamer" (título, resumen, fuente, link, color de la insignia; las iniciales se autogeneran de la fuente si las dejas vacías).
 
 **Para habilitar tu cuenta como admin:**
 1. Registrate normalmente en la app (`/` → Iniciar sesión → Registrarme).
@@ -133,7 +133,7 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF
 
 La app corre como **una sola función de Vercel** (`api/index.js` exporta el servidor de Express; `vercel.json` manda a ella todo lo que no sea un archivo de `public/`), con la base en **Neon** y las imágenes en **Vercel Blob**. Región: `gru1` (São Paulo), la misma que la base.
 
-**Caché de los archivos estáticos.** Las páginas que entrega el servidor (`index.html`, términos, privacidad, créditos, restablecer, 404) agregan `?v=<hash del archivo>` a cada `/js/…` y `/css/…` (`withAssetVersions` en `server/index.js`), y `vercel.json` les da `Cache-Control: public, max-age=31536000, immutable` solo cuando llevan ese `?v`: si el archivo cambia, cambia la URL y nadie queda con scripts viejos mezclados con nuevos. Sin `?v` (por ejemplo, si la función no pudo leer el archivo) el caché es corto (5 min), y las imágenes de `/img/` se guardan un día. Para que la función pueda calcular los hashes, `includeFiles` de `vercel.json` incluye `public/js/*.js` y `public/css/*.css`. Si agregás una imagen nueva que reemplaza a otra con el mismo nombre, el navegador puede tardar hasta un día en verla: dale un nombre distinto. El smoke test verifica que cada página apunte a archivos con `?v` que existen.
+**Caché de los archivos estáticos.** Las páginas que entrega el servidor (`index.html`, términos, privacidad, créditos, restablecer, 404) agregan `?v=<hash del archivo>` a cada `/js/…` y `/css/…` (`withAssetVersions` en `server/index.js`), y `vercel.json` les da `Cache-Control: public, max-age=31536000, immutable` solo cuando llevan ese `?v`: si el archivo cambia, cambia la URL y nadie queda con scripts viejos mezclados con nuevos. Sin `?v` (por ejemplo, si la función no pudo leer el archivo) el caché es corto (5 min), y las imágenes de `/img/` se guardan un día. Para que la función pueda calcular los hashes, `includeFiles` de `vercel.json` incluye `public/js/*.js` y `public/css/*.css`. Si agregas una imagen nueva que reemplaza a otra con el mismo nombre, el navegador puede tardar hasta un día en verla: dale un nombre distinto. El smoke test verifica que cada página apunte a archivos con `?v` que existen.
 
 **Dos dominios, un mismo despliegue.** Si `ADMIN_HOST` está definido, ese dominio sirve solo el panel de administración (`/admin`, `/api/admin` y el login) y cualquier otro dominio sirve solo el sitio público. Ambos usan la misma `DATABASE_URL`, o sea la misma base. El panel vive en `admin-ui/` (fuera de `public/`) para que no salga por el CDN del dominio público.
 

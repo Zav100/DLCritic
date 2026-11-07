@@ -87,7 +87,7 @@ function isValidEmail(val) {
 // Las cuentas nuevas y los cambios de contraseña tienen que cumplir esto; quienes quedaron de la época del PIN de 4 dígitos
 // no están obligados a cambiarlo para seguir entrando. Fuera de estas reglas la contraseña es libre: de 8 a 200 caracteres,
 // con al menos una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio).
-// La misma regla está en isStrongPasswordClient (11-auth.js), para dar el error al toque.
+// La misma regla está en isStrongPasswordClient (11-auth.js), para dar el error al instante.
 function isStrongPassword(val) {
   return typeof val === 'string' && val.length >= 8 && val.length <= 200
     && /\p{Lu}/u.test(val) && /[0-9]/.test(val) && /[^\p{L}\p{N}\s]/u.test(val);
@@ -1010,7 +1010,7 @@ app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Re
 /* ---------------- admin dashboard ---------------- */
 
 // El panel vive en admin-ui/, fuera de public/: Vercel sirve public/ directo desde su CDN, sin pasar por el filtro de
-// dominios de arriba, y acá queremos que solo salga en el dominio del dashboard.
+// dominios de arriba, y aquí queremos que solo salga en el dominio del dashboard.
 const adminUiDir = path.join(__dirname, '..', 'admin-ui');
 app.use('/api/admin', require('./admin'));
 app.get('/admin', (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(adminUiDir, 'admin.html')));
@@ -1042,7 +1042,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'server_error' });
 });
 
-// En Vercel la app se exporta y la plataforma se encarga de escuchar; en local (node server/index.js) escucha acá.
+// En Vercel la app se exporta y la plataforma se encarga de escuchar; en local (node server/index.js) escucha aquí.
 module.exports = app;
 if (require.main === module) {
   const PORT = process.env.PORT || 8793;

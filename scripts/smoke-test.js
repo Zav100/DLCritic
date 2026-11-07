@@ -153,7 +153,7 @@ const today = new Date().toISOString().slice(0, 10);
     assert.ok(blocked.headers.get('retry-after'));
   });
   await step('contraseña: libre, pero con mayúscula, número y carácter especial; una kilométrica no se hashea', async () => {
-    // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y acá se prueban más de 8
+    // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y aquí se prueban más de 8
     const reg = (email, password) => client()('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
     for (const [n, mala] of [['sin mayúscula', 'abcdef1!'], ['sin número', 'Abcdefg!'], ['sin carácter especial', 'Abcdefg1'], ['corta', 'Ab1!'], ['solo letras y números', 'Password123']]) {
       assert.equal((await reg(`p_${n.length}@example.com`, mala)).body.error, 'weak_password', n);
@@ -429,7 +429,7 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await admin('GET', '/api/admin/games'));
   });
   await step('2FA: los códigos salen como el estándar (vectores del RFC 6238) y se aceptan una sola vez', async () => {
-    const secret = totp.base32Encode(Buffer.from('12345678901234567890')); // la clave de prueba del RFC (el RFC da 8 dígitos; acá, los últimos 6)
+    const secret = totp.base32Encode(Buffer.from('12345678901234567890')); // la clave de prueba del RFC (el RFC da 8 dígitos; aquí, los últimos 6)
     for (const [segundos, esperado] of [[59, '287082'], [1111111109, '081804'], [1111111111, '050471'], [1234567890, '005924'], [2000000000, '279037'], [20000000000, '353130']]) {
       assert.equal(totp.codeForStep(secret, Math.floor(segundos / 30)), esperado, 't=' + segundos);
     }
