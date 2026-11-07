@@ -5483,3 +5483,10 @@ a.rc-author:hover {
     padding: 4px 10px 4px 4px;
   }
 }
+
+/* Los paneles de vidrio (.glass-panel) son claros también en el tema oscuro (--paper-glass), pero el título de una sección (.sectionhead h2) hereda el color de
+   texto del fondo de la página, que en oscuro es casi igual al del panel y no se leía ("Juegos nuevos" desde que está dentro del panel de Novedades). Adentro de
+   un panel el título lleva la tinta oscura, igual que el resto del texto del panel. En el tema claro --ink y --fg son el mismo color: no cambia nada. */
+.glass-panel .sectionhead h2 {
+  color: var(--ink);
+}
