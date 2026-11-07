@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#F2F2F7">
   <title>DLCritic — Tu estantería de juegos</title>
   <meta name="description"
-    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Calificá lo que jugaste y descubrí qué probar después.">
+    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Califica lo que jugaste y descubre qué probar después.">
   <meta property="og:title" content="DLCritic — Tu estantería de juegos">
   <meta property="og:description"
-    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Calificá lo que jugaste y descubrí qué probar después.">
+    content="Catálogo y reseñas de videojuegos hechas por la comunidad. Califica lo que jugaste y descubre qué probar después.">
   <meta property="og:type" content="website">
   <!-- Las URLs de og:url y og:image tienen que ser absolutas (WhatsApp y Discord no entienden las relativas):
-       cuando dlcritic.com sea el dominio del sitio, cambiarlas acá. -->
+       cuando dlcritic.com sea el dominio del sitio, cambiarlas aquí. -->
   <meta property="og:url" content="https://dlcritic.vercel.app/">
   <meta property="og:site_name" content="DLCritic">
   <meta property="og:image" content="https://dlcritic.vercel.app/img/og-image.png">
@@ -33,7 +33,7 @@
   <link rel="manifest" href="/site.webmanifest">
   <link rel="stylesheet" href="/css/style.css">
   <script>
-    // Pantalla de bienvenida (public/js/splash.js). Se decide acá, antes del primer dibujo, para que la página no parpadee por debajo: solo al
+    // Pantalla de bienvenida (public/js/splash.js). Se decide aquí, antes del primer dibujo, para que la página no parpadee por debajo: solo al
     // entrar por el inicio, una vez por sesión y si el sistema no pide reducir el movimiento. Si splash.js no llega a correr, a los 8 s se saca sola.
     try {
       if (location.pathname === '/' && !sessionStorage.getItem('dlcSplash') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -92,9 +92,9 @@
       <div class="hero hero-image">
         <div class="hero-content">
           <div class="hero-slogan" data-i18n-html="tagline_html">Cada opinión es un <b>DLC</b></div>
-          <h1 data-i18n-html="feed_h1">Descubrí, calificá y compartí <span>cada juego que jugaste</span>.</h1>
+          <h1 data-i18n-html="feed_h1">Descubre, califica y comparte <span>cada juego que jugaste</span>.</h1>
           <p data-i18n="feed_p">DLCritic es un catálogo de videojuegos con calificaciones y reseñas hechas por la
-            comunidad: explorá títulos de Steam, Epic Games, PlayStation, Xbox y Nintendo, y dejá tu nota.</p>
+            comunidad: explora títulos de Steam, Epic Games, PlayStation, Xbox y Nintendo, y deja tu nota.</p>
           <div class="hero-actions">
             <button class="btn gold" id="heroExploreBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -122,9 +122,9 @@
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg></div>
-            <h3 data-i18n="flow_card1_title">Explorá el catálogo</h3>
-            <p data-i18n="flow_card1_text">Buscá un juego en Explorar o mirá los que están recién agregados en
-              Inicio. Filtrá por plataforma para encontrar algo rápido.</p>
+            <h3 data-i18n="flow_card1_title">Explora el catálogo</h3>
+            <p data-i18n="flow_card1_text">Busca un juego en Explorar o mira los que están recién agregados en
+              Inicio. Filtra por plataforma para encontrar algo rápido.</p>
             <div class="flowcard-demo flowcard-demo-search">
               <span class="fd-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
@@ -140,8 +140,8 @@
                 <polygon
                   points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg></div>
-            <h3 data-i18n="flow_card2_title">Poné tu nota</h3>
-            <p data-i18n="flow_card2_text">Entrá a la ficha del juego y calificalo del 1 al 10 con el selector — se
+            <h3 data-i18n="flow_card2_title">Pon tu nota</h3>
+            <p data-i18n="flow_card2_text">Entra a la ficha del juego y califícalo del 1 al 10 con el selector — se
               guarda al toque, sin pasos extra.</p>
             <div class="flowcard-demo flowcard-demo-rate">
               <span class="fd-num">8.9</span>
@@ -156,8 +156,8 @@
                 <line x1="8" y1="13" x2="16" y2="13" />
                 <line x1="8" y1="17" x2="13" y2="17" />
               </svg></div>
-            <h3 data-i18n="flow_card3_title">Contá tu experiencia</h3>
-            <p data-i18n="flow_card3_text">Escribí una reseña corta. Queda publicada en la ficha del juego para que
+            <h3 data-i18n="flow_card3_title">Cuenta tu experiencia</h3>
+            <p data-i18n="flow_card3_text">Escribe una reseña corta. Queda publicada en la ficha del juego para que
               otros la lean antes de jugarlo.</p>
             <div class="flowcard-demo flowcard-demo-review" data-i18n="flow_card3_demo">“Una de las mejores historias
               padre-hijo que jugué…”</div>
@@ -242,7 +242,7 @@
               <line x1="3" y1="12" x2="3.01" y2="12" />
               <line x1="3" y1="18" x2="3.01" y2="18" />
             </svg></div>
-          <h3 data-i18n="about_features_title">Qué podés hacer acá</h3>
+          <h3 data-i18n="about_features_title">Qué puedes hacer aquí</h3>
           <ul>
             <li data-i18n="about_feature1">Calificar juegos del 1 al 10 y dejar tu reseña.</li>
             <li data-i18n="about_feature2">Armar listas propias y una wishlist personal.</li>
@@ -409,7 +409,7 @@
       <div class="hero" data-rail-top>
         <span class="eyebrow" data-i18n="daily_eyebrow">Todos los días hay algo nuevo</span>
         <h1 data-i18n-html="daily_h1">El <span>reto</span> del día</h1>
-        <p data-i18n="daily_p">Un juego misterioso para adivinar y una ruleta para descubrir qué probar hoy. Volvé
+        <p data-i18n="daily_p">Un juego misterioso para adivinar y una ruleta para descubrir qué probar hoy. Vuelve
           mañana por más.</p>
       </div>
 
@@ -425,8 +425,8 @@
         <div class="sectionhead">
           <h2 data-i18n="daily_spin_title">Ruleta del día</h2><span class="daily-counter" id="spinsLeftLabel"></span>
         </div>
-        <p class="hint" style="margin:-8px 0 12px; color:var(--fg-soft);" data-i18n="roulette_hint">¿No sabés qué jugar?
-          Tirá de la ruleta y recibí una recomendación aleatoria.</p>
+        <p class="hint" style="margin:-8px 0 12px; color:var(--fg-soft);" data-i18n="roulette_hint">¿No sabes qué jugar?
+          Tira de la ruleta y recibe una recomendación aleatoria.</p>
         <div class="card" id="rouletteCard"></div>
       </div>
     </div>

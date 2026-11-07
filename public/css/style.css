@@ -1592,7 +1592,7 @@ main {
 
 .gc-cover {
   font-size: 32px;
-  height: 60px;
+  aspect-ratio: 16 / 9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1648,14 +1648,27 @@ main {
   overflow: hidden;
 }
 
+/* La portada se ve ENTERA y centrada (contain) sobre una copia suya desenfocada que rellena el marco: no se corta ningún personaje ni el nombre
+   del juego, y las imágenes cuadradas o verticales quedan prolijas. El marco es 16:9 (el de las portadas de Steam); las miniaturas cuadradas
+   (listas, columna derecha) fijan su propio ancho y alto. La URL del fondo la pone attachCoverImg() en --cover-url. */
 .cover-img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 0;
   transition: opacity .5s ease;
+  z-index: 1;
+}
+
+.gc-cover.has-cover::before,
+.news-cover.has-cover::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background: var(--cover-url) center / cover no-repeat;
+  filter: blur(16px) saturate(1.2) brightness(0.85);
 }
 
 .gc-cover.has-cover .cover-img,
@@ -2180,9 +2193,6 @@ main {
     max-width: calc((100% - 72px) / 3);
   }
 
-  #newGamesGrid .news-cover {
-    height: 250px;
-  }
 }
 
 .newscard {
@@ -2219,7 +2229,7 @@ main {
 }
 
 .news-cover {
-  height: 110px;
+  aspect-ratio: 16 / 9;
   border-radius: 14px;
   background: linear-gradient(160deg, var(--paper-alt), var(--paper));
   display: flex;
@@ -2263,6 +2273,21 @@ main {
 
 .news-cover.has-cover {
   background: var(--paper) !important;
+}
+
+/* Nintendo cuida mucho sus imágenes: aviso al final de la ficha de sus juegos */
+.image-credit {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+  margin: 22px 0 0;
+}
+
+.image-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .news-title {
@@ -4402,7 +4427,6 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .newgamecard .news-cover {
-  height: 216px;
   margin-bottom: 12px;
 }
 

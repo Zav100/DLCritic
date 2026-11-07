@@ -119,6 +119,11 @@ function paintBrowseGrid(keepPage){
 // widget de calificación rápida + reseña (si hay sesión), y la lista de
 // reseñas de otros usuarios. El botón "Volver" cambia de texto/destino
 // según de dónde vino el usuario (state.gameOrigin: feed/daily/shelf/browse).
+// Nintendo es muy firme con sus imágenes: en los juegos que edita Nintendo se aclara, al final de la ficha, de quién son la portada y las imágenes.
+function imageCreditHTML(g){
+  if(!/nintendo/i.test(g.publisher||'')) return '';
+  return `<p class="image-credit">${esc(t('nintendo_credit'))} <a href="/creditos">${esc(t('footer_credits'))}</a></p>`;
+}
 function renderGameDetail(){
   const g = findGame(state.currentGame);
   const el = document.getElementById('gameDetail');
@@ -186,12 +191,13 @@ function renderGameDetail(){
 
     <div class="sectionhead"><h2>${t('reviews_section_title')}</h2><span class="count">${rvs.length}</span></div>
     <div id="detailList"></div>
+    ${imageCreditHTML(g)}
     </div><aside class="rail" id="gameRail"></aside></div>
   `;
   renderGameRail(g);
   wireGameCharacters(el);
   renderGauge(document.getElementById('detailGauge'), st.avg||0);
-  loadHeroCover(g.title, document.querySelector('.game-hero-bg'), g.coverUrl);
+  loadHeroCover(document.querySelector('.game-hero-bg'), g.coverUrl);
   document.getElementById('wishlistBtn').onclick = ()=> toggleWishlist(g.id);
   const addToListBtn = document.getElementById('addToListBtn');
   if(addToListBtn) addToListBtn.onclick = ()=> openAddToListModal(g.id);

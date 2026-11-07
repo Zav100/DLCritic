@@ -113,7 +113,7 @@ document.getElementById('gameForm').addEventListener('submit', async (e)=>{
   if(title.length < 2){ errEl.textContent = 'El título es obligatorio.'; errEl.hidden = false; return; }
   const genres = [];
   genreGrid.querySelectorAll('[data-genre]').forEach(cb=>{ if(cb.checked) genres.push(cb.dataset.genre); });
-  if(genres.length === 0){ errEl.textContent = 'Elegí al menos un género.'; errEl.hidden = false; return; }
+  if(genres.length === 0){ errEl.textContent = 'Elige al menos un género.'; errEl.hidden = false; return; }
 
   const platforms = [];
   const storeLinks = {};

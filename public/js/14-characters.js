@@ -167,7 +167,7 @@ function renderCharacterDetail(){
   const rvs = state.characterReviews.filter(r=>r.characterId===c.id && hasReviewContent(r)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const myReview = state.user ? state.characterReviews.find(r=>r.characterId===c.id && r.username===state.user.username) : null;
   // Banner de la ficha: la portada especial subida a mano, si hay una; si no, la del juego elegido (o el único
-  // juego, si solo pertenece a uno) — que puede necesitar buscarse (loadHeroCover, más abajo); si nada de eso
+  // juego, si solo pertenece a uno) — que se pinta con loadHeroCover (más abajo); si nada de eso
   // aplica, la propia foto del personaje como para no dejar la ficha sin ningún fondo.
   const heroBgHTML = c.bannerUrl
     ? `<div class="game-hero-bg has-cover" style="background-image:url('${esc(c.bannerUrl)}')"></div>`
@@ -224,7 +224,7 @@ function renderCharacterDetail(){
   renderCharacterRail(c);
   renderGauge(document.getElementById('charDetailGauge'), st.avg||0);
   if(bannerGame){
-    loadHeroCover(bannerGame.title, document.getElementById('charHeroBg'), bannerGame.coverUrl);
+    loadHeroCover(document.getElementById('charHeroBg'), bannerGame.coverUrl);
   }
   el.querySelectorAll('[data-game-id]').forEach(elGame=>{
     elGame.onclick = ()=>{ state.currentGame=elGame.dataset.gameId; state.gameOrigin='browse'; goView('game'); };
