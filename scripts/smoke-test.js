@@ -222,6 +222,8 @@ const today = new Date().toISOString().slice(0, 10);
       assert.ok(cmds.includes('QUIT'));
       const [head, ...rest] = log.find(l => l[0] === 'CUERPO')[1].split('\r\n\r\n');
       assert.ok(head.includes('From: DLCritic <dlcritic@ejemplo.com>') && head.includes('To: persona@ejemplo.com') && head.includes('Reply-To: ayuda@ejemplo.com'));
+      assert.match(head, /Message-ID: <[0-9a-f-]{36}@ejemplo\.com>/, 'el Message-ID lleva el dominio del remitente');
+      assert.ok(head.includes('Auto-Submitted: auto-generated'), 'se marca como mensaje automático');
       const encoded = head.match(/Subject: =\?UTF-8\?B\?(.+?)\?=/)[1];
       assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), subject, 'el asunto con tilde va codificado');
       assert.equal(Buffer.from(rest.join('\r\n\r\n').replace(/\r\n/g, ''), 'base64').toString('utf8'), text, 'el cuerpo (con ñ y un "." solo en una línea) llega intacto');

@@ -138,9 +138,26 @@
   .icon-btn.state-featured{ color:var(--gold-dim); }
   .icon-btn.state-featured svg{ fill:currentColor; }
   .empty-row{ text-align:center; color:var(--ink-soft); padding:30px; font-size:13px; }
+  /* En el celular cada fila de las tablas (juegos, personajes, fechas, noticias) pasa a ser una tarjeta: sin scroll hacia el costado y con las
+     acciones siempre a la vista abajo. Las celdas se ubican por posición con grid-template-areas (title, sub1, sub2, state, actions). */
   @media(max-width:640px){
-    th.col-actions, td.col-actions{ position:sticky; right:0; background:var(--paper); box-shadow:-8px 0 8px -8px var(--shadow-strong); }
-    tbody tr:hover td.col-actions{ background:var(--paper-alt); }
+    table, tbody{ display:block; min-width:0; }
+    thead{ display:none; }
+    tbody tr{ display:grid; align-items:center; gap:3px 12px; margin-bottom:10px; padding:12px; background:var(--paper); border:1px solid var(--line-dark); border-radius:14px; }
+    tbody tr:hover{ background:var(--paper); }
+    tbody td{ display:block; min-width:0; padding:0; border:none; overflow-wrap:anywhere; }
+    tbody td:first-child{ grid-area:icon; }
+    tbody td:nth-child(2){ grid-area:title; font-weight:700; }
+    tbody td:nth-child(3){ grid-area:sub1; color:var(--ink-soft); font-size:12.5px; }
+    tbody td:nth-child(4){ grid-area:sub2; color:var(--ink-soft); font-size:12.5px; }
+    tbody td:nth-child(5){ grid-area:state; justify-self:end; }
+    tbody td.col-actions{ grid-area:actions; margin-top:8px; padding-top:8px; border-top:1px solid var(--line-dark); }
+    tbody td.col-actions .row-actions{ display:flex; justify-content:flex-end; flex-wrap:wrap; }
+    tbody td.empty-row{ grid-area:auto; grid-column:1 / -1; text-align:center; padding:20px 0; }
+    #gamesTableBody tr{ grid-template-columns:48px 1fr auto; grid-template-areas:"icon title state" "icon sub1 sub2" "actions actions actions"; }
+    #charactersTableBody tr{ grid-template-columns:48px 1fr auto; grid-template-areas:"icon title state" "icon sub1 sub1" "icon sub2 sub2" "actions actions actions"; }
+    #datesTableBody tr{ grid-template-columns:52px 1fr; grid-template-areas:"icon title" "icon sub1" "actions actions"; }
+    #newsTableBody tr{ grid-template-columns:40px 1fr; grid-template-areas:"icon title" "icon sub1" "actions actions"; }
   }
 
   .section-title{ font-family:'Bungee',sans-serif; font-size:16px; margin:0 0 16px; color:var(--ink); display:flex; align-items:center; gap:8px; }

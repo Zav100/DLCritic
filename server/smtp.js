@@ -45,6 +45,8 @@ function connect({ host, port, secure }) {
 
 // "Nombre <a@b.com>" -> "a@b.com"
 const addressOf = s => (s.match(/<([^<>\s]+)>/) || [null, s.trim()])[1];
+// "Nombre <a@b.com>" -> "b.com": el Message-ID lleva el dominio del remitente (antes decía "@dlcritic", que no es un dominio válido y los filtros lo notan).
+const domainOf = s => (addressOf(s).split('@')[1] || 'localhost').toLowerCase();
 
 // Palabras no ASCII en un encabezado: =?UTF-8?B?...?= (RFC 2047).
 const headerText = s => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buffer.from(s).toString('base64')}?=`);
@@ -58,7 +60,9 @@ function buildMessage({ from, to, replyTo, subject, text }) {
     replyTo ? `Reply-To: ${replyTo}` : null,
     `Subject: ${headerText(subject)}`,
     `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${crypto.randomUUID()}@dlcritic>`,
+    `Message-ID: <${crypto.randomUUID()}@${domainOf(from)}>`,
+    // RFC 3834: es un mensaje automático (no una conversación): así nadie le contesta con un "fuera de la oficina" ni se trata como correo masivo.
+    'Auto-Submitted: auto-generated',
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset=utf-8',
     'Content-Transfer-Encoding: base64',
