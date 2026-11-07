@@ -43,7 +43,7 @@ router.post('/2fa/enable', twoFactorLimiter, async (req, res) => {
   res.json({ recoveryCodes });
 });
 
-// Desde acá, todo el panel exige tener la verificación en dos pasos activada.
+// Desde aquí, todo el panel exige tener la verificación en dos pasos activada.
 router.use((req, res, next) => (req.user.totp_enabled ? next() : res.status(403).json({ error: 'two_factor_required' })));
 
 const uploadLimiter = rateLimit({ name: 'admin-upload', windowMs: 10 * 60 * 1000, max: 30, keyFn: req => 'u:' + req.user.id });

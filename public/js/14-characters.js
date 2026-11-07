@@ -11,7 +11,7 @@
  * reviews), su propio state (state.characterReviews, no state.reviews), y
  * no tienen plataformas ni votos de "te sirvió" (los juegos sí). Por eso
  * cada pieza (calificación rápida, bloque de reseña, card de reseña) tiene
- * acá su propia versión más simple en vez de generalizar la de juegos.
+ * aquí su propia versión más simple en vez de generalizar la de juegos.
  */
 /* ---------- avatar circular de un personaje (foto real, o iniciales de color si no tiene) ---------- */
 // Mismo patrón que el avatar por-defecto del usuario en el header (ver renderUserBadge en 05-navigation.js): un círculo de color estable según el nombre, con la primera letra. Achica la clase extra (p.ej. "char-avatar-lg") para el tamaño grande de la ficha.
@@ -133,15 +133,16 @@ function paintCharactersGrid(animate){
     const games = characterGames(c);
     const gameNames = games.map(g=>g.title).join(', ');
     const card = document.createElement('div');
-    card.className = 'card gamecard character-card' + (rank===1? ' featured' : '') + (animate? ' enter' : '');
+    card.className = 'card gamecard character-card has-card-link' + (rank===1? ' featured' : '') + (animate? ' enter' : '');
     if(animate){
       card.style.setProperty('--i', Math.min(i, 12));
-      // animationcancel también: en la card destacada, el hover cambia de animación a mitad de la entrada, y sin quitar .enter acá la entrada se reiniciaría al sacar el mouse.
+      // animationcancel también: en la card destacada, el hover cambia de animación a mitad de la entrada, y sin quitar .enter aquí la entrada se reiniciaría al sacar el mouse.
       const done = e=>{ if(e.target===card) card.classList.remove('enter'); };
       card.addEventListener('animationend', done);
       card.addEventListener('animationcancel', done);
     }
     card.innerHTML = `
+      ${cardLinkHTML(characterHref(c.id), c.name)}
       <div class="char-card-avatar-wrap">
         ${charAvatarHTML(c)}
         ${rank>=1 && rank<=3? `<span class="char-rank-badge rank-${rank}">${CHAR_RANK_ICON[rank]}</span>` : ''}
@@ -150,7 +151,7 @@ function paintCharactersGrid(animate){
       ${charCategoryTagHTML(c)}
       <div class="gc-sub">${gameNames? esc(gameNames)+' · ' : ''}${reviewsCountText(st.count)} · ${st.count? st.avg+'/10':(state.lang==='en'?'no rating':'sin nota')}</div>
     `;
-    card.onclick = ()=>{ state.currentCharacter=c.id; goView('character'); };
+    card.onclick = spa(()=>{ state.currentCharacter=c.id; goView('character'); });
     grid.appendChild(card);
   });
 }
@@ -177,7 +178,7 @@ function renderCharacterDetail(){
         ? `<div class="game-hero-bg has-cover" style="background-image:url('${esc(c.photoUrl)}')"></div>`
         : '';
   const gamesMetaHTML = games.length
-    ? `${t('character_of_label')} ${games.map(g=>`<span class="rc-author" role="link" tabindex="0" data-game-id="${esc(g.id)}">${esc(g.title)}</span>`).join(', ')} · `
+    ? `${t('character_of_label')} ${games.map(g=>`<a class="rc-author" href="${gameHref(g.id)}" data-game-id="${esc(g.id)}">${esc(g.title)}</a>`).join(', ')} · `
     : '';
   el.innerHTML = `
     <div class="layout-rail"><div class="rail-main">
@@ -223,17 +224,18 @@ function renderCharacterDetail(){
   `;
   renderCharacterRail(c);
   renderGauge(document.getElementById('charDetailGauge'), st.avg||0);
+  makeZoomable(el.querySelector('.game-hero-card .char-avatar-lg.has-photo'), c.photoUrl, c.name); // la foto de la ficha se abre en grande
   if(bannerGame){
     loadHeroCover(document.getElementById('charHeroBg'), bannerGame.coverUrl);
   }
   el.querySelectorAll('[data-game-id]').forEach(elGame=>{
-    elGame.onclick = ()=>{ state.currentGame=elGame.dataset.gameId; state.gameOrigin='browse'; goView('game'); };
+    elGame.onclick = spa(()=>{ state.currentGame=elGame.dataset.gameId; state.gameOrigin='browse'; goView('game'); });
   });
   if(state.user){
     renderQuickRateChar('cqr', c.id, myReview? myReview.rating : null);
     renderCharReviewBlock(c.id, myReview);
   }
-  document.getElementById('characterBackBtn').onclick = ()=> goView('characters');
+  document.getElementById('characterBackBtn').onclick = spa(()=> goView('characters'));
   document.getElementById('charVersusBtn').onclick = ()=> openVersusModal(c.id);
   const list = document.getElementById('charDetailList');
   if(rvs.length===0){
@@ -252,11 +254,11 @@ function gameCharactersHTML(g){
     <div class="sectionhead"><h2>${t('chars_of_game_title')}</h2><span class="count">${chars.length}</span></div>
     <div class="game-chars">${chars.map(c=>{
       const st = characterStats(c.id);
-      return `<button type="button" class="game-char-chip" data-char-id="${esc(c.id)}">${charAvatarHTML(c)}<span class="gcc-name">${esc(c.name)}</span><span class="gcc-score">${st.ratedCount? st.avg+'/10' : '—'}</span></button>`;
+      return `<a class="game-char-chip" href="${characterHref(c.id)}" data-char-id="${esc(c.id)}">${charAvatarHTML(c)}<span class="gcc-name">${esc(c.name)}</span><span class="gcc-score">${st.ratedCount? st.avg+'/10' : '—'}</span></a>`;
     }).join('')}</div>`;
 }
 function wireGameCharacters(root){
-  root.querySelectorAll('[data-char-id]').forEach(b=> b.onclick = ()=>{ state.currentCharacter=b.dataset.charId; goView('character'); });
+  root.querySelectorAll('[data-char-id]').forEach(b=> b.onclick = spa(()=>{ state.currentCharacter=b.dataset.charId; goView('character'); }));
 }
 
 /* ---------- Versus: comparar dos personajes lado a lado ---------- */
@@ -498,7 +500,7 @@ function characterReviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(c.name)}</div>
-        <div class="rc-meta"><span class="rc-author" role="link" tabindex="0" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · ${fmtDate(rv.date)}</div>
       </div>
     </div>
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
@@ -508,7 +510,7 @@ function characterReviewCard(rv){
     </div>
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#char-gauge-${rv.id}`), rv.rating);
-  div.querySelector('.rc-author').onclick=()=>{ state.profileUsername = rv.username; goView('profile'); };
+  div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
   if(mine) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
   return div;
 }

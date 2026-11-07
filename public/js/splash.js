@@ -2,7 +2,7 @@
 // header mientras el fondo se disuelve y deja ver el inicio. Dura unos 2,5 s. El logo no desaparece: termina siendo el del header.
 //
 // Cuándo se muestra lo decide el <head> de server/views/index.html, antes del primer dibujo (así la página no parpadea por debajo): solo al
-// entrar por el inicio ("/"), una sola vez por sesión y no si el sistema pide "reducir movimiento". Acá solo se anima, y se puede saltar con un
+// entrar por el inicio ("/"), una sola vez por sesión y no si el sistema pide "reducir movimiento". Aquí solo se anima, y se puede saltar con un
 // clic, un toque o cualquier tecla. Los estilos están al final de public/css/style.css.
 (function () {
   const root = document.documentElement;

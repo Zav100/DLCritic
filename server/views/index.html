@@ -72,10 +72,10 @@
           <circle cx="242" cy="148" r="21" fill="#F6F3FF" />
         </svg> <span class="logo-word">DLC<span>ritic</span></span></a>
       <nav id="mainNav">
-        <button class="navbtn" data-view="feed" data-i18n="nav_feed">Inicio</button>
-        <button class="navbtn" data-view="browse" data-i18n="nav_browse">Explorar</button>
-        <button class="navbtn" data-view="characters" data-i18n="nav_characters">Personajes</button>
-        <button class="navbtn" data-view="daily" data-i18n="nav_daily">Reto del día</button>
+        <a class="navbtn" data-view="feed" href="/" data-i18n="nav_feed">Inicio</a>
+        <a class="navbtn" data-view="browse" href="/explorar" data-i18n="nav_browse">Explorar</a>
+        <a class="navbtn" data-view="characters" href="/personajes" data-i18n="nav_characters">Personajes</a>
+        <a class="navbtn" data-view="daily" href="/reto-del-dia" data-i18n="nav_daily">Reto del día</a>
       </nav>
       <div class="headright">
         <button class="lang-toggle" id="langToggle" aria-label="Change language" title="Change language">ES</button>
@@ -96,12 +96,12 @@
           <p data-i18n="feed_p">DLCritic es un catálogo de videojuegos con calificaciones y reseñas hechas por la
             comunidad: explora títulos de Steam, Epic Games, PlayStation, Xbox y Nintendo, y deja tu nota.</p>
           <div class="hero-actions">
-            <button class="btn gold" id="heroExploreBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            <a class="btn gold" id="heroExploreBtn" href="/explorar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
-              </svg><span data-i18n="hero_cta_explore">Explorar catálogo</span></button>
-            <button class="hero-ghost" id="heroAboutBtn" data-i18n="hero_cta_about">Cómo funciona DLCritic</button>
+              </svg><span data-i18n="hero_cta_explore">Explorar catálogo</span></a>
+            <a class="hero-ghost" id="heroAboutBtn" data-i18n="hero_cta_about" href="/acerca-de">Cómo funciona DLCritic</a>
           </div>
           <div class="flow-steps">
             <div class="flow-step"><span class="flow-label" data-i18n="flow_step1_label">01 · Explorar</span><span
@@ -142,7 +142,7 @@
               </svg></div>
             <h3 data-i18n="flow_card2_title">Pon tu nota</h3>
             <p data-i18n="flow_card2_text">Entra a la ficha del juego y califícalo del 1 al 10 con el selector — se
-              guarda al toque, sin pasos extra.</p>
+              guarda al instante, sin pasos extra.</p>
             <div class="flowcard-demo flowcard-demo-rate">
               <span class="fd-num">8.9</span>
               <span class="fd-gauge"><span class="fd-gauge-fill"></span></span>
@@ -197,11 +197,11 @@
     </div>
 
     <div id="view-about" class="viewsec" hidden>
-      <button class="backlink" id="aboutBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <a class="backlink" id="aboutBackBtn" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="11 18 5 12 11 6" />
-        </svg><span data-i18n="back_generic">Volver</span></button>
+        </svg><span data-i18n="back_generic">Volver</span></a>
 
       <div class="hero" style="padding-top:8px;">
         <span class="eyebrow" data-i18n="about_eyebrow">Sobre DLCritic</span>
@@ -230,7 +230,7 @@
             </svg></div>
           <h3 data-i18n="about_intent_title">Por qué existe</h3>
           <p data-i18n="about_intent_text">Porque encontrar buenas reseñas de un juego suele significar revisar cinco
-            sitios distintos. Acá concentramos todo — catálogo, notas y opiniones — en un solo lugar simple.</p>
+            sitios distintos. Aquí concentramos todo — catálogo, notas y opiniones — en un solo lugar simple.</p>
         </div>
         <div class="card about-card">
           <div class="about-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -253,16 +253,16 @@
       </div>
 
       <div class="hero-actions" style="justify-content:center; margin:8px 0 32px;">
-        <button class="btn gold" id="aboutExploreBtn"><span data-i18n="hero_cta_explore">Explorar catálogo</span></button>
+        <a class="btn gold" id="aboutExploreBtn" href="/explorar"><span data-i18n="hero_cta_explore">Explorar catálogo</span></a>
       </div>
     </div>
 
     <div id="view-news" class="viewsec" hidden>
-      <button class="backlink" id="newsBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <a class="backlink" id="newsBackBtn" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="11 18 5 12 11 6" />
-        </svg><span data-i18n="back_news">Volver al Inicio</span></button>
+        </svg><span data-i18n="back_news">Volver al Inicio</span></a>
       <div class="sectionhead" style="margin-top:0;">
         <h2 data-i18n="feed_news_title">Noticias del mundo gamer</h2><span class="count" id="newsViewCount">0</span>
       </div>
@@ -370,20 +370,20 @@
     </div>
 
     <div id="view-character" class="viewsec" hidden>
-      <button class="backlink" id="characterBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <a class="backlink" id="characterBackBtn" href="/personajes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="11 18 5 12 11 6" />
-        </svg><span data-i18n="back_characters">Volver a Personajes</span></button>
+        </svg><span data-i18n="back_characters">Volver a Personajes</span></a>
       <div id="characterDetail"></div>
     </div>
 
     <div id="view-game" class="viewsec" hidden>
-      <button class="backlink" id="gameBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <a class="backlink" id="gameBackBtn" href="/explorar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="11 18 5 12 11 6" />
-        </svg><span id="gameBackText" data-i18n="back_generic">Volver</span></button>
+        </svg><span id="gameBackText" data-i18n="back_generic">Volver</span></a>
       <div id="gameDetail"></div>
     </div>
 
@@ -566,24 +566,24 @@
           <small data-i18n="tagline">Cada opinión es un DLC</small>
         </div>
         <nav class="footer-links">
-          <button type="button" class="footer-link" data-view="feed" data-i18n="nav_feed">Inicio</button>
-          <button type="button" class="footer-link" data-view="browse" data-i18n="nav_browse">Explorar</button>
-          <button type="button" class="footer-link" data-view="characters" data-i18n="nav_characters">Personajes</button>
-          <button type="button" class="footer-link" data-view="shelf" data-i18n="nav_shelf">Mi estantería</button>
-          <button type="button" class="footer-link" data-view="daily" data-i18n="nav_daily">Reto del día</button>
+          <a class="footer-link" data-view="feed" href="/" data-i18n="nav_feed">Inicio</a>
+          <a class="footer-link" data-view="browse" href="/explorar" data-i18n="nav_browse">Explorar</a>
+          <a class="footer-link" data-view="characters" href="/personajes" data-i18n="nav_characters">Personajes</a>
+          <a class="footer-link" data-view="shelf" href="/mi-estanteria" data-i18n="nav_shelf">Mi estantería</a>
+          <a class="footer-link" data-view="daily" href="/reto-del-dia" data-i18n="nav_daily">Reto del día</a>
         </nav>
       </div>
 
       <div class="footer-suggest">
         <div>
-          <div class="footer-suggest-title" data-i18n="footer_suggest_title">¿No encontrás tu juego favorito?</div>
-          <div class="footer-suggest-sub" data-i18n="footer_suggest_sub">Envialo para que lo agreguemos.</div>
+          <div class="footer-suggest-title" data-i18n="footer_suggest_title">¿No encuentras tu juego favorito?</div>
+          <div class="footer-suggest-sub" data-i18n="footer_suggest_sub">Envíalo para que lo agreguemos.</div>
         </div>
         <button type="button" class="btn gold" id="footerSuggestBtn" data-i18n="footer_suggest_btn">Sugerir un
           juego</button>
       </div>
 
-      <div class="footer-bottom">© <span id="footerYear"></span> DLCritic — <span data-i18n="footer_note">hecho por
+      <div class="footer-bottom">© <span id="footerYear"></span> DLCritic — <span data-i18n="footer_note">Hecho por
           fans, para fans.</span>
         <div class="footer-legal"><a href="/terminos" data-i18n="footer_terms">Términos y condiciones</a><a
             href="/privacidad" data-i18n="footer_privacy">Política de privacidad</a><a
@@ -593,27 +593,27 @@
   </footer>
 
   <nav class="bottom-nav" id="bottomNav">
-    <button class="navbtn bottom-navbtn" data-view="feed"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+    <a class="navbtn bottom-navbtn" data-view="feed" href="/"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path
             d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
-        </svg></span><span class="bn-label" data-i18n="nav_feed">Inicio</span></button>
-    <button class="navbtn bottom-navbtn" data-view="browse"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+        </svg></span><span class="bn-label" data-i18n="nav_feed">Inicio</span></a>
+    <a class="navbtn bottom-navbtn" data-view="browse" href="/explorar"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg></span><span class="bn-label" data-i18n="nav_browse">Explorar</span></button>
-    <button class="navbtn bottom-navbtn" data-view="characters"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+        </svg></span><span class="bn-label" data-i18n="nav_browse">Explorar</span></a>
+    <a class="navbtn bottom-navbtn" data-view="characters" href="/personajes"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
-        </svg></span><span class="bn-label" data-i18n="nav_characters">Personajes</span></button>
-    <button class="navbtn bottom-navbtn" data-view="shelf"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+        </svg></span><span class="bn-label" data-i18n="nav_characters">Personajes</span></a>
+    <a class="navbtn bottom-navbtn" data-view="shelf" href="/mi-estanteria"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg></span><span class="bn-label" data-i18n="nav_shelf">Mi estantería</span></button>
-    <button class="navbtn bottom-navbtn" data-view="daily"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
+        </svg></span><span class="bn-label" data-i18n="nav_shelf">Mi estantería</span></a>
+    <a class="navbtn bottom-navbtn" data-view="daily" href="/reto-del-dia"><span class="bn-icon"><svg viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="3" />
           <circle cx="8" cy="8" r="1.2" fill="currentColor" />
@@ -621,7 +621,7 @@
           <circle cx="8" cy="16" r="1.2" fill="currentColor" />
           <circle cx="16" cy="16" r="1.2" fill="currentColor" />
           <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-        </svg></span><span class="bn-label" data-i18n="nav_daily_short">Reto</span></button>
+        </svg></span><span class="bn-label" data-i18n="nav_daily_short">Reto</span></a>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -2,13 +2,13 @@
  * ARCHIVO 2 de 16 — Sistema de idioma (español / inglés).
  *
  * I18N.es e I18N.en son dos diccionarios PLANOS con exactamente las mismas
- * claves (si agregás una clave nueva, agregala en los dos). t('clave')
+ * claves (si agregas una clave nueva, agrégala en los dos). t('clave')
  * devuelve el texto en el idioma actual (state.lang, definido en el
  * próximo archivo). En el HTML, un elemento con data-i18n="clave" se
  * completa solo al arrancar y cada vez que se cambia de idioma — ver
  * applyI18n() más abajo.
  *
- * IMPORTANTE: acá solo vive el sistema de traducción en sí. El resto de
+ * IMPORTANTE: aquí solo vive el sistema de traducción en sí. El resto de
  * las cosas que estaban mezcladas en este bloque en el archivo original
  * (CATALOG, DATE_EVENTS, el calendario de fechas importantes, etc.) se
  * movieron a 03-state-and-utils.js y 06-news-and-new-games.js, donde
@@ -252,7 +252,7 @@ const I18N = {
     reviews_section_title:"Reseñas", load_more_btn:"Ver más",
     footer_suggest_title:"¿No encuentras tu juego favorito?", footer_suggest_sub:"Envíalo para que lo agreguemos.",
     footer_suggest_btn:"Sugerir un juego", footer_note:"Hecho por fans, para fans.",
-    footer_terms:"Términos y condiciones", footer_privacy:"Política de privacidad", footer_credits:"Créditos", nintendo_credit:"La portada y las imágenes de este juego pertenecen a Nintendo. Todos los derechos reservados.",
+    footer_terms:"Términos y condiciones", footer_privacy:"Política de privacidad", footer_credits:"Créditos", nintendo_credit:"La portada y las imágenes de este juego pertenecen a Nintendo. Todos los derechos reservados.", lightbox_close:"Cerrar", lightbox_view_image:"Ver imagen ampliada",
     suggest_modal_title:"Sugerir un juego", suggest_title_label:"Nombre del juego", suggest_title_ph:"Ej: Hollow Knight: Silksong",
     suggest_platforms_label:"¿En qué plataforma se encuentra? (opcional)",
     suggest_genre_label:"Género (opcional)", suggest_year_label:"Año de salida (opcional)",
@@ -496,7 +496,7 @@ const I18N = {
     reviews_section_title:"Reviews", load_more_btn:"Show more",
     footer_suggest_title:"Can't find your favorite game?", footer_suggest_sub:"Send it over and we'll add it.",
     footer_suggest_btn:"Suggest a game", footer_note:"Made by fans, for fans.",
-    footer_terms:"Terms and Conditions", footer_privacy:"Privacy Policy", footer_credits:"Credits", nintendo_credit:"The cover and images of this game belong to Nintendo. All rights reserved.",
+    footer_terms:"Terms and Conditions", footer_privacy:"Privacy Policy", footer_credits:"Credits", nintendo_credit:"The cover and images of this game belong to Nintendo. All rights reserved.", lightbox_close:"Close", lightbox_view_image:"View larger image",
     suggest_modal_title:"Suggest a game", suggest_title_label:"Game name", suggest_title_ph:"E.g: Hollow Knight: Silksong",
     suggest_platforms_label:"Which platform is it on? (optional)",
     suggest_genre_label:"Genre (optional)", suggest_year_label:"Release year (optional)",
@@ -519,7 +519,7 @@ function applyI18n(){
   const lb=document.getElementById('langToggle'); if(lb) lb.textContent = state.lang==='es' ? 'ES' : 'EN';
   renderUserBadge();
 }
-// Interruptor del cambio de idioma. En false el botón ES/EN no se ve (style.css, .lang-toggle) y el sitio queda siempre en español, sin importar lo guardado en localStorage. Para volver a ofrecer el inglés: true acá y en legal.js, y quitar la regla de style.css.
+// Interruptor del cambio de idioma. En false el botón ES/EN no se ve (style.css, .lang-toggle) y el sitio queda siempre en español, sin importar lo guardado en localStorage. Para volver a ofrecer el inglés: true aquí y en legal.js, y quitar la regla de style.css.
 const LANG_SWITCH = false;
 // Botón ES/EN del header: alterna el idioma, lo guarda en localStorage y vuelve a pintar la vista actual (los textos armados dinámicamente, como listas, necesitan re-renderizarse, no solo los data-i18n).
 function toggleLang(){

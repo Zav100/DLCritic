@@ -8,7 +8,7 @@ const markStepUsed = db.prepare('UPDATE users SET totp_last_step = ? WHERE id = 
 const setRecovery = db.prepare('UPDATE users SET totp_recovery = ? WHERE id = ? AND totp_recovery = ?');
 
 // 10 intentos cada 15 minutos por cuenta (además del tope por IP del login): quien ya sabe la contraseña igual no puede probar los
-// 1.000.000 de códigos posibles. Solo se llega acá con la contraseña correcta, así que este tope no sirve para dejar afuera a otra persona.
+// 1.000.000 de códigos posibles. Solo se llega aquí con la contraseña correcta, así que este tope no sirve para dejar afuera a otra persona.
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 

@@ -7,7 +7,7 @@
  * cualquier función de cualquier otro archivo lee o escribe `state` en
  * algún momento — no hay "stores" separados por feature.
  *
- * También viven acá: helpers de formato/DOM usados en TODA la app (esc,
+ * También viven aquí: helpers de formato/DOM usados en TODA la app (esc,
  * fmtDate, toast, uid), el sistema de "portada real" de un juego (busca
  * la carátula real por internet vía el servidor y la cachea), y algunos
  * datos globales que se cargan una sola vez al bootear (CATALOG,
@@ -39,7 +39,7 @@ const BROWSE_SORTS = {
 };
 const BROWSE_SORT_KEYS = ['rating_desc','rating_asc','az','za','release_date_desc','release_date_asc','developer','game_mode_solo','game_mode_other'];
 // EL estado global de la app. No es reactivo (no hay framework): cuando algo
-// cambia acá, quien lo cambió es responsable de volver a pintar lo que
+// cambia aquí, quien lo cambió es responsable de volver a pintar lo que
 // corresponda (llamando a la función render... que haga falta).
 let state = { user:null, games:[], reviews:[], characters:[], characterReviews:[], notifications:[], view:'feed', authTab:'login', browseFilter:new Set(), browseGenres:new Set(), lang:'es', reviewEditing:false, charReviewEditing:false, browseVisibleCount:BROWSE_PAGE_SIZE, browseViewMode: (function(){ try{ return localStorage.getItem('browseViewMode')==='list' ? 'list' : 'grid'; }catch(e){ return 'grid'; } })(), browseSortMode: (function(){ try{ const v=localStorage.getItem('browseSortMode'); return BROWSE_SORT_KEYS.includes(v) ? v : 'rating_desc'; }catch(e){ return 'rating_desc'; } })() };
 
@@ -124,7 +124,7 @@ function enhanceCovers(){
 // Las cards clicables son <div class="card"> con onclick: sin tabindex no se alcanzan con Tab ni se activan con el teclado. Se detectan por tener un onclick propio, así que cubre cualquier card nueva sin tocar cada render.
 function makeClickableCardsFocusable(){
   document.querySelectorAll('.card:not([tabindex])').forEach(c=>{
-    if(typeof c.onclick==='function'){ c.tabIndex = 0; c.setAttribute('role','button'); }
+    if(typeof c.onclick==='function' && !c.querySelector(':scope > .card-link')){ c.tabIndex = 0; c.setAttribute('role','button'); }
   });
 }
 document.addEventListener('keydown', e=>{

@@ -17,7 +17,7 @@ document.querySelectorAll('.tabbtn').forEach(b=>{
 });
 document.querySelector('.tabbtn[data-tab="games"]').classList.add('active');
 
-/* ---- cliente de API (idéntico en espíritu al de public/js/04-api-theme-rating.js, pero copiado acá porque son dos páginas sin código compartido) ---- */
+/* ---- cliente de API (idéntico en espíritu al de public/js/04-api-theme-rating.js, pero copiado aquí porque son dos páginas sin código compartido) ---- */
 async function api(path, options){
   const res = await fetch('/api'+path, { headers: options && options.isForm ? {} : {'Content-Type':'application/json'}, ...options });
   let body=null;

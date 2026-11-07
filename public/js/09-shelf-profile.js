@@ -9,7 +9,7 @@
  * botón de editar) vs las que solo aparecen en perfiles ajenos (botón de
  * seguir, contador de seguidores).
  *
- * Las Listas de un usuario se resumen acá (una preview chica dentro del
+ * Las Listas de un usuario se resumen aquí (una preview chica dentro del
  * perfil) pero su CRUD completo (crear/editar/agregar juegos) vive en
  * 10-lists.js — es el archivo siguiente.
  */
@@ -27,8 +27,8 @@ function renderShelf(){
   const el = document.getElementById('profileContent');
   if(!state.user){
     el.innerHTML = emptyState(ICONS.lock, t('empty_shelf_login_t'), t('empty_shelf_login_s'));
-    const btn=document.createElement('button'); btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
-    btn.onclick=()=>goView('auth'); el.appendChild(btn);
+    const btn=document.createElement('a'); btn.href='/cuenta'; btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
+    btn.onclick=spa(()=>goView('auth')); el.appendChild(btn);
     return;
   }
   renderProfileBody(el, state.user.username, profileShapeFromSelf(state.user), true);
@@ -72,7 +72,7 @@ function renderProfileBody(el, username, profile, editable){
     : `<div class="avatar" style="background:${color}">${esc(username[0].toUpperCase())}</div>`;
 
   const headActionsHTML = editable
-    ? `<button class="btn-edit-profile" id="editProfileBtn">${ICONS.edit} ${t('profile_edit_btn')}</button>`
+    ? `<a class="btn-edit-profile" id="editProfileBtn" href="/ajustes">${ICONS.edit} ${t('profile_edit_btn')}</a>`
     : (state.user ? `
         <button class="wishlist-btn ${profile.isFollowing?'active':''}" id="followBtn">${ICONS.heart} ${profile.isFollowing? t('following_label') : t('follow_btn')}</button>
         ${profile.isFriend? `<span class="first-badge">${esc(t('friends_badge'))}</span>` : ''}
@@ -180,7 +180,7 @@ function renderProfileBody(el, username, profile, editable){
     };
     renderWishlistGrid();
     renderActivityCalendar(document.getElementById('activityCal'), username);
-    document.getElementById('editProfileBtn').onclick = ()=> goView('settings');
+    document.getElementById('editProfileBtn').onclick = spa(()=> goView('settings'));
   } else if(state.user){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
   }
@@ -255,8 +255,8 @@ function renderListsView(){
     const el = document.getElementById('listsViewGrid');
     document.getElementById('listsViewCount').textContent = 0;
     el.innerHTML = emptyState(ICONS.lock, t('empty_login_t'), t('empty_login_s'));
-    const btn=document.createElement('button'); btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
-    btn.onclick=()=>goView('auth'); el.appendChild(btn);
+    const btn=document.createElement('a'); btn.href='/cuenta'; btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
+    btn.onclick=spa(()=>goView('auth')); el.appendChild(btn);
     return;
   }
   renderProfileLists(state.user.username, true, 'listsViewGrid', 'listsViewCount');
@@ -271,8 +271,8 @@ async function renderNotificationsView(){
   if(!state.user){
     countEl.textContent = 0;
     el.innerHTML = emptyState(ICONS.lock, t('empty_login_t'), t('empty_login_s'));
-    const btn=document.createElement('button'); btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
-    btn.onclick=()=>goView('auth'); el.appendChild(btn);
+    const btn=document.createElement('a'); btn.href='/cuenta'; btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
+    btn.onclick=spa(()=>goView('auth')); el.appendChild(btn);
     return;
   }
   try{
@@ -292,19 +292,21 @@ async function renderNotificationsView(){
       const text = n.type==='follow'
         ? (state.lang==='en' ? `<b>${actor}</b> started following you` : `<b>${actor}</b> empezó a seguirte`)
         : (state.lang==='en' ? `<b>${actor}</b> found your review of ${gameTitle} helpful` : `A <b>${actor}</b> le pareció útil tu reseña de ${gameTitle}`);
+      const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
       const row = document.createElement('div');
-      row.className = 'card notif-row' + (n.read? '' : ' unread');
+      row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
       row.innerHTML = `
+        ${href? cardLinkHTML(href, n.type==='follow'? n.actorUsername : gameTitle) : ''}
         <div class="notif-icon">${n.type==='follow'? ICONS.heart : ICONS.thumbsUp}</div>
         <div class="notif-body">
           <div class="notif-text">${text}</div>
           <div class="notif-date">${fmtDate(n.createdAt)}</div>
         </div>
       `;
-      row.onclick = ()=>{
+      row.onclick = spa(()=>{
         if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }
         else if(game){ state.currentGame = game.id; state.gameOrigin='feed'; goView('game'); }
-      };
+      });
       el.appendChild(row);
     });
   }

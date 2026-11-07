@@ -1,5 +1,5 @@
 // Página /restablecer: elige la contraseña nueva con el token que llegó por correo. El idioma y el tema los maneja legal.js (esta página usa sus mismos estilos).
-// Las reglas de la contraseña las valida el servidor (server/index.js, passwordProblem): acá solo se muestra lo que responde.
+// Las reglas de la contraseña las valida el servidor (server/index.js, passwordProblem): aquí solo se muestra lo que responde.
 (function () {
   const MSG = {
     es: {

@@ -18,7 +18,7 @@
  * 12-settings.js (ahí pueden cambiarlo a una contraseña real si quieren).
  */
 /* ---------- auth ---------- */
-// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida acá TAMBIÉN en el cliente para dar el error al toque, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
+// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida aquí TAMBIÉN en el cliente para dar el error al instante, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
 // Sin emojis (misma regla que EMOJI_RE en server/index.js): cualquier carácter con aspecto de emoji, tonos de piel, banderas, ZWJ y selector de emoji; © ® ™ valen.
 const EMOJI_RE_CLIENT = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
 // Devuelve la clave del texto de error de una contraseña rechazada, o null si sirve.

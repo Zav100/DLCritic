@@ -9,12 +9,33 @@
  * llama a applyView(), que es la que realmente esconde/muestra secciones y
  * dispara el render de cada vista.
  *
- * También vive acá el badge de usuario del header (avatar o botón
+ * También vive aquí el badge de usuario del header (avatar o botón
  * "Iniciar sesión") y su menú desplegable.
  */
 /* ---------- nav / views ---------- */
+// ENLACES DE VERDAD. Todo lo que lleva a otra sección o página es un <a href>: así el clic derecho ofrece "Abrir en una pestaña nueva" y funcionan
+// Ctrl/Cmd+clic, Mayús+clic y el clic del medio (el navegador abre la dirección, que el servidor sabe servir). Un clic normal navega adentro del
+// sitio sin recargar: spa(fn) arma ese handler y, si el clic trae una tecla modificadora, lo deja pasar al navegador sin tocarlo.
+const gameHref = id => '/juego/' + encodeURIComponent(id);
+const characterHref = id => '/personaje/' + encodeURIComponent(id);
+const profileHref = name => '/usuario/' + encodeURIComponent(name);
+function isPlainClick(e){ return !e || (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey); }
+function spa(fn){ return function(e){ if(!isPlainClick(e)) return; if(e) e.preventDefault(); return fn.call(this, e); }; }
+// El enlace que cubre toda una tarjeta (la tarjeta sigue siendo un <div> con sus botones adentro; ver .card-link en style.css).
+function cardLinkHTML(href, label){ return `<a class="card-link" href="${esc(href)}" aria-label="${esc(label)}"></a>`; }
+// Cambia un <button> o <span> por un <a href> igual (mismo id, clases, atributos y contenido) para que sea un enlace de verdad.
+function asLink(el, href){
+  if(!el) return el;
+  if(el.tagName === 'A'){ el.setAttribute('href', href); return el; }
+  const a = document.createElement('a');
+  for(const at of el.attributes) if(at.name!=='type' && at.name!=='role' && at.name!=='tabindex') a.setAttribute(at.name, at.value);
+  a.href = href;
+  a.append(...el.childNodes);
+  el.replaceWith(a);
+  return a;
+}
 let navigatingFromPopstate = false; // evita que syncUrl() vuelva a empujar al history cuando el cambio de vista vino de un popstate (atrás/adelante)
-// Mapea un nombre de vista (state.view) a su URL "linda" — debe ser el espejo exacto de routeFromLocation() de acá abajo.
+// Mapea un nombre de vista (state.view) a su URL "linda" — debe ser el espejo exacto de routeFromLocation() de aquí abajo.
 function pathForView(v){
   if(v==='game' && state.currentGame) return '/juego/'+encodeURIComponent(state.currentGame);
   if(v==='character' && state.currentCharacter) return '/personaje/'+encodeURIComponent(state.currentCharacter);
@@ -79,8 +100,8 @@ window.addEventListener('popstate', ()=>{
 // SOLO la sección <div class="viewsec"> que corresponde (todas las demás
 // quedan hidden), actualiza qué botón del nav está resaltado, sincroniza
 // la URL, y llama a la función renderX() de esa vista para que pinte su
-// contenido. Ojo: si agregás una vista nueva, tiene que tener su propio
-// "if(target===...)" acá abajo llamando a su render, si no queda en blanco.
+// contenido. Ojo: si agregas una vista nueva, tiene que tener su propio
+// "if(target===...)" aquí abajo llamando a su render, si no queda en blanco.
 // Título de la pestaña. El servidor lo arma al cargar la página de un juego, personaje o usuario; la navegación dentro del sitio no pasa por el
 // servidor, así que hay que actualizarlo en cada cambio de vista: si no, queda el del primero que se abrió.
 // Solo el inicio lleva el título completo (el mismo que el <title> de server/views/index.html); el resto, "Nombre de la vista — DLCritic".
@@ -158,6 +179,8 @@ function goView(v){
   }
   appReady = true;
   window.scrollTo({top:0,behavior:'smooth'});
+  // Al entrar a Inicio, Explorar o Personajes se vuelven a pedir los datos (sin recargar la página); ver refreshData() en 04-api-theme-rating.js.
+  if(v==='feed' || v==='browse' || v==='characters') refreshData();
 }
 function unreadNotifCount(){ return (state.notifications||[]).filter(n=>!n.read).length; }
 // Pinta la esquina derecha del header: avatar + nombre (con puntito rojo si hay notificaciones sin leer) si hay sesión, o el botón "Iniciar sesión" si no.
@@ -176,8 +199,8 @@ function renderUserBadge(){
       </button>`;
     document.getElementById('userMenuTrigger').onclick = (e)=>{ e.stopPropagation(); toggleUserMenu(e.currentTarget); };
   } else {
-    el.innerHTML = `<button class="btn small" id="loginBtn">${t('login_btn')}</button>`;
-    document.getElementById('loginBtn').onclick = ()=> goView('auth');
+    el.innerHTML = `<a class="btn small" id="loginBtn" href="/cuenta">${t('login_btn')}</a>`;
+    document.getElementById('loginBtn').onclick = spa(()=> goView('auth'));
   }
 }
 /* ---------- menú desplegable del avatar (Mi estantería / Notificaciones / Listas / Ajustes / ...) ---------- */
@@ -203,10 +226,10 @@ function openUserMenu(anchorEl){
   const menu = document.createElement('div');
   menu.className = 'share-menu';
   menu.innerHTML = `
-    <button data-act="profile">${ICONS.user} ${esc(t('nav_shelf'))}</button>
-    <button data-act="notifications">${ICONS.bell} ${esc(t('notifications_title'))}${unread>0?`<span class="menu-badge">${unread}</span>`:''}</button>
-    <button data-act="lists">${ICONS.bookmark} ${esc(t('lists_title'))}</button>
-    <button data-act="settings">${ICONS.settings} ${esc(t('settings_title'))}</button>
+    <a data-act="profile" href="/mi-estanteria">${ICONS.user} ${esc(t('nav_shelf'))}</a>
+    <a data-act="notifications" href="/notificaciones">${ICONS.bell} ${esc(t('notifications_title'))}${unread>0?`<span class="menu-badge">${unread}</span>`:''}</a>
+    <a data-act="lists" href="/mis-listas">${ICONS.bookmark} ${esc(t('lists_title'))}</a>
+    <a data-act="settings" href="/ajustes">${ICONS.settings} ${esc(t('settings_title'))}</a>
     <div class="menu-sep"></div>
     <button data-act="suggest">${ICONS.plus} ${esc(t('footer_suggest_btn'))}</button>
     <button data-act="subscribe">${ICONS.crown} ${esc(t('subscribe_btn'))}</button>
@@ -223,10 +246,10 @@ function openUserMenu(anchorEl){
   menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
   menu.style.left = left + 'px';
 
-  menu.querySelector('[data-act="profile"]').onclick = ()=>{ closeUserMenu(); goView('shelf'); };
-  menu.querySelector('[data-act="notifications"]').onclick = ()=>{ closeUserMenu(); goView('notifications'); };
-  menu.querySelector('[data-act="lists"]').onclick = ()=>{ closeUserMenu(); goView('lists'); };
-  menu.querySelector('[data-act="settings"]').onclick = ()=>{ closeUserMenu(); goView('settings'); };
+  menu.querySelector('[data-act="profile"]').onclick = spa(()=>{ closeUserMenu(); goView('shelf'); });
+  menu.querySelector('[data-act="notifications"]').onclick = spa(()=>{ closeUserMenu(); goView('notifications'); });
+  menu.querySelector('[data-act="lists"]').onclick = spa(()=>{ closeUserMenu(); goView('lists'); });
+  menu.querySelector('[data-act="settings"]').onclick = spa(()=>{ closeUserMenu(); goView('settings'); });
   menu.querySelector('[data-act="suggest"]').onclick = ()=>{ closeUserMenu(); openSuggestModal(); };
   menu.querySelector('[data-act="subscribe"]').onclick = ()=>{ closeUserMenu(); toast(t('subscribe_soon')); };
   menu.querySelector('[data-act="logout"]').onclick = async ()=>{

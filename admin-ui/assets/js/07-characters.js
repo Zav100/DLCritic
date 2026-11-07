@@ -3,7 +3,7 @@
  * pueden calificar por separado de los juegos (calificación de personajes
  * icónicos/protagonistas). Mismo patrón general que 04-date-events.js
  * (formulario + tabla), más la subida de imagen con preview que ya usa
- * 03-games-form.js — pero acá un personaje puede pertenecer a VARIOS
+ * 03-games-form.js — pero aquí un personaje puede pertenecer a VARIOS
  * juegos a la vez (state.characterGameIds, una lista de ids que se arma
  * con el botón "+ Agregar" y se muestra como chips con su ✕ para sacarlos),
  * y la portada de la ficha (el banner de fondo) se elige aparte: o la
@@ -27,7 +27,7 @@ document.getElementById('c-photo-file').addEventListener('change', (e)=>{
   reader.onload = ()=>{ document.getElementById('charPhotoPreview').innerHTML = `<img src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
-// Subir una portada especial es "manual": mientras haya un archivo elegido acá, gana por sobre el <select> de abajo (se aclara en renderCharBannerGameSelect, que se deshabilita solo si hay preview de portada propia).
+// Subir una portada especial es "manual": mientras haya un archivo elegido aquí, gana por sobre el <select> de abajo (se aclara en renderCharBannerGameSelect, que se deshabilita solo si hay preview de portada propia).
 document.getElementById('c-banner-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;

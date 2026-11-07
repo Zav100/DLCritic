@@ -1,7 +1,7 @@
 /**
  * Hoja de estilos del panel de administración (admin-ui/admin.html).
  * A diferencia de la app principal, este panel solo usa el tema CLARO
- * (una sola paleta de variables acá, sin bloque para [data-theme="dark"])
+ * (una sola paleta de variables aquí, sin bloque para [data-theme="dark"])
  * — no tiene selector de tema porque es una herramienta interna, no algo
  * pensado para usarse de noche por muchas personas distintas.
  */

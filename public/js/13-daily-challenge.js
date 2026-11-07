@@ -9,7 +9,7 @@
  * resolvió, tiradas de ruleta usadas), no el juego elegido.
  *
  * Las dos secciones (adivinar + ruleta) son independientes entre sí,
- * comparten nomás el mismo objeto state.daily y el mismo helper visual
+ * comparten solo el mismo objeto state.daily y el mismo helper visual
  * setDailyCounter/counterColor para sus contadores ("intento 2/5",
  * "2 tiradas restantes").
  */
@@ -25,7 +25,7 @@ function clueValue(g, d, idx){
     case 4: return d.developer;
   }
 }
-// Guarda el progreso del reto de hoy en el servidor (solo si hay sesión — sin cuenta, el progreso vive nomás en memoria y se pierde al recargar).
+// Guarda el progreso del reto de hoy en el servidor (solo si hay sesión — sin cuenta, el progreso vive solo en memoria y se pierde al recargar).
 async function saveDailyState(){
   if(!state.user) return;
   try{ await apiPut('/daily', { date: state.daily.date, guesses: state.daily.guesses, solved: state.daily.solved, failed: state.daily.failed, rouletteSpins: state.daily.rouletteSpins }); }catch(e){}
@@ -159,7 +159,7 @@ function spinsLeftText(left){
 // de chip vuelve a llamar a esta misma función para redibujar todo — no
 // hace falta guardar el resultado anterior de la ruleta al cambiar de
 // alcance, se pierde a propósito (tiene sentido: cambiaste de idea de qué
-// querés que te recomiende).
+// quieres que te recomiende).
 function renderRouletteSection(){
   const wrap=document.getElementById('rouletteCard');
   const left = Math.max(0, MAX_SPINS - state.daily.rouletteSpins);
@@ -255,12 +255,12 @@ function spinRoulette(){
 function showRouletteResult(g){
   const d = gameDetails(g);
   document.getElementById('rouletteResult').innerHTML = `
-    <div class="daily-result win clickable" id="rouletteResultBar" style="margin-top:16px;">
+    <div class="daily-result win clickable has-card-link" id="rouletteResultBar" style="margin-top:16px;">${cardLinkHTML(gameHref(g.id), g.title)}
       <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div><div class="rc-game">${esc(g.title)}</div><div class="rc-meta">${esc(genreLabelList(g))}${d? ' · '+esc(String(d.year)) : ''}</div></div>
     </div>
     <button class="btn small" id="rouletteRateBtn" style="margin-top:12px;">${t('rate_this_game')}</button>`;
-  document.getElementById('rouletteResultBar').onclick = ()=>{ state.currentGame=g.id; state.gameOrigin='daily'; goView('game'); };
+  document.getElementById('rouletteResultBar').onclick = spa(()=>{ state.currentGame=g.id; state.gameOrigin='daily'; goView('game'); });
   document.getElementById('rouletteRateBtn').onclick = (e)=>{ e.stopPropagation(); jumpToRate(g.id); };
 }
 
