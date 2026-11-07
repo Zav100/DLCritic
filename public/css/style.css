@@ -1529,24 +1529,24 @@ main {
 }
 
 .newsfeed.news-view-grid {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 @media(max-width:900px) {
   .newsfeed.news-view-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media(max-width:680px) {
   .newsfeed.news-view-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media(max-width:420px) {
+@media(max-width:520px) {
   .newsfeed.news-view-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3783,17 +3783,20 @@ input[type=search]::-webkit-search-cancel-button {
   .headbar {
     display: -webkit-flex;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .headright {
-    justify-content: center;
+    justify-content: flex-end;
     justify-self: auto;
+    margin-left: auto;
   }
 
   .userbadge {
-    justify-content: center;
+    justify-content: flex-end;
   }
 
   .rate-btn {
@@ -4476,6 +4479,10 @@ input[type=search]::-webkit-search-cancel-button {
   font-size: 11px;
   color: var(--ink-soft);
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .news-link {
@@ -5215,4 +5222,81 @@ input[type="file"]::file-selector-button:hover {
 input[type="file"]::file-selector-button:active {
   transform: scale(0.96);
   box-shadow: 0 2px 8px rgba(123, 97, 255, 0.32);
+}
+
+/* =====================================================================
+   Celular: hero más compacto, botones de estados vacíos centrados y red de
+   seguridad contra desbordes. Va al final del archivo a propósito: pisa a las
+   reglas del hero y del vacío que están más arriba.
+   ===================================================================== */
+
+/* el botón "Iniciar sesión" de los estados vacíos (Mi estantería, Listas, Notificaciones) se agrega justo después de .empty:
+   centrado, y en una grilla ocupa todo el ancho en vez de quedar en la primera columna */
+.empty + .btn {
+  display: flex;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+@media(max-width:560px) {
+  .hero.hero-image {
+    padding: 56px 16px 34px;
+  }
+
+  .hero h1 {
+    font-size: clamp(20px, 6.4vw, 26px);
+    line-height: 1.12;
+  }
+
+  .hero p {
+    font-size: 13.5px;
+    max-width: 340px;
+  }
+
+  .hero-slogan {
+    font-size: 12.5px;
+    padding: 5px 6px 5px 12px;
+    margin-bottom: 14px;
+  }
+
+  .hero-slogan b {
+    font-size: 11px;
+    padding: 4px 9px;
+  }
+
+  .hero-actions {
+    gap: 8px;
+    margin: 18px 0 4px;
+  }
+
+  .hero-actions .btn {
+    font-size: 13px;
+    padding: 9px 16px;
+  }
+
+  .hero-ghost {
+    font-size: 13px;
+    padding: 9px 14px;
+  }
+
+  .flow-steps {
+    margin-top: 22px;
+  }
+
+  .flow-label {
+    letter-spacing: 0.5px;
+  }
+}
+
+/* Red de seguridad: en el celular nada de lo que está dentro de la página puede ensanchar el documento. Con overflow-x:hidden solo en body,
+   Chrome del celular igual ensancha todo (el hero a 100vw, lo centrado) y deja la página con scroll horizontal. overflow-x:clip no crea un
+   contenedor de scroll, así que position:sticky y window.scrollTo siguen andando. */
+@media(max-width:900px) {
+  main.wrap,
+  .site-footer {
+    overflow-x: clip;
+  }
 }
