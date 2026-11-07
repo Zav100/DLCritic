@@ -71,27 +71,15 @@ function renderSkeletonGrids(){
   const early = location.pathname==='/personajes' ? 'view-characters' : location.pathname.startsWith('/personaje/') ? 'view-character' : null;
   if(early) document.querySelectorAll('.viewsec').forEach(s=> s.hidden = s.id!==early);
 }
-/* ---------- real cover art (best-effort, cached server-side, lazy-loaded) ---------- */
-// Cómo funciona la portada real de un juego, en 4 pasos:
-//   1. Cualquier elemento que necesite portada se marca con data-cover-title
-//      (y opcionalmente data-cover-url si ya se sabe la URL directa) en su HTML.
-//   2. enhanceCovers() busca esos elementos y les da un color de fondo
-//      provisorio (placeholderColor) + los pone a observar con coverIO.
-//   3. coverIO (un IntersectionObserver) espera a que el elemento esté por
-//      entrar en pantalla (scroll) antes de pedir la imagen — así no se
-//      descargan de una las portadas de TODO el catálogo.
-//   4. fetchCover() pide la URL real al servidor (que la cachea del lado
-//      del server) y attachCoverImg() la inyecta con fade-in.
-// enhanceCovers() se vuelve a llamar solo cada vez que el DOM cambia (ver el
-// MutationObserver al final), así que no hace falta acordarse de llamarla
-// manualmente después de cada render.
-const coverCache = new Map(); // title -> Promise<url|null>, para no pedir la misma portada dos veces
-function fetchCover(title){
-  if(coverCache.has(title)) return coverCache.get(title);
-  const p = apiGet('/cover?title='+encodeURIComponent(title)).then(r=>r.url).catch(()=>null);
-  coverCache.set(title, p);
-  return p;
-}
+/* ---------- portadas (la URL guardada en cada juego, cargada al hacer scroll) ---------- */
+// Cómo se muestra la portada de un juego, en 3 pasos:
+//   1. Cualquier elemento que necesite portada se marca con data-cover-title y data-cover-url (la portada guardada del juego; vacía = sin portada).
+//   2. enhanceCovers() busca esos elementos, les da un color de fondo provisorio (placeholderColor) y los pone a observar con coverIO.
+//   3. coverIO (un IntersectionObserver) espera a que el elemento esté por entrar en pantalla antes de pedir la imagen, así no se descargan de
+//      una las portadas de TODO el catálogo; attachCoverImg() la inyecta con fade-in.
+// Todas las portadas se ven igual: la imagen entera y centrada (object-fit: contain) sobre una copia suya desenfocada que rellena el marco 16:9,
+// así no se corta ningún personaje ni el nombre del juego, sea cual sea la forma de la imagen (ver .cover-img en style.css).
+// Un juego sin portada guardada queda con su color de fondo: ya no se busca por título en Steam (adivinaba mal, p. ej. "Minecraft" -> "Minecraft Dungeons II").
 // Color de fondo estable (siempre el mismo para el mismo título) para mostrar mientras no hay portada real todavía.
 function placeholderColor(title){
   const hue = Math.abs(hashStr(title)) % 360;
@@ -105,6 +93,7 @@ function attachCoverImg(el, url){
   img.decoding = 'async';
   img.alt = '';
   img.onload = ()=> el.classList.add('has-cover');
+  el.style.setProperty('--cover-url', `url("${encodeURI(url).replace(/"/g, '%22')}")`); // la copia desenfocada que rellena el marco (CSS: ::before)
   img.src = url;
   el.appendChild(img);
 }
@@ -114,21 +103,14 @@ const coverIO = new IntersectionObserver((entries)=>{
     if(!entry.isIntersecting) return;
     const el = entry.target;
     coverIO.unobserve(el);
-    const direct = el.dataset.coverUrl;
-    if(direct){ attachCoverImg(el, direct); return; }
-    fetchCover(el.dataset.coverTitle).then(url=>{ if(url) attachCoverImg(el, url); });
+    if(el.dataset.coverUrl) attachCoverImg(el, el.dataset.coverUrl);
   });
 }, { rootMargin:'200px' });
 // Portada "hero" (la grande de la ficha de un juego): esta se carga de una, sin esperar a que entre en pantalla, porque siempre está arriba de todo.
-function loadHeroCover(title, el, directUrl){
-  if(!el) return;
-  const apply = (url)=>{
-    if(!url) return;
-    el.style.backgroundImage = `url("${url}")`;
-    el.classList.add('has-cover');
-  };
-  if(directUrl) apply(directUrl);
-  else fetchCover(title).then(apply);
+function loadHeroCover(el, url){
+  if(!el || !url) return;
+  el.style.backgroundImage = `url("${url}")`;
+  el.classList.add('has-cover');
 }
 // Engancha data-cover-title/data-cover-url con el sistema de portadas de arriba. Idempotente: a los elementos ya enganchados no los vuelve a tocar (data-cover-observed).
 function enhanceCovers(){

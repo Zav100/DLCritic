@@ -846,88 +846,14 @@ app.post('/api/lists/:id/items/toggle', requireAuth, writeLimiter, async (req, r
   res.json({ list: await shapeList(await findListById.get(list.id)) });
 });
 
-/* ---------------- cover art (best-effort, via Steam's public search, cached) ---------------- */
-
-const COVER_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const getCover = db.prepare('SELECT * FROM game_covers WHERE title_key = ?');
-const upsertCover = db.prepare(`
-  INSERT INTO game_covers (title_key, image_url, fetched_at) VALUES (?, ?, ?)
-  ON CONFLICT(title_key) DO UPDATE SET image_url = excluded.image_url, fetched_at = excluded.fetched_at
-`);
-
 const OUTBOUND_TIMEOUT_MS = 5000;
-
-// Lanza si Steam falla (o responde que no): así resolveCoverUrl puede distinguir "error, reintentar luego" de "no hay portada".
-async function searchSteamApps(term) {
-  const res = await fetch('https://store.steampowered.com/api/storesearch/?term=' + encodeURIComponent(term) + '&l=english&cc=us', { signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS) });
-  if (!res.ok) throw new Error('steam_' + res.status);
-  const data = await res.json();
-  return (data.items || []).filter(it => it.type === 'app');
-}
-
-// The store search often ranks a DLC, soundtrack, crossover item or sequel above
-// the base game (e.g. "Death Stranding" -> "Death Stranding 2" first). Score each
-// candidate instead of trusting result order: a real base game almost always
-// carries a metascore (addons/unreleased titles usually don't yet), and its name
-// tends to match the searched title exactly or as a prefix rather than being a
-// much longer variant/spinoff name.
-function pickBestSteamMatch(candidates, title) {
-  if (!candidates.length) return null;
-  const norm = s => s.toLowerCase().replace(/[™®]/g, '').replace(/\s+/g, ' ').trim();
-  const t = norm(title);
-  const score = it => {
-    const name = norm(it.name);
-    let s = it.metascore ? 0 : 4;
-    s += name === t ? 0 : (name.startsWith(t) || t.startsWith(name)) ? 1 : 3;
-    return s;
-  };
-  return candidates.reduce((best, it) => (score(it) < score(best) ? it : best));
-}
-
-async function resolveCoverUrl(title) {
-  try {
-    const candidates = await searchSteamApps(title);
-    // A trailing "(Remake)", "(2023)", etc. can pull in an unrelated crossover
-    // item as the only hit — always also try the plain title and merge results,
-    // rather than only falling back when the first search comes up empty.
-    const stripped = title.replace(/\s*\([^)]*\)\s*$/, '').trim();
-    if (stripped && stripped !== title) candidates.push(...await searchSteamApps(stripped));
-    const match = pickBestSteamMatch(candidates, title);
-    if (!match) return null;
-    // Prefer the store search's own image over guessing a legacy /header.jpg
-    // path, which 404s for newly-listed or unreleased apps.
-    return match.tiny_image || `https://cdn.akamai.steamstatic.com/steam/apps/${match.id}/header.jpg`;
-  } catch (e) {
-    return undefined; // error transitorio (Steam caído/lento): no es lo mismo que "no hay portada" (null) y no se cachea
-  }
-}
-
-// Portada de un juego: de la caché si está fresca; si no, la busca en Steam y la guarda (los errores transitorios no se guardan).
-async function getCoverUrl(title) {
-  const key = title.toLowerCase();
-  const cached = await getCover.get(key);
-  if (cached && Date.now() - new Date(cached.fetched_at).getTime() < COVER_TTL_MS) return cached.image_url;
-  const url = await resolveCoverUrl(title);
-  if (url === undefined) return cached ? cached.image_url : null;
-  await upsertCover.run(key, url, new Date().toISOString());
-  return url;
-}
-
-const isKnownGameTitle = db.prepare('SELECT 1 FROM games WHERE lower(title) = lower(?) LIMIT 1');
-
-app.get('/api/cover', async (req, res) => {
-  const title = String(req.query.title || '').trim();
-  if (!title) return res.status(400).json({ error: 'missing_title' });
-  // Solo títulos del catálogo: si no, cualquiera podía disparar búsquedas ilimitadas a Steam y llenar la caché de basura.
-  if (title.length > 120 || !await isKnownGameTitle.get(title)) return res.json({ url: null });
-  res.json({ url: await getCoverUrl(title) });
-});
 
 /* ---------------- cover image proxy (avoids canvas CORS-tainting) ---------------- */
 
 const COVER_PROXY_ALLOWED_HOSTS = new Set([
   'cdn.akamai.steamstatic.com',
   'shared.akamai.steamstatic.com',
+  'image.api.playstation.com',
 ]);
 // Las portadas y fotos subidas viven en Vercel Blob (un subdominio por tienda): también pasan por el proxy para poder
 // dibujarlas en el canvas de la tarjeta de compartir sin "tainted canvas".
@@ -1033,7 +959,7 @@ app.get('/juego/:id', async (req, res) => {
   const description = n > 0
     ? `${genreLabel} — calificado ${avg.toFixed(1)}/10 por ${n} reseña${n === 1 ? '' : 's'} en DLCritic.`
     : `${genreLabel} — sé el primero en calificar ${game.title} en DLCritic.`;
-  const image = await getCoverUrl(game.title).catch(() => null);
+  const image = game.coverUrl || null;
   const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
   res.type('html').send(renderIndexWithMeta({ title: `${game.title} — DLCritic`, description, image, url }));

@@ -420,15 +420,14 @@ function loadImageForCanvas(url){
     img.src = url;
   });
 }
-// Consigue la URL de portada a usar en la tarjeta (la del admin si la
-// tiene, si no la portada real cacheada). Si la imagen es de OTRO dominio,
+// Consigue la URL de portada a usar en la tarjeta (la imagen cuadrada del
+// admin si la tiene, si no la portada del juego). Si la imagen es de OTRO dominio,
 // la pasa por el proxy del propio servidor (/api/image-proxy) porque
 // <canvas> no puede leer píxeles de una imagen externa sin CORS
 // (dibujarla se ve bien, pero canvas.toBlob()/toDataURL() tira error de
 // "tainted canvas" — por eso el proxy).
 async function resolveCardCoverUrl(game){
-  let url = game.cardCoverUrl || game.coverUrl || null;
-  if(!url){ try{ url = await fetchCover(game.title); }catch(e){ url = null; } }
+  const url = game.cardCoverUrl || game.coverUrl || null;
   if(!url) return null;
   try{
     const host = new URL(url, location.origin).hostname;
@@ -454,6 +453,19 @@ function drawCoverFit(ctx, img, x, y, w, h){
   if(imgRatio > boxRatio){ sh = img.height; sw = sh * boxRatio; sx = (img.width - sw) / 2; sy = 0; }
   else { sw = img.width; sh = sw / boxRatio; sx = 0; sy = (img.height - sh) / 2; }
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+// Dibuja la imagen ENTERA y centrada en el rectángulo, sobre una copia suya agrandada y desenfocada que rellena el marco: no recorta nada
+// (una portada 16:9 en un cuadrado antes perdía los costados). Sin ctx.filter (navegadores viejos) el fondo queda liso, sin la copia.
+function drawCoverContain(ctx, img, x, y, w, h){
+  if('filter' in ctx){
+    ctx.save();
+    ctx.filter = 'blur(28px) brightness(0.85)';
+    drawCoverFit(ctx, img, x - 40, y - 40, w + 80, h + 80);
+    ctx.restore();
+  }
+  const r = Math.min(w / img.width, h / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 // Como <canvas> no hace word-wrap solo, esto parte un texto en líneas que
 // entren en maxWidth (según el font ya seteado en ctx), hasta maxLines
@@ -539,7 +551,7 @@ async function drawShareCard(canvas, rv, game, bgOption){
   const coverUrl = await resolveCardCoverUrl(game);
   const img = await loadImageForCanvas(coverUrl);
   if(img){
-    drawCoverFit(ctx, img, coverX, coverY, coverSize, coverSize);
+    drawCoverContain(ctx, img, coverX, coverY, coverSize, coverSize);
   } else {
     textShadow();
     ctx.fillStyle = 'rgba(255,255,255,0.85)';

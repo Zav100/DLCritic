@@ -412,7 +412,7 @@ const today = new Date().toISOString().slice(0, 10);
     const u = await anon('GET', '/usuario/smoketest_a'); ok(u); assert.ok(u.text.includes('smoketest_a — DLCritic'));
     for (const route of ['/explorar', '/personajes', '/reto-del-dia', '/juego/no-existe']) ok(await anon('GET', route));
     ok(await anon('GET', '/api/no-existe'), 404);
-    assert.deepEqual((await anon('GET', '/api/cover?title=titulo%20que%20no%20existe')).body, { url: null });
+    ok(await anon('GET', '/api/cover?title=x'), 404); // ya no se busca la portada en Steam: cada juego trae la suya guardada
   });
 
   console.log('Panel de administración');
