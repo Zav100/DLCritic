@@ -71,6 +71,46 @@ async function loadAll(){
   try{ const r=await apiGet('/news'); NEWS_ITEMS = r.news; }catch(e){ NEWS_ITEMS=[]; }
   if(state.user){ try{ const r=await apiGet('/notifications'); state.notifications = r.notifications; }catch(e){ state.notifications=[]; } }
   else { state.notifications=[]; }
+  lastDataLoad = Date.now();
+}
+
+// Refrescar los datos sin recargar la página. loadAll() corre una sola vez al arrancar y navegar entre secciones no vuelve a pedir nada, así que
+// una pestaña abierta mucho tiempo mostraba datos viejos (juegos agregados desde el panel, reseñas nuevas, portadas cambiadas). refreshData() vuelve
+// a pedir lo que puede haber cambiado y, si algo cambió, repinta la vista actual sin recargar ni mover el scroll. Si un pedido falla se conserva lo
+// que ya había (a diferencia de loadAll, que en ese caso vacía). Se llama al entrar a Inicio, Explorar o Personajes y al volver a la pestaña.
+let lastDataLoad = Date.now();
+let refreshingData = false;
+const REFRESH_MIN_MS = 20 * 1000; // como mucho una vez cada 20 s, para no pedir de más si se cambia de sección seguido
+async function refreshData(){
+  if(refreshingData || Date.now() - lastDataLoad < REFRESH_MIN_MS) return;
+  refreshingData = true;
+  try{
+    const get = p => apiGet(p).catch(()=>null);
+    const [g, rv, ch, crv, news, ev, notif] = await Promise.all([
+      get('/games'), get('/reviews'), get('/characters'), get('/character-reviews'), get('/news'), get('/date-events'),
+      state.user ? get('/notifications') : null,
+    ]);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    let changed = false;
+    if(g && !same(g.games, state.games)){ state.games = g.games; CATALOG = state.games; changed = true; }
+    if(rv && !same(rv.reviews, state.reviews)){ state.reviews = rv.reviews; changed = true; }
+    if(ch && !same(ch.characters, state.characters)){ state.characters = ch.characters; changed = true; }
+    if(crv && !same(crv.characterReviews, state.characterReviews)){ state.characterReviews = crv.characterReviews; changed = true; }
+    if(news && !same(news.news, NEWS_ITEMS)){ NEWS_ITEMS = news.news; changed = true; }
+    if(ev && !same(ev.dateEvents, DATE_EVENTS)){ DATE_EVENTS = ev.dateEvents; changed = true; }
+    if(notif && !same(notif.notifications, state.notifications)){ state.notifications = notif.notifications; renderUserBadge(); }
+    lastDataLoad = Date.now();
+    if(changed) repaintCurrentView();
+  }catch(e){ /* sin conexión o error del servidor: se queda con lo que ya hay */ }
+  finally{ refreshingData = false; }
+}
+// Repinta solo las tarjetas de la vista actual (no los filtros ni el buscador) y solo en las tres secciones que se refrescan; no si hay un diálogo abierto.
+function repaintCurrentView(){
+  if(document.querySelector('.confirm-overlay')) return;
+  const v = state.view;
+  if(v==='feed'){ renderDateWidget(); renderNewGames(); renderNews(); renderFeed(); renderFeedRail(); }
+  else if(v==='browse') paintBrowseGrid();
+  else if(v==='characters') paintCharactersGrid(false);
 }
 
 /* ---------- theme (dark night-friendly / light) ---------- */

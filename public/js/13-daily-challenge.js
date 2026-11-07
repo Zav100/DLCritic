@@ -255,12 +255,12 @@ function spinRoulette(){
 function showRouletteResult(g){
   const d = gameDetails(g);
   document.getElementById('rouletteResult').innerHTML = `
-    <div class="daily-result win clickable" id="rouletteResultBar" style="margin-top:16px;">
+    <div class="daily-result win clickable has-card-link" id="rouletteResultBar" style="margin-top:16px;">${cardLinkHTML(gameHref(g.id), g.title)}
       <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div><div class="rc-game">${esc(g.title)}</div><div class="rc-meta">${esc(genreLabelList(g))}${d? ' · '+esc(String(d.year)) : ''}</div></div>
     </div>
     <button class="btn small" id="rouletteRateBtn" style="margin-top:12px;">${t('rate_this_game')}</button>`;
-  document.getElementById('rouletteResultBar').onclick = ()=>{ state.currentGame=g.id; state.gameOrigin='daily'; goView('game'); };
+  document.getElementById('rouletteResultBar').onclick = spa(()=>{ state.currentGame=g.id; state.gameOrigin='daily'; goView('game'); });
   document.getElementById('rouletteRateBtn').onclick = (e)=>{ e.stopPropagation(); jumpToRate(g.id); };
 }
 

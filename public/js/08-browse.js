@@ -91,14 +91,15 @@ function paintBrowseGrid(keepPage){
   visible.forEach(g=>{
     const st=gameStats(g.id);
     const card=document.createElement('div');
-    card.className='card gamecard';
+    card.className='card gamecard has-card-link';
     card.innerHTML=`
+      ${cardLinkHTML(gameHref(g.id), g.title)}
       <div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div class="gc-title">${esc(g.title)}</div>
       <div class="gc-sub">${esc(genreLabelList(g))} · ${reviewsCountText(st.count)} · ${st.count? st.avg+'/10':(state.lang==='en'?'no rating':'sin nota')}</div>
       <div class="platbadges">${platBadges(g.platforms)}</div>
     `;
-    card.onclick=()=>{ state.currentGame=g.id; state.gameOrigin='browse'; goView('game'); };
+    card.onclick=spa(()=>{ state.currentGame=g.id; state.gameOrigin='browse'; goView('game'); });
     grid.appendChild(card);
   });
   if(games.length > state.browseVisibleCount){
@@ -198,6 +199,7 @@ function renderGameDetail(){
   wireGameCharacters(el);
   renderGauge(document.getElementById('detailGauge'), st.avg||0);
   loadHeroCover(document.querySelector('.game-hero-bg'), g.coverUrl);
+  makeZoomable(document.querySelector('.game-hero-card .gc-cover'), g.coverUrl, g.title); // la portada de la ficha se abre en grande
   document.getElementById('wishlistBtn').onclick = ()=> toggleWishlist(g.id);
   const addToListBtn = document.getElementById('addToListBtn');
   if(addToListBtn) addToListBtn.onclick = ()=> openAddToListModal(g.id);
@@ -209,7 +211,8 @@ function renderGameDetail(){
   const origin = state.gameOrigin || 'browse';
   const backBtn = document.getElementById('gameBackBtn');
   document.getElementById('gameBackText').textContent = origin==='feed' ? t('back_news') : origin==='daily' ? t('back_daily') : origin==='shelf' ? t('back_shelf') : t('back_explore');
-  backBtn.onclick = ()=> goView(origin);
+  backBtn.href = pathForView(origin);
+  backBtn.onclick = spa(()=> goView(origin));
   const list=document.getElementById('detailList');
   if(rvs.length===0){
     list.innerHTML = emptyState(ICONS.fileText, t('empty_reviews_t'), t('empty_reviews_s'));

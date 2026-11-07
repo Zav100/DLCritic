@@ -124,7 +124,7 @@ function enhanceCovers(){
 // Las cards clicables son <div class="card"> con onclick: sin tabindex no se alcanzan con Tab ni se activan con el teclado. Se detectan por tener un onclick propio, así que cubre cualquier card nueva sin tocar cada render.
 function makeClickableCardsFocusable(){
   document.querySelectorAll('.card:not([tabindex])').forEach(c=>{
-    if(typeof c.onclick==='function'){ c.tabIndex = 0; c.setAttribute('role','button'); }
+    if(typeof c.onclick==='function' && !c.querySelector(':scope > .card-link')){ c.tabIndex = 0; c.setAttribute('role','button'); }
   });
 }
 document.addEventListener('keydown', e=>{

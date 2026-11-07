@@ -723,6 +723,52 @@ function openShareCardModal(rv, game){
   document.addEventListener('keydown', onKey);
 }
 
+/* ---------- visor de imagen (la portada de un juego o la foto de un personaje, en grande) ---------- */
+// Abre la imagen ENTERA en una capa que cubre la pantalla. Se cierra con Esc, tocando fuera de la imagen o con la X, y devuelve el foco a lo que la abrió.
+// Trae un enlace para abrir la imagen sola en otra pestaña. El foco queda adentro mientras está abierta (Tab da la vuelta entre la X y el enlace).
+function openImageLightbox(url, title, opener){
+  if(!url) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', title);
+  overlay.innerHTML = `
+    <button type="button" class="lightbox-close" aria-label="${esc(t('lightbox_close'))}">${ICONS.x}</button>
+    <figure class="lightbox-figure">
+      <img class="lightbox-img" src="${esc(url)}" alt="${esc(title)}">
+      <figcaption class="lightbox-caption"><span>${esc(title)}</span><a href="${esc(url)}" target="_blank" rel="noopener">${esc(t('lightbox_open_original'))}</a></figcaption>
+    </figure>`;
+  const close = ()=>{
+    document.removeEventListener('keydown', onKey, true);
+    overlay.remove();
+    if(opener && opener.isConnected) opener.focus();
+  };
+  const onKey = e=>{
+    if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); close(); return; }
+    if(e.key === 'Tab'){
+      const items = [...overlay.querySelectorAll('button, a[href]')];
+      const first = items[0], last = items[items.length-1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  };
+  overlay.addEventListener('click', e=>{ if(e.target === overlay || e.target.closest('.lightbox-close')) close(); });
+  document.addEventListener('keydown', onKey, true);
+  document.body.appendChild(overlay);
+  overlay.querySelector('.lightbox-close').focus();
+}
+// Hace que un elemento (la portada de un juego o la foto de un personaje, en su propia ficha) se abra en grande con un clic o con Enter/Espacio.
+function makeZoomable(el, url, title){
+  if(!el || !url) return;
+  el.classList.add('zoomable');
+  el.setAttribute('role', 'button');
+  el.tabIndex = 0;
+  el.setAttribute('aria-label', t('lightbox_view_image') + ': ' + title);
+  el.onclick = ()=> openImageLightbox(url, title, el);
+  el.onkeydown = e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openImageLightbox(url, title, el); } };
+}
+
 /* ---------- card de una reseña + un par de helpers de UI genéricos ---------- */
 // LA card de una reseña: se usa en la ficha de un juego, en el perfil (tus
 // reseñas), y en cualquier otro listado de reseñas de la app. Arma botón
@@ -741,7 +787,7 @@ function reviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${authorLevel.icon} <span class="rc-author" role="link" tabindex="0" data-username="${esc(rv.username)}">${esc(rv.username)}</span> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta">${authorLevel.icon} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · ${fmtDate(rv.date)}</div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
@@ -761,7 +807,7 @@ function reviewCard(rv){
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#gauge-${rv.id}`), rv.rating);
   div.querySelector('[data-share]').onclick=(e)=> openShareMenu(e.currentTarget, rv, game);
-  div.querySelector('.rc-author').onclick=()=>{ state.profileUsername = rv.username; goView('profile'); };
+  div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
   if(mine){
     div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
   } else {

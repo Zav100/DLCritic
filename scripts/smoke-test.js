@@ -576,6 +576,8 @@ const today = new Date().toISOString().slice(0, 10);
     const fav = await pub('GET', '/favicon.ico'); ok(fav, 301); assert.equal(fav.headers.get('location'), '/img/favicon-32.png');
     for (const route of ['/terminos', '/privacidad', '/creditos']) { const legal = await pub('GET', route); ok(legal, 200); assert.ok(legal.text.includes('data-lang="en"'), route + ' trae las dos versiones de idioma'); }
     for (const route of ['/', '/terminos', '/privacidad']) assert.ok((await pub('GET', route)).text.includes('href="/creditos"'), route + ' enlaza a Créditos');
+    const home = (await pub('GET', '/')).text;
+    assert.ok(home.includes('class="navbtn" data-view="browse" href="/explorar"') && home.includes('class="footer-link" data-view="shelf" href="/mi-estanteria"'), 'el menú y el pie son enlaces de verdad (clic derecho -> abrir en pestaña nueva)');
     // dominio del dashboard: solo panel y login
     const root = await adm('GET', '/'); ok(root, 302); assert.equal(root.headers.get('location'), '/admin');
     const page = await adm('GET', '/admin'); ok(page); assert.ok(page.text.includes('/admin/assets/js/'), 'el HTML del panel carga sus scripts desde /admin/assets');

@@ -34,10 +34,11 @@ function renderNews(){
     const w = document.createElement('div');
     w.id = 'newsLoadMoreWrap';
     w.className = 'load-more-wrap';
-    const btn = document.createElement('button');
+    const btn = document.createElement('a');
+    btn.href = '/noticias';
     btn.className = 'btn-ghost load-more-btn';
     btn.textContent = t('load_more_btn');
-    btn.onclick = ()=> goView('news');
+    btn.onclick = spa(()=> goView('news'));
     w.appendChild(btn);
     wrap.insertAdjacentElement('afterend', w);
   }
@@ -66,14 +67,15 @@ function renderNewGames(){
   wrap.innerHTML='';
   items.forEach(({game:g, date})=>{
     const card=document.createElement('div');
-    card.className='card newscard newgamecard';
+    card.className='card newscard newgamecard has-card-link';
     card.innerHTML = `
+      ${cardLinkHTML(gameHref(g.id), g.title)}
       <div class="news-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div class="news-title">${esc(g.title)}</div>
       <div class="ngc-year">${esc(genreLabelList(g))} · ${fmtDate(date)}</div>
       <button class="btn small ngc-rate">${esc(t('rate_this_game'))}</button>
     `;
-    card.onclick=()=>{ state.currentGame=g.id; state.gameOrigin='feed'; goView('game'); };
+    card.onclick=spa(()=>{ state.currentGame=g.id; state.gameOrigin='feed'; goView('game'); });
     card.querySelector('.ngc-rate').onclick=(e)=>{ e.stopPropagation(); jumpToRate(g.id); };
     wrap.appendChild(card);
   });
@@ -97,14 +99,15 @@ function renderFeed(){
   popular.slice(0, 6).forEach(({game, stats:st})=>{
     const featured = st.count>50 && st.avg>8.5;
     const card=document.createElement('div');
-    card.className='card newscard'+(featured?' featured':'');
+    card.className='card newscard has-card-link'+(featured?' featured':'');
     card.innerHTML = `
+      ${cardLinkHTML(gameHref(game.id), game.title)}
       ${featured? `<div class="star-badge" title="Aclamado por la comunidad">${ICONS.star}</div>` : ''}
       <div class="news-cover ${genreTint(primaryGenre(game))}" data-cover-title="${esc(game.title)}" data-cover-url="${esc(game.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
       <div class="news-title">${esc(game.title)}</div>
       <div id="ng-${game.id}"></div>
     `;
-    card.onclick=()=>{ state.currentGame=game.id; state.gameOrigin='feed'; goView('game'); };
+    card.onclick=spa(()=>{ state.currentGame=game.id; state.gameOrigin='feed'; goView('game'); });
     wrap.appendChild(card);
     renderGauge(document.getElementById(`ng-${game.id}`), st.avg);
   });

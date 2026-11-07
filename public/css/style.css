@@ -3971,7 +3971,8 @@ input[type=search]::-webkit-search-cancel-button {
   }
 }
 
-.share-menu button {
+.share-menu button,
+.share-menu a {
   text-align: left;
   background: none;
   border: none;
@@ -3986,13 +3987,15 @@ input[type=search]::-webkit-search-cancel-button {
   gap: 8px;
 }
 
-.share-menu button svg {
+.share-menu button svg,
+.share-menu a svg {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
 }
 
-.share-menu button:hover {
+.share-menu button:hover,
+.share-menu a:hover {
   background: var(--hover-tint);
 }
 
@@ -5309,4 +5312,151 @@ input[type="file"]::file-selector-button:active {
   .site-footer {
     overflow-x: clip;
   }
+}
+
+/* =====================================================================
+   Enlaces de verdad: lo que lleva a otra sección o página es un <a href>
+   (clic derecho -> "Abrir en una pestaña nueva", Ctrl+clic, clic del medio).
+   Acá se les quita el subrayado y el color de los enlaces comunes.
+   ===================================================================== */
+a.navbtn,
+a.footer-link,
+a.btn,
+a.btn-edit-profile,
+a.backlink,
+a.rail-item,
+a.game-char-chip,
+a.hero-ghost,
+a.rc-author,
+.share-menu a {
+  text-decoration: none;
+}
+
+a.rc-author {
+  color: inherit;
+}
+
+a.rc-author:hover {
+  text-decoration: underline;
+}
+
+/* El enlace que cubre toda una tarjeta: la tarjeta sigue siendo un <div> (con botones y chips adentro) y este <a> encima hace que cualquier
+   punto de la tarjeta sea un enlace de verdad. Los botones de adentro quedan por encima del enlace para seguir funcionando. */
+.has-card-link {
+  position: relative;
+}
+
+.card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.card-link:focus-visible {
+  outline-offset: -2px;
+}
+
+.has-card-link button,
+.has-card-link .btn {
+  position: relative;
+  z-index: 2;
+}
+
+/* =====================================================================
+   Visor de imagen: la portada de un juego o la foto de un personaje se
+   abre en grande, entera y centrada, desde su propia ficha.
+   ===================================================================== */
+.zoomable {
+  cursor: zoom-in;
+}
+
+.zoomable:focus-visible {
+  outline-offset: 3px;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(8, 6, 20, 0.84);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  animation: confirm-fade-in .15s ease;
+}
+
+.lightbox-figure {
+  margin: 0;
+  max-width: min(94vw, 1100px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: calc(100vh - 150px);
+  max-height: calc(100dvh - 150px);
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--paper-alt);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.lightbox-caption a {
+  color: #fff;
+  opacity: 0.85;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lightbox-caption a:hover {
+  opacity: 1;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.lightbox-close svg {
+  width: 20px;
+  height: 20px;
 }

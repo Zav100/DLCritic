@@ -33,9 +33,10 @@ function goToGame(id){
 function goToCharacter(id){ state.currentCharacter = id; goView('character'); }
 // Engancha los clicks de los elementos con data-go-game / data-go-char / data-go-view dentro de una columna.
 function wireRail(root){
-  root.querySelectorAll('[data-go-game]').forEach(b=> b.onclick = ()=> goToGame(b.dataset.goGame));
-  root.querySelectorAll('[data-go-char]').forEach(b=> b.onclick = ()=> goToCharacter(b.dataset.goChar));
-  root.querySelectorAll('[data-go-view]').forEach(b=> b.onclick = ()=> goView(b.dataset.goView));
+  // Cada fila y cada botón de la columna pasa a ser un enlace de verdad (clic derecho -> abrir en pestaña nueva); un clic normal navega sin recargar.
+  root.querySelectorAll('[data-go-game]').forEach(b=>{ const a = asLink(b, gameHref(b.dataset.goGame)); a.onclick = spa(()=> goToGame(a.dataset.goGame)); });
+  root.querySelectorAll('[data-go-char]').forEach(b=>{ const a = asLink(b, characterHref(b.dataset.goChar)); a.onclick = spa(()=> goToCharacter(a.dataset.goChar)); });
+  root.querySelectorAll('[data-go-view]').forEach(b=>{ const a = asLink(b, pathForView(b.dataset.goView)); a.onclick = spa(()=> goView(a.dataset.goView)); });
 }
 // Una fila clicable de una columna: lead (portada/avatar/fecha, ya en HTML), título y subtítulo (texto ya escapado), y un puntaje opcional.
 // clickable=false la dibuja como <div> (no se enfoca ni se anuncia como botón); cls agrega clases al elemento.

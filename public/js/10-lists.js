@@ -128,17 +128,18 @@ function openListDetailModal(listId){
     grid.innerHTML='';
     games.forEach(g=>{
       const card=document.createElement('div');
-      card.className='card gamecard';
+      card.className='card gamecard has-card-link';
       card.innerHTML=`
+        ${cardLinkHTML(gameHref(g.id), g.title)}
         <div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
         <div class="gc-title">${esc(g.title)}</div>
         <div class="gc-sub">${esc(genreLabelList(g))}</div>
         ${editable ? `<button class="btn-ghost" data-remove="${esc(g.id)}" style="margin-top:6px; font-size:11px;">${esc(t('list_remove_btn'))}</button>` : ''}
       `;
-      card.onclick=(e)=>{
+      card.onclick=spa((e)=>{
         if(e.target.closest('[data-remove]')) return;
         state.currentGame=g.id; state.gameOrigin='shelf'; cleanup(); goView('game');
-      };
+      });
       if(editable){
         card.querySelector('[data-remove]').onclick = async (e)=>{
           e.stopPropagation();
@@ -360,14 +361,15 @@ function renderWishlistGrid(keepPage){
     visible.forEach(g=>{
       const st = gameStats(g.id);
       const card=document.createElement('div');
-      card.className='card gamecard';
+      card.className='card gamecard has-card-link';
       card.innerHTML=`
+        ${cardLinkHTML(gameHref(g.id), g.title)}
         <div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
         <div class="gc-title">${esc(g.title)}</div>
         <div class="gc-sub">${esc(genreLabelList(g))} · ${st.count? st.avg+'/10':'—'}</div>
         <div class="platbadges">${platBadges(g.platforms)}</div>
       `;
-      card.onclick=()=>{ state.currentGame=g.id; state.gameOrigin='shelf'; goView('game'); };
+      card.onclick=spa(()=>{ state.currentGame=g.id; state.gameOrigin='shelf'; goView('game'); });
       grid.appendChild(card);
     });
   }
