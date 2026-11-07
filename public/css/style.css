@@ -592,8 +592,13 @@ main {
   color: var(--ink-soft);
 }
 
+/* Con tres enlaces ya no entran en una línea en el celular: en una fila que baja de renglón (flex + gap) no queda un "·" colgado al final */
 .footer-legal {
   margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
 }
 
 .footer-legal a {
@@ -829,25 +834,6 @@ main {
   line-height: 1.08;
   color: #fff;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-
-/* crédito de la imagen de fondo: visible pero discreto, pegado abajo de la
-   imagen. Vive en el flujo normal (no absoluto) a propósito: en mobile el
-   contenido del hero es más alto (el texto se envuelve en más líneas), así
-   que anclarlo a un bottom fijo lo hacía chocar con la línea de pasos. */
-.hero-credit {
-  display: inline-block;
-  margin: 20px auto 0;
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.42);
-  background: rgba(8, 7, 18, 0.22);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  padding: 4px 11px;
-  border-radius: 20px;
 }
 
 .hero-actions {

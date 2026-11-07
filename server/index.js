@@ -1073,9 +1073,9 @@ app.get('/usuario/:username', async (req, res) => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(getIndexTemplate()));
 });
 
-// Términos y política de privacidad: un HTML por página, con español e inglés adentro (se elige en el navegador).
+// Términos, política de privacidad y créditos: un HTML por página, con español e inglés adentro (se elige en el navegador).
 // Viven en server/views/ por el mismo motivo que index.html.
-[['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html']].forEach(([route, file]) => {
+[['/terminos', 'terminos.html'], ['/privacidad', 'privacidad.html'], ['/creditos', 'creditos.html']].forEach(([route, file]) => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(readPage(path.join(__dirname, 'views', file))));
 });
 // La página donde se elige la contraseña nueva. La dirección lleva el token: Referrer-Policy: no-referrer evita que viaje en el Referer a otros sitios.
