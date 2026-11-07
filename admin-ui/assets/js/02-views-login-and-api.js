@@ -95,7 +95,7 @@ document.getElementById('loginBtn').onclick = async ()=>{
       return;
     }
     if(code==='bad_login'){ codeField.hidden = true; document.getElementById('loginCode').value = ''; }
-    errEl.textContent = code==='bad_code' ? 'Código incorrecto o ya usado.' : e.status===401 ? 'Usuario o contraseña incorrectos.' : e.status===429 ? 'Demasiados intentos. Esperá unos minutos y volvé a intentar.' : 'Error al iniciar sesión.';
+    errEl.textContent = code==='bad_code' ? 'Código incorrecto o ya usado.' : e.status===401 ? 'Usuario o contraseña incorrectos.' : e.status===429 ? 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.' : 'Error al iniciar sesión.';
     errEl.hidden = false;
   }
 };

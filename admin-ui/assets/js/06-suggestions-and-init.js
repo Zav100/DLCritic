@@ -51,7 +51,7 @@ function renderInboxList(){
   const list = state.suggestions.filter(s=> (state.inboxFilter==='all' || s.status===state.inboxFilter) && (state.inboxKind==='all' || s.kind===state.inboxKind));
   document.getElementById('inboxCount').textContent = list.length;
   const wrap = document.getElementById('inboxList');
-  if(list.length===0){ wrap.innerHTML = `<p class="empty-row">No hay sugerencias acá todavía.</p>`; return; }  wrap.innerHTML = list.map(s=>{
+  if(list.length===0){ wrap.innerHTML = `<p class="empty-row">No hay sugerencias aquí todavía.</p>`; return; }  wrap.innerHTML = list.map(s=>{
     const metaParts = [];
     if(s.kind==='character'){
       if(s.relatedGame) metaParts.push(s.relatedGame);

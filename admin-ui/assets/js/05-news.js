@@ -54,7 +54,7 @@ document.getElementById('newsForm').addEventListener('submit', async (e)=>{
     color: document.getElementById('n-color').value,
     initials: document.getElementById('n-initials').value.trim(),
   };
-  if(!payload.title || !payload.source || !payload.url){ errEl.textContent = 'Completá título, fuente y link.'; errEl.hidden = false; return; }
+  if(!payload.title || !payload.source || !payload.url){ errEl.textContent = 'Completa título, fuente y link.'; errEl.hidden = false; return; }
   try{
     if(state.editingNewsId) await apiPut('/admin/news/'+encodeURIComponent(state.editingNewsId), payload);
     else await apiPost('/admin/news', payload);

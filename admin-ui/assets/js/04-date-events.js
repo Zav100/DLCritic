@@ -64,7 +64,7 @@ document.getElementById('dateForm').addEventListener('submit', async (e)=>{
     descEs: document.getElementById('d-desc-es').value.trim(),
     descEn: document.getElementById('d-desc-en').value.trim(),
   };
-  if(!payload.titleEs || !payload.titleEn){ errEl.textContent = 'Completá el título en ambos idiomas.'; errEl.hidden = false; return; }
+  if(!payload.titleEs || !payload.titleEn){ errEl.textContent = 'Completa el título en ambos idiomas.'; errEl.hidden = false; return; }
   try{
     if(state.editingDateId) await apiPut('/admin/date-events/'+encodeURIComponent(state.editingDateId), payload);
     else await apiPost('/admin/date-events', payload);
