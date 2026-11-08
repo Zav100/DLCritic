@@ -73,6 +73,7 @@ function fillFormForEdit(g){
   document.getElementById('f-publisher').value = g.publisher || '';
   document.getElementById('f-year').value = g.releaseYear || '';
   document.getElementById('f-mode').value = g.gameMode || '';
+  document.getElementById('f-steam-appid').value = g.steamAppId || '';
   document.getElementById('f-description').value = g.description || '';
   document.getElementById('coverPreview').innerHTML = g.coverUrl ? `<img src="${esc(g.coverUrl)}">` : ICON_SVG.gamepad;
   document.getElementById('cardCoverPreview').innerHTML = g.cardCoverUrl ? `<img src="${esc(g.cardCoverUrl)}">` : ICON_SVG.gamepad;
@@ -137,6 +138,7 @@ document.getElementById('gameForm').addEventListener('submit', async (e)=>{
       publisher: document.getElementById('f-publisher').value.trim(),
       releaseYear: document.getElementById('f-year').value ? Number(document.getElementById('f-year').value) : null,
       gameMode: document.getElementById('f-mode').value.trim(),
+      steamAppId: document.getElementById('f-steam-appid').value ? Number(document.getElementById('f-steam-appid').value) : null,
       description: document.getElementById('f-description').value.trim(),
       platforms, storeLinks, coverUrl, cardCoverUrl,
       hidden: document.getElementById('f-hidden').checked,

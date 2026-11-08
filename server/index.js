@@ -8,6 +8,7 @@ const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
 const { sendMail, publicUrl, resetEmail, passwordChangedEmail } = require('./mail');
 const { checkSecondFactor } = require('./twofactor');
+const steam = require('./steam');
 const {
   sha256, hashPin, verifyPin, spendLoginTime, createSession, currentUser, requireAuth,
   setSessionCookie, clearSessionCookie, sessionToken, endSession, endOtherSessions, endAllSessions, parseCookies, SESSION_COOKIE,
@@ -61,6 +62,8 @@ function publicUser(u) {
     joined: u.joined_at,
     favoriteGameId: u.favorite_game_id || null,
     favoritePlatinum: !!u.favorite_platinum,
+    libraryPublic: !!u.library_public,
+    steam: u.steam_id ? { id: u.steam_id, syncedAt: u.steam_synced_at, hoursPublic: !!u.steam_hours_public } : null,
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
@@ -638,6 +641,27 @@ app.post('/api/profile/wishlist/toggle', requireAuth, async (req, res) => {
   res.json({ wishlist });
 });
 
+// Suma varios juegos de una vez a la biblioteca (la importación desde Steam). Ignora los que no existen y los que ya estaban.
+const listGameIds = db.prepare('SELECT id FROM games');
+app.post('/api/profile/wishlist/add', requireAuth, writeLimiter, async (req, res) => {
+  const ids = req.body.gameIds;
+  if (!Array.isArray(ids) || ids.length > 300 || !ids.every(i => typeof i === 'string')) return res.status(400).json({ error: 'invalid_games' });
+  const known = new Set((await listGameIds.all()).map(g => g.id));
+  const wishlist = [...new Set([...JSON.parse(req.user.wishlist || '[]'), ...ids.filter(i => known.has(i))])];
+  await setWishlist.run(JSON.stringify(wishlist), req.user.id);
+  res.json({ wishlist });
+});
+
+// Qué se ve en el perfil público: la biblioteca y las horas de Steam (cada una se apaga por separado).
+const setPrivacy = db.prepare('UPDATE users SET library_public = ?, steam_hours_public = ? WHERE id = ?');
+app.put('/api/profile/privacy', requireAuth, writeLimiter, async (req, res) => {
+  const libraryPublic = 'libraryPublic' in req.body ? req.body.libraryPublic : !!req.user.library_public;
+  const steamHoursPublic = 'steamHoursPublic' in req.body ? req.body.steamHoursPublic : !!req.user.steam_hours_public;
+  if (typeof libraryPublic !== 'boolean' || typeof steamHoursPublic !== 'boolean') return res.status(400).json({ error: 'invalid_privacy' });
+  await setPrivacy.run(libraryPublic ? 1 : 0, steamHoursPublic ? 1 : 0, req.user.id);
+  res.json({ libraryPublic, steamHoursPublic });
+});
+
 app.post('/api/profile/activity', requireAuth, async (req, res) => {
   const dateStr = req.body.date;
   if (!dateStr) return res.status(400).json({ error: 'missing_date' });
@@ -673,6 +697,9 @@ async function shapePublicProfile(u, viewer) {
     reviewCount, avgRating: avg || null,
     followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n,
     isFollowing, isFriend,
+    // La biblioteca (y las horas de Steam) se ven en el perfil público salvo que la persona las oculte en Ajustes.
+    library: u.library_public ? JSON.parse(u.wishlist || '[]') : null,
+    libraryHours: u.library_public && u.steam_hours_public && u.steam_id ? await steam.hoursFor(u.id, JSON.parse(u.wishlist || '[]')) : null,
   };
 }
 
@@ -1024,6 +1051,7 @@ app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Re
 // El panel vive en admin-ui/, fuera de public/: Vercel sirve public/ directo desde su CDN, sin pasar por el filtro de
 // dominios de arriba, y aquí queremos que solo salga en el dominio del dashboard.
 const adminUiDir = path.join(__dirname, '..', 'admin-ui');
+app.use('/api/steam', steam);
 app.use('/api/admin', require('./admin'));
 app.get('/admin', (req, res) => res.set('Cache-Control', 'no-store').sendFile(path.join(adminUiDir, 'admin.html')));
 app.use('/admin/assets', express.static(path.join(adminUiDir, 'assets')));

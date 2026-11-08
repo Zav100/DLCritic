@@ -8,6 +8,12 @@
       "port": 8793
     },
     {
+      "name": "dlcritic-steam-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-r", "./scripts/local-env.js", "scripts/steam-mock.js"],
+      "port": 8793
+    },
+    {
       "name": "dlcritic-neon",
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=.env.local", "server/index.js"],

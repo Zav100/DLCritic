@@ -193,8 +193,14 @@ function renderProfileBody(el, username, profile, editable){
 
     ${editable ? `
     <div class="sectionhead"><h2>${t('wishlist_title')}</h2><span class="count" id="wishlistCount">${(state.user.wishlist||[]).length}</span></div>
+    <div class="library-actions">
+      <p class="hint library-hint">${state.user.libraryPublic? ICONS.globe : ICONS.lock} ${esc(t(state.user.libraryPublic? 'library_hint_public' : 'library_hint_private'))} <a href="/ajustes" id="libraryPrivacyLink">${esc(t('library_hint_change'))}</a></p>
+      ${state.user.steam? `<button type="button" class="btn small" id="steamImportBtn">${esc(t('steam_import_btn'))}</button>` : ''}
+    </div>
     <div class="grid wishlist-grid" id="wishlistGrid" style="margin-bottom:8px;"></div>
-    ` : ''}
+    ` : (profile.library && profile.library.some(id=>findGame(id)) ? `
+    <div class="sectionhead"><h2>${t('library_title_other')}</h2><span class="count">${profile.library.filter(id=>findGame(id)).length}</span></div>
+    <div class="grid wishlist-grid" id="publicLibraryGrid" style="margin-bottom:22px;"></div>` : '')}
 
     <div class="shelf-layout">
       <div class="shelf-main">
@@ -229,11 +235,16 @@ function renderProfileBody(el, username, profile, editable){
       }
     };
     renderWishlistGrid();
+    document.getElementById('libraryPrivacyLink').onclick = spa(()=> goView('settings'));
+    const importBtn = document.getElementById('steamImportBtn');
+    if(importBtn) importBtn.onclick = openSteamImportModal;
     renderActivityCalendar(document.getElementById('activityCal'), username);
     document.getElementById('editProfileBtn').onclick = spa(()=> goView('settings'));
   } else if(state.user){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
   }
+  const publicGrid = document.getElementById('publicLibraryGrid');
+  if(publicGrid) profile.library.map(id=>findGame(id)).filter(Boolean).forEach(g=> publicGrid.appendChild(libraryCard(g, profile.libraryHours && profile.libraryHours[g.id])));
 
   wireFavPanel(profile, favGame, editable, s.reviews);
 

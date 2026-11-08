@@ -62,17 +62,20 @@ const listAdminGames = db.prepare('SELECT * FROM games ORDER BY title ASC');
 const findAdminGame = db.prepare('SELECT * FROM games WHERE id = ?');
 const insertAdminGame = db.prepare(`
   INSERT INTO games (id, title, genre, genres, platforms, added_by, created_at, cover_url, card_cover_url, description, developer, publisher,
-    release_year, game_mode, store_links, hidden, is_new_release, new_release_date, builtin)
+    release_year, game_mode, store_links, hidden, is_new_release, new_release_date, builtin, steam_appid)
   VALUES (@id, @title, @genre, @genres, @platforms, @added_by, @created_at, @cover_url, @card_cover_url, @description, @developer, @publisher,
-    @release_year, @game_mode, @store_links, @hidden, @is_new_release, @new_release_date, 0)
+    @release_year, @game_mode, @store_links, @hidden, @is_new_release, @new_release_date, 0, @steam_appid)
 `);
 const updateAdminGame = db.prepare(`
   UPDATE games SET title=@title, genre=@genre, genres=@genres, platforms=@platforms, cover_url=@cover_url, card_cover_url=@card_cover_url, description=@description,
     developer=@developer, publisher=@publisher, release_year=@release_year, game_mode=@game_mode, store_links=@store_links,
-    hidden=@hidden, is_new_release=@is_new_release, new_release_date=@new_release_date
+    hidden=@hidden, is_new_release=@is_new_release, new_release_date=@new_release_date, steam_appid=@steam_appid
   WHERE id=@id
 `);
 const deleteAdminGame = db.prepare('DELETE FROM games WHERE id = ?');
+
+// El id de Steam llega como número o texto; vacío o inválido = sin id (juego fuera de Steam).
+const appId = v => (Number.isInteger(Number(v)) && Number(v) > 0 ? Number(v) : null);
 
 function shapeAdminGame(g) {
   return {
@@ -80,7 +83,7 @@ function shapeAdminGame(g) {
     addedBy: g.added_by, createdAt: g.created_at, coverUrl: g.cover_url, cardCoverUrl: g.card_cover_url, description: g.description,
     developer: g.developer, publisher: g.publisher, releaseYear: g.release_year,
     gameMode: g.game_mode, storeLinks: JSON.parse(g.store_links || '{}'),
-    hidden: !!g.hidden, isNewRelease: !!g.is_new_release, newReleaseDate: g.new_release_date, builtin: !!g.builtin,
+    hidden: !!g.hidden, isNewRelease: !!g.is_new_release, newReleaseDate: g.new_release_date, builtin: !!g.builtin, steamAppId: g.steam_appid || null,
   };
 }
 
@@ -102,7 +105,7 @@ router.post('/games', async (req, res) => {
     release_year: b.releaseYear ? Number(b.releaseYear) : null,
     game_mode: b.gameMode || null, store_links: JSON.stringify(b.storeLinks || {}),
     hidden: b.hidden ? 1 : 0, is_new_release: b.isNewRelease ? 1 : 0,
-    new_release_date: b.newReleaseDate || null,
+    new_release_date: b.newReleaseDate || null, steam_appid: appId(b.steamAppId),
   });
   res.json({ game: shapeAdminGame(await findAdminGame.get(id)) });
 });
@@ -130,6 +133,7 @@ router.put('/games/:id', async (req, res) => {
     hidden: b.hidden !== undefined ? (b.hidden ? 1 : 0) : existing.hidden,
     is_new_release: b.isNewRelease !== undefined ? (b.isNewRelease ? 1 : 0) : existing.is_new_release,
     new_release_date: b.newReleaseDate !== undefined ? b.newReleaseDate : existing.new_release_date,
+    steam_appid: b.steamAppId !== undefined ? appId(b.steamAppId) : existing.steam_appid,
   });
   res.json({ game: shapeAdminGame(await findAdminGame.get(req.params.id)) });
 });

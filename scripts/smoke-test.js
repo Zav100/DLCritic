@@ -382,6 +382,91 @@ const today = new Date().toISOString().slice(0, 10);
     const pub = (await anon('GET', '/api/users/SMOKETEST_A')).body.user;
     assert.deepEqual([pub.username, pub.bio, pub.reviewCount], ['smoketest_a', 'Nueva bio', 0]);
   });
+  console.log('Steam');
+  await step('vincular con OpenID (un Steam por cuenta, nonce y firma), horas, importar, privacidad y desvincular', async () => {
+    if (REMOTE) return; // el Steam de mentira solo lo alcanza la app en proceso
+    const { startSteamMock } = require('./steam-mock');
+    const mock = await startSteamMock({ games: '111:600,222:0,999:50' }); // 111 y 222 existen en el catálogo (abajo); 999 no
+    const slots = { 111: gameId, 222: otherGameId };
+    const setAppid = (id, appid) => db.prepare('UPDATE games SET steam_appid = ? WHERE id = ?').run(appid, id);
+    // El cliente de prueba guarda una sola cookie: aquí se arma la cabecera a mano para llevar la de sesión y la del nonce.
+    const raw = (c, p, extraCookie) => fetch(publicBase + p, { redirect: 'manual', headers: { 'X-Forwarded-For': '10.9.1.1', 'X-Forwarded-Host': PUBLIC_HOST, Cookie: [c.getCookie(), extraCookie].filter(Boolean).join('; ') } });
+    const start = async c => { // GET /api/steam/link
+      const r = await raw(c, '/api/steam/link');
+      return { status: r.status, loc: r.headers.get('location'), nonce: (r.headers.getSetCookie().find(x => x.startsWith('steam_link_nonce=')) || '').split(';')[0] };
+    };
+    const comeBack = async (c, { loc, nonce }, tweak) => { // el "usuario" acepta en Steam y vuelve al sitio; tweak(url) permite falsificar el regreso
+      const back = new URL((await fetch(loc, { redirect: 'manual' })).headers.get('location'));
+      if (tweak) tweak(back);
+      return (await raw(c, back.pathname + back.search, nonce)).headers.get('location');
+    };
+    try {
+      for (const [appid, id] of Object.entries(slots)) await setAppid(id, Number(appid));
+      assert.equal((await anon('GET', '/api/steam/link')).status, 401);
+
+      const first = await start(a);
+      assert.equal(first.status, 302);
+      assert.ok(first.loc.startsWith(mock.url + '/openid/login?') && first.loc.includes('openid.return_to='), 'redirige al OpenID de Steam');
+      assert.ok(first.nonce.length > 'steam_link_nonce='.length, 'cookie con el nonce');
+      assert.equal(await comeBack(a, first), '/ajustes?steam=linked');
+      const me = (await a('GET', '/api/auth/me')).body.user;
+      assert.deepEqual([me.steam.id, me.steam.hoursPublic, me.libraryPublic], [mock.steamId, true, true]);
+
+      // Otra cuenta con el mismo Steam: 409 lógico ("taken"). Y los regresos falsos no vinculan nada.
+      assert.equal(await comeBack(b, await start(b)), '/ajustes?steam=taken');
+      const f1 = await start(b);
+      assert.equal(await comeBack(b, { ...f1, nonce: '' }), '/ajustes?steam=error'); // sin la cookie del nonce
+      const f2 = await start(b);
+      assert.equal(await comeBack(b, f2, u => u.searchParams.set('n', 'otro')), '/ajustes?steam=error'); // nonce que no es el de la cookie
+      const f3 = await start(b);
+      assert.equal(await comeBack(b, f3, u => u.searchParams.set('openid.sig', 'falsa')), '/ajustes?steam=error'); // Steam no la confirma
+      const f4 = await start(b);
+      assert.equal(await comeBack(b, f4, u => u.searchParams.set('openid.signed', 'signed,op_endpoint')), '/ajustes?steam=error'); // claimed_id sin firmar
+      assert.equal((await b('GET', '/api/auth/me')).body.user.steam, null);
+
+      // Horas: se traen de "Steam" y solo quedan las de juegos del catálogo.
+      const sync = (await a('POST', '/api/steam/sync')).body;
+      assert.equal(sync.owned, 3);
+      assert.deepEqual(sync.matches.sort((x, y) => y.minutes - x.minutes), [{ gameId, minutes: 600 }, { gameId: otherGameId, minutes: 0 }]);
+      assert.deepEqual((await a('GET', '/api/steam/hours')).body.hours, { [gameId]: 600, [otherGameId]: 0 });
+      assert.deepEqual((await anon('GET', '/api/users/smoketest_a')).body.user.libraryHours, {}); // en el perfil público solo salen las horas de juegos que están en la biblioteca
+      mock.state.privateIds.add(mock.steamId);
+      assert.equal((await a('POST', '/api/steam/sync')).body.error, 'steam_private');
+      mock.state.privateIds.delete(mock.steamId);
+      const key = process.env.STEAM_API_KEY; delete process.env.STEAM_API_KEY;
+      assert.equal((await a('POST', '/api/steam/sync')).body.error, 'steam_not_configured');
+      process.env.STEAM_API_KEY = key;
+      assert.equal((await b('POST', '/api/steam/sync')).body.error, 'steam_not_linked');
+
+      // Importar varios a la biblioteca de una vez (ignora ids que no existen).
+      assert.equal((await a('POST', '/api/profile/wishlist/add', { gameIds: 'x' })).body.error, 'invalid_games');
+      assert.deepEqual((await a('POST', '/api/profile/wishlist/add', { gameIds: [gameId, 'no-existe', otherGameId, gameId] })).body.wishlist.sort(), [gameId, otherGameId].sort());
+
+      // Perfil público: biblioteca y horas visibles por defecto, y cada una se apaga por separado.
+      const pub = async () => (await anon('GET', '/api/users/smoketest_a')).body.user;
+      let p = await pub();
+      assert.deepEqual([p.library.sort(), p.libraryHours[gameId]], [[gameId, otherGameId].sort(), 600]);
+      assert.equal((await a('PUT', '/api/profile/privacy', { steamHoursPublic: 'no' })).body.error, 'invalid_privacy');
+      assert.deepEqual((await a('PUT', '/api/profile/privacy', { steamHoursPublic: false })).body, { libraryPublic: true, steamHoursPublic: false });
+      p = await pub();
+      assert.deepEqual([p.library.length, p.libraryHours], [2, null]);
+      await a('PUT', '/api/profile/privacy', { libraryPublic: false });
+      p = await pub();
+      assert.deepEqual([p.library, p.libraryHours], [null, null]);
+      await a('PUT', '/api/profile/privacy', { libraryPublic: true, steamHoursPublic: true });
+
+      // Desvincular borra el SteamID y las horas, y el Steam queda libre para otra cuenta.
+      assert.equal((await a('POST', '/api/steam/unlink')).body.ok, true);
+      assert.equal((await a('GET', '/api/auth/me')).body.user.steam, null);
+      assert.deepEqual((await a('GET', '/api/steam/hours')).body.hours, {});
+      assert.equal(await comeBack(b, await start(b)), '/ajustes?steam=linked');
+      assert.equal((await b('POST', '/api/steam/unlink')).body.ok, true);
+    } finally {
+      for (const id of Object.values(slots)) await setAppid(id, null);
+      await db.prepare("UPDATE users SET wishlist = '[]' WHERE lower(username) = 'smoketest_a'").run();
+      mock.server.close();
+    }
+  });
   await step('seguir, amistad mutua, notificación y dejar de seguir', async () => {
     const f1 = (await a('POST', '/api/users/smoketest_b/follow')).body; assert.deepEqual([f1.isFollowing, f1.isFriend, f1.followerCount], [true, false, 1]);
     const f2 = (await b('POST', '/api/users/smoketest_a/follow')).body; assert.deepEqual([f2.isFollowing, f2.isFriend], [true, true]);
