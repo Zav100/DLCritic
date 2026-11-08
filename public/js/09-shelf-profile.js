@@ -17,7 +17,7 @@
 // Arma un objeto "perfil" con la forma que espera renderProfileBody(), a partir de state.user (que tiene más campos que un perfil público, como el email — por eso no se puede pasar state.user directo).
 function profileShapeFromSelf(u){
   return {
-    username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId,
+    username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum,
     bio: u.bio, avatarUrl: u.avatarUrl, socialLinks: u.socialLinks,
     isFollowing:false, isFriend:false, followerCount:0, followingCount:0,
   };
@@ -49,6 +49,61 @@ function renderProfile(username){
   }).catch(()=>{
     el.innerHTML = emptyState(ICONS.helpCircle, t('profile_not_found_t'), t('profile_not_found_s'));
   });
+}
+// Panel «Juego favorito» del perfil: portada 16:9 y título (enlaces a la ficha), géneros, la nota que le puso esa persona y, en la fila de logros, el listón
+// de platino. El platino lo marca el dueño a mano (PlayStation no tiene API de trofeos); la barra «obtenidos / total» de Steam irá en esa misma fila.
+// Sin favorito, el dueño ve una invitación a elegir uno y las demás personas no ven el panel.
+function favPanelHTML(profile, favGame, editable, reviews){
+  if(!favGame && !editable) return '';
+  const head = `<div class="sectionhead"><h2>${esc(t('game_fav_label'))}</h2></div>`;
+  if(!favGame){
+    return head + `<div class="card fav-panel fav-empty" id="favPanel"><span class="fav-muted">${esc(t('fav_not_chosen'))}</span><button class="btn-fav pulse" id="favPickBtn">${ICONS.star} ${t('choose_fav_btn')}</button></div>`;
+  }
+  const rv = reviews.find(r=>r.gameId===favGame.id && r.rating!=null);
+  const href = gameHref(favGame.id);
+  const genres = (favGame.genres && favGame.genres.length) ? favGame.genres : [favGame.genre || 'Otro'];
+  const platinum = !!profile.favoritePlatinum;
+  return head + `
+    <div class="card fav-panel" id="favPanel">
+      <a class="fav-cover-link" id="favCoverLink" href="${esc(href)}" aria-label="${esc(favGame.title)}">
+        <div class="gc-cover ${genreTint(primaryGenre(favGame))}" data-cover-title="${esc(favGame.title)}" data-cover-url="${esc(favGame.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(favGame)]||ICONS.gamepad}</div>
+      </a>
+      <div class="fav-info">
+        <a class="fav-title" id="favTitleLink" href="${esc(href)}">${esc(favGame.title)}</a>
+        <div class="fav-genres">${genres.map(gn=>`<span class="fav-genre">${esc(genreLabel(gn))}</span>`).join('')}</div>
+        <div class="fav-row">
+          <div class="fav-label">${esc(t(editable? 'fav_rating_you' : 'fav_rating_other'))}</div>
+          ${rv? '<div id="favGauge"></div>' : `<span class="no-rating-tag">${esc(t('no_rating_yet'))}</span>`}
+        </div>
+        ${(platinum || editable)? `<div class="fav-row">
+          <div class="fav-label">${esc(t('fav_achievements'))}</div>
+          <div class="fav-achv">
+            ${platinum? `<span class="platinum-badge">${ICONS.ribbon}<span>${esc(t('fav_platinum'))}</span></span>` : `<span class="fav-muted">${esc(t('fav_no_platinum'))}</span>`}
+            ${editable? `<button type="button" class="btn small" id="platinumBtn">${esc(t(platinum? 'fav_platinum_unmark' : 'fav_platinum_mark'))}</button>` : ''}
+          </div>
+        </div>` : ''}
+        ${editable? `<button class="btn-fav" id="favPickBtn">${ICONS.star} ${t('change_fav_btn')}</button>` : ''}
+      </div>
+    </div>`;
+}
+// Engancha el panel recién pintado: los dos enlaces a la ficha (sin recargar), la barra de la nota y el botón de platino.
+function wireFavPanel(profile, favGame, editable, reviews){
+  if(!favGame) return;
+  const open = spa(()=>{ state.currentGame = favGame.id; state.gameOrigin = 'shelf'; goView('game'); });
+  ['favCoverLink','favTitleLink'].forEach(id=>{ const a=document.getElementById(id); if(a) a.onclick = open; });
+  const rv = reviews.find(r=>r.gameId===favGame.id && r.rating!=null);
+  const gauge = document.getElementById('favGauge');
+  if(rv && gauge) renderGauge(gauge, rv.rating);
+  const btn = document.getElementById('platinumBtn');
+  if(editable && btn) btn.onclick = async ()=>{
+    const next = !state.user.favoritePlatinum;
+    state.user.favoritePlatinum = next;
+    try{ await apiPut('/profile/favorite/platinum', { platinum: next }); }
+    catch(e){ state.user.favoritePlatinum = !next; toast(t('err_save_user')); renderShelf(); return; }
+    toast(t(next? 'toast_platinum_on' : 'toast_platinum_off'));
+    renderShelf();
+    if(next) celebrateFavorite(document.querySelector('.platinum-badge'));
+  };
 }
 // LA función que arma toda la página de un perfil (propio o ajeno): cabecera
 // (avatar/bio/redes + botón editar o seguir), stats (reseñas/promedio/racha/
@@ -110,13 +165,6 @@ function renderProfileBody(el, username, profile, editable){
     <div class="card" style="margin-bottom:14px;">
       <div class="infogrid" style="margin-top:0; padding-top:0; border-top:none;">
         <div class="infoitem"><div class="il">${t('genre_fav_label')}</div><div class="iv">${s.favGenre? (GENRE_EMOJI[s.favGenre]||ICONS.gamepad)+' '+esc(genreLabel(s.favGenre)) : '—'}</div></div>
-        <div class="infoitem" id="favInfoItem">
-          <div class="il">${t('game_fav_label')}</div>
-          <div class="iv fav-display" style="display:flex; align-items:center; gap:8px;">
-            ${favGame? `<span>${GENRE_EMOJI[primaryGenre(favGame)]||ICONS.gamepad}</span><span>${esc(favGame.title)}</span>` : `<span style="color:var(--ink-soft); font-weight:400;">${editable? t('fav_not_chosen') : '—'}</span>`}
-          </div>
-          ${editable ? `<button class="btn-fav ${favGame?'':'pulse'}" id="favPickBtn" style="margin-top:8px;">${ICONS.star} ${favGame? t('change_fav_btn') : t('choose_fav_btn')}</button>` : ''}
-        </div>
         <div class="infoitem"><div class="il">${t('platform_fav_label')}</div><div class="iv">${s.favPlatform || '—'}</div></div>
         ${editable ? `
         <div class="infoitem center">
@@ -125,6 +173,8 @@ function renderProfileBody(el, username, profile, editable){
         </div>` : ''}
       </div>
     </div>
+
+    ${favPanelHTML(profile, favGame, editable, s.reviews)}
 
     ${editable ? `
     <div class="card" id="favPickerPanel" hidden style="margin-bottom:22px;">
@@ -184,6 +234,8 @@ function renderProfileBody(el, username, profile, editable){
   } else if(state.user){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
   }
+
+  wireFavPanel(profile, favGame, editable, s.reviews);
 
   const badgesWrap=document.getElementById('badgesGrid');
   badgesWrap.innerHTML = ACHIEVEMENTS.map(a=>{

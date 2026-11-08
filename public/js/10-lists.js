@@ -310,11 +310,12 @@ function celebrateFavorite(originEl){
   }
 }
 async function selectFavoriteGame(gameId){
+  if(state.user.favoriteGameId !== gameId) state.user.favoritePlatinum = false; // el platino es del favorito anterior
   state.user.favoriteGameId = gameId;
   try{ await apiPut('/profile/favorite', { gameId }); }catch(e){ toast(t('err_save_user')); }
   toast(t('toast_fav_updated'));
   renderShelf();
-  celebrateFavorite(document.getElementById('favInfoItem'));
+  celebrateFavorite(document.getElementById('favPanel'));
 }
 // Frase "le diste X/10, la comunidad promedia Y/10, sos más [generoso/exigente/coincides]" — compara tu nota con el promedio de todos.
 function vsCommunityText(you, avg){

@@ -60,6 +60,7 @@ function publicUser(u) {
     email: u.email || null,
     joined: u.joined_at,
     favoriteGameId: u.favorite_game_id || null,
+    favoritePlatinum: !!u.favorite_platinum,
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
@@ -602,15 +603,26 @@ app.put('/api/daily', requireAuth, async (req, res) => {
 
 /* ---------------- profile (favorite game, wishlist, activity streak) ---------------- */
 
-const setFavoriteGame = db.prepare('UPDATE users SET favorite_game_id = ? WHERE id = ?');
+const setFavoriteGame = db.prepare('UPDATE users SET favorite_game_id = ?, favorite_platinum = ? WHERE id = ?');
+const setFavoritePlatinum = db.prepare('UPDATE users SET favorite_platinum = ? WHERE id = ?');
 const setWishlist = db.prepare('UPDATE users SET wishlist = ? WHERE id = ?');
 const setActivityDates = db.prepare('UPDATE users SET activity_dates = ? WHERE id = ?');
 
 app.put('/api/profile/favorite', requireAuth, async (req, res) => {
   const gameId = req.body.gameId || null;
   if (gameId !== null && (typeof gameId !== 'string' || !await findGameById.get(gameId))) return res.status(400).json({ error: 'invalid_game' });
-  await setFavoriteGame.run(gameId, req.user.id);
-  res.json({ favoriteGameId: gameId });
+  // El platino es del juego favorito: si cambia el favorito, la marca se borra.
+  const platinum = gameId !== null && gameId === req.user.favorite_game_id ? req.user.favorite_platinum : 0;
+  await setFavoriteGame.run(gameId, platinum, req.user.id);
+  res.json({ favoriteGameId: gameId, favoritePlatinum: !!platinum });
+});
+
+// Marca (o desmarca) que el juego favorito está platinado. PlayStation no tiene una API pública de trofeos, así que lo marca la persona a mano.
+app.put('/api/profile/favorite/platinum', requireAuth, writeLimiter, async (req, res) => {
+  if (typeof req.body.platinum !== 'boolean') return res.status(400).json({ error: 'invalid_platinum' });
+  if (!req.user.favorite_game_id) return res.status(400).json({ error: 'no_favorite' });
+  await setFavoritePlatinum.run(req.body.platinum ? 1 : 0, req.user.id);
+  res.json({ favoritePlatinum: req.body.platinum });
 });
 
 app.post('/api/profile/wishlist/toggle', requireAuth, async (req, res) => {
@@ -655,7 +667,7 @@ async function shapePublicProfile(u, viewer) {
   const isFollowing = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id));
   const isFriend = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id) && await findFollow.get(u.id, viewer.id));
   return {
-    username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null,
+    username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null, favoritePlatinum: !!u.favorite_platinum,
     isAdmin: !!u.is_admin, bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
