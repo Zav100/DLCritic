@@ -118,6 +118,7 @@ function titleForView(v){
 }
 function applyView(v){
   state.view=v;
+  if(v!=='settings') state.settingsTab = null; // la pestaña abierta de Ajustes (12-settings.js) solo se recuerda mientras se está ahí
   document.querySelectorAll('.viewsec').forEach(s=>s.hidden=true);
   const target = v;
   const sectionId = (target==='shelf') ? 'view-profile' : 'view-'+target;

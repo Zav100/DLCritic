@@ -1,19 +1,33 @@
 /**
- * ARCHIVO 12 de 16 — Vista "/ajustes" (perfil, cuenta y seguridad).
+ * ARCHIVO 12 de 16 — Vista "/ajustes" (perfil, privacidad y seguridad, conexiones).
  *
- * Una sola función construye las 3 tarjetas de la vista Y engancha sus 3
- * botones de guardar por separado (Perfil / Cuenta / Seguridad se guardan
- * de forma independiente, con su propio pedido al servidor):
- *   - Perfil: foto, usuario, bio, redes -> PUT /api/profile
- *   - Cuenta: email -> PUT /api/profile (mismo endpoint, otro campo)
- *   - Seguridad: cambiar contraseña -> POST /api/account/password (pide
- *     la contraseña actual; para cuentas viejas con PIN, "la contraseña
- *     actual" ES el PIN de 4 dígitos — cambiarla es opcional, nunca
- *     obligatorio, ver el aviso "legacyHintHTML" más abajo).
+ * Una sola tarjeta con 3 pestañas (como las del panel de admin); renderSettingsView()
+ * construye todo y engancha los botones de guardar, que son independientes (cada uno
+ * hace su propio pedido al servidor y solo manda lo suyo):
+ *   - Perfil: foto, usuario y descripción -> POST /api/profile/avatar y PUT /api/profile
+ *   - Privacidad y seguridad: correo -> PUT /api/profile (pide la contraseña actual
+ *     si cambia); cambiar contraseña -> POST /api/account/password (pide la
+ *     contraseña actual; para cuentas viejas con PIN, "la contraseña actual" ES el
+ *     PIN de 4 dígitos — cambiarla es opcional, nunca obligatorio, ver el aviso
+ *     "legacyHintHTML"); y al final cerrar sesión en todos los dispositivos
+ *   - Conexiones: redes y plataformas de juego -> PUT /api/profile (solo los enlaces),
+ *     y "Steam y biblioteca" con su guía (se refresca sola, sin recargar la vista)
+ * La pestaña abierta vive en state.settingsTab (se borra al salir de Ajustes).
  */
 /* ---------- ajustes ---------- */
-// Tarjeta "Steam y biblioteca": vincular/desvincular Steam, traer las horas y los logros, y qué se ve en el perfil público (la biblioteca, y las horas con los logros, por separado).
-function steamCardHTML(u){
+// Guía de Steam (dentro de «Steam y biblioteca»): cómo vincular, qué hay que poner en Público, cómo importar, el favorito y qué ven los demás. Es un <details>:
+// abierta mientras no haya Steam vinculado (cuando más hace falta) y cerrada después. Los textos son steam_guide_1_t/_p … steam_guide_6_t/_p en 02-i18n.js.
+// Si cambia el nombre de un botón citado ahí (Vincular, Actualizar, Importar, Elegir favorito), hay que cambiarlo también en la guía.
+function steamGuideHTML(open){
+  return `
+      <details class="steam-guide" id="steamGuide" ${open? 'open' : ''}>
+        <summary>${esc(t('steam_guide_title'))}</summary>
+        <ol>${[1,2,3,4,5,6].map(i=>`<li><strong>${esc(t('steam_guide_'+i+'_t'))}</strong> ${esc(t('steam_guide_'+i+'_p'))}</li>`).join('')}</ol>
+      </details>`;
+}
+// Sección "Steam y biblioteca" (pestaña Conexiones): vincular/desvincular Steam, traer las horas y los logros, qué se ve en el perfil público (la biblioteca, y las horas con los logros, por separado) y la guía.
+// guideOpen: si la guía se ve abierta; sin indicar, abierta solo mientras no haya Steam vinculado.
+function steamSectionHTML(u, guideOpen){
   const s = u.steam;
   const status = s ? `
       <div class="steam-status"><strong>${esc(t('steam_linked_label'))}</strong><a class="btn-ghost" href="https://steamcommunity.com/profiles/${esc(s.id)}" target="_blank" rel="noopener noreferrer">${esc(t('steam_view_profile'))} ↗</a></div>
@@ -23,15 +37,22 @@ function steamCardHTML(u){
       <p class="hint" style="margin-top:0;">${esc(t('steam_intro'))}</p>
       <a class="btn" id="stSteamLink" href="/api/steam/link">${esc(t('steam_link_btn'))}</a>`;
   return `
-    <div class="card" style="margin-bottom:18px;" id="steamCard">
-      <h3 style="margin-top:0;">${esc(t('settings_steam_section'))}</h3>
+    <section class="settings-section" id="steamCard">
+      <h3>${esc(t('settings_steam_section'))}</h3>
       ${status}
       <div class="error" id="stSteamError" hidden></div>
       <div class="field" style="margin:16px 0 0; padding-top:14px; border-top:1px dashed var(--line-dark);">
         <label class="check-row"><input type="checkbox" id="st-library-public" ${u.libraryPublic?'checked':''}><span>${esc(t('library_public_label'))}</span></label>
         ${s? `<label class="check-row"><input type="checkbox" id="st-hours-public" ${s.hoursPublic?'checked':''}><span>${esc(t('steam_hours_public_label'))}</span></label>` : ''}
       </div>
-    </div>`;
+      ${steamGuideHTML(guideOpen === undefined ? !s : guideOpen)}
+    </section>`;
+}
+// Vuelve a pintar solo la sección de Steam (después de actualizar o desvincular), sin tocar las otras pestañas ni lo que haya escrito en ellas, y conserva si la guía estaba abierta.
+function refreshSteamSection(){
+  const guide = document.getElementById('steamGuide');
+  document.getElementById('steamCard').outerHTML = steamSectionHTML(state.user, guide ? guide.open : undefined);
+  wireSteamCard();
 }
 // Engancha la tarjeta de Steam y avisa el resultado cuando se vuelve de Steam (/ajustes?steam=linked | taken | error, y con linked también &sync=ok | private | none).
 function wireSteamCard(){
@@ -55,7 +76,7 @@ function wireSteamCard(){
     try{
       applySteamSync(await apiPost('/steam/sync'));
       toast(t('toast_steam_synced'));
-      renderSettingsView();
+      refreshSteamSection();
     }catch(e){ errEl.textContent = steamErrorText(e); errEl.hidden = false; sync.disabled = false; }
   };
   const unlink = document.getElementById('stSteamUnlink');
@@ -65,7 +86,7 @@ function wireSteamCard(){
       const r = await apiPost('/steam/unlink');
       u.steam = null; u.favoriteSteam = null; u.favoritePlatinum = r.favoritePlatinum; state.steamHours = {}; state.steamHoursFor = u.username;
       toast(t('toast_steam_unlinked'));
-      renderSettingsView();
+      refreshSteamSection();
     }catch(e){ toast(t('err_save_user')); }
   };
   const params = new URLSearchParams(location.search), result = params.get('steam');
@@ -75,92 +96,135 @@ function wireSteamCard(){
     else noticeDialog(t('steam_failed_title'), t(result==='taken'? 'toast_steam_taken' : 'toast_steam_error'));
   }
 }
-// Arma las 3 tarjetas de Ajustes (Perfil/Cuenta/Seguridad) con los datos actuales del usuario, y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.
+// Las pestañas de Ajustes (todas dentro de una sola tarjeta). Cada una guarda lo suyo por separado. Los textos de las pestañas están en 02-i18n.js.
+const SETTINGS_TABS = [
+  { key:'profile',     label:'settings_profile_section', icon:'user' },
+  { key:'privacy',     label:'settings_tab_privacy',     icon:'shield' },
+  { key:'connections', label:'settings_tab_connections', icon:'link' },
+];
+// Cambia de pestaña al tocarla o con las flechas del teclado (patrón de pestañas accesible). La elegida queda en state.settingsTab, que se borra al salir de Ajustes (ver applyView).
+function wireSettingsTabs(){
+  const tabs = [...document.querySelectorAll('.settings-tab')];
+  const show = (key, focus)=>{
+    state.settingsTab = key;
+    tabs.forEach(b=>{
+      const on = b.dataset.tab===key;
+      b.classList.toggle('active', on); b.setAttribute('aria-selected', on); b.tabIndex = on? 0 : -1;
+      if(on && focus) b.focus();
+    });
+    document.querySelectorAll('.settings-panel').forEach(p=>{ p.hidden = p.dataset.panel!==key; });
+  };
+  tabs.forEach((b, i)=>{
+    b.onclick = ()=> show(b.dataset.tab);
+    b.onkeydown = e=>{
+      const step = e.key==='ArrowRight'? 1 : e.key==='ArrowLeft'? -1 : 0;
+      if(!step) return;
+      e.preventDefault();
+      show(tabs[(i + step + tabs.length) % tabs.length].dataset.tab, true);
+    };
+  });
+}
+// Arma Ajustes: una tarjeta con las pestañas Perfil (foto, nombre, descripción), Privacidad y seguridad (correo, contraseña y cerrar sesión en todos los dispositivos) y Conexiones
+// (redes y plataformas de juego, y Steam y biblioteca con su guía), y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.
 function renderSettingsView(){
   if(!state.user){ goView('auth'); return; }
   const u = state.user;
   const el = document.getElementById('settingsContent');
   const avatarHTML = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}">` : esc(u.username[0].toUpperCase());
   const legacyHintHTML = !u.email ? `<p class="hint" data-i18n="settings_legacy_password_hint">${esc(t('settings_legacy_password_hint'))}</p>` : '';
+  // Al volver de Steam se abre Conexiones (ahí se ve el resultado); si no, la pestaña en la que estaba la persona, o Perfil.
+  const tab = new URLSearchParams(location.search).has('steam') ? 'connections' : (state.settingsTab || 'profile');
+  state.settingsTab = tab;
+  const panel = (key, inner)=> `<div class="settings-panel" role="tabpanel" id="settingsPanel-${key}" data-panel="${key}" aria-labelledby="settingsTab-${key}" ${key===tab? '' : 'hidden'}>${inner}</div>`;
   el.innerHTML = `
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin-top:0;">${esc(t('settings_profile_section'))}</h3>
-      <div class="field">
-        <label for="st-avatar-file">${esc(t('profile_avatar_label'))}</label>
-        <div class="cover-picker" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-          <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
-          <div style="min-width:0; flex:1 1 200px;">
-            <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
-            <p class="hint" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
+    <div class="card settings-card">
+      <div class="settings-tabs" role="tablist" aria-label="${esc(t('settings_tabs_label'))}">
+        ${SETTINGS_TABS.map(x=>`<button type="button" class="settings-tab${x.key===tab? ' active' : ''}" role="tab" id="settingsTab-${x.key}" data-tab="${x.key}" aria-selected="${x.key===tab}" aria-controls="settingsPanel-${x.key}" tabindex="${x.key===tab? 0 : -1}">${ICONS[x.icon]} ${esc(t(x.label))}</button>`).join('')}
+      </div>
+
+      ${panel('profile', `
+        <div class="field">
+          <label for="st-avatar-file">${esc(t('profile_avatar_label'))}</label>
+          <div class="cover-picker" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
+            <div style="min-width:0; flex:1 1 200px;">
+              <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
+              <p class="hint" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="field">
-        <label for="st-username">${esc(t('profile_username_label'))}</label>
-        <input type="text" id="st-username" maxlength="20" value="${esc(u.username)}">
-      </div>
-      <div class="field">
-        <label for="st-bio">${esc(t('profile_bio_label'))}</label>
-        <textarea id="st-bio" maxlength="500" style="min-height:70px;">${esc(u.bio||'')}</textarea>
-      </div>
-      <div class="field">
-        <label>${esc(t('profile_social_label'))}</label>
-        <div class="field-row" style="flex-wrap:wrap;">
-          ${SOCIAL_KEYS.map(k=>`
-            <div class="field" style="min-width:150px;">
-              <label for="st-social-${k}" style="font-weight:400; text-transform:none; font-size:11px;">${esc(SOCIAL_META[k].name)}</label>
-              <input type="text" id="st-social-${k}" placeholder="https://…" value="${esc((u.socialLinks&&u.socialLinks[k])||'')}">
-            </div>
-          `).join('')}
+        <div class="field">
+          <label for="st-username">${esc(t('profile_username_label'))}</label>
+          <input type="text" id="st-username" maxlength="20" value="${esc(u.username)}">
         </div>
-      </div>
-      <div class="error" id="stProfileError" hidden></div>
-      <button class="btn gold" id="stProfileSave">${esc(t('save_changes_btn'))}</button>
-    </div>
+        <div class="field">
+          <label for="st-bio">${esc(t('profile_bio_label'))}</label>
+          <textarea id="st-bio" maxlength="500" style="min-height:70px;">${esc(u.bio||'')}</textarea>
+        </div>
+        <div class="error" id="stProfileError" hidden></div>
+        <button class="btn gold" id="stProfileSave">${esc(t('save_changes_btn'))}</button>`)}
 
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin-top:0;">${esc(t('settings_account_section'))}</h3>
-      <div class="field">
-        <label for="st-email">${esc(t('auth_email_label'))}</label>
-        <input type="email" id="st-email" value="${esc(u.email||'')}" placeholder="tu@email.com">
-      </div>
-      <div class="field">
-        <label for="st-email-password">${esc(t('settings_current_password_label'))}</label>
-        <input type="password" id="st-email-password" autocomplete="current-password">
-        <p class="hint">${esc(t('settings_email_password_hint'))}</p>
-      </div>
-      <div class="error" id="stAccountError" hidden></div>
-      <button class="btn gold" id="stAccountSave">${esc(t('save_changes_btn'))}</button>
-    </div>
+      ${panel('privacy', `
+        <section class="settings-section">
+          <h3>${esc(t('settings_account_section'))}</h3>
+          <div class="field">
+            <label for="st-email">${esc(t('auth_email_label'))}</label>
+            <input type="email" id="st-email" value="${esc(u.email||'')}" placeholder="tu@email.com">
+          </div>
+          <div class="field">
+            <label for="st-email-password">${esc(t('settings_current_password_label'))}</label>
+            <input type="password" id="st-email-password" autocomplete="current-password">
+            <p class="hint">${esc(t('settings_email_password_hint'))}</p>
+          </div>
+          <div class="error" id="stAccountError" hidden></div>
+          <button class="btn gold" id="stAccountSave">${esc(t('save_changes_btn'))}</button>
+        </section>
 
-    ${steamCardHTML(u)}
+        <section class="settings-section">
+          <h3>${esc(t('settings_security_section'))}</h3>
+          ${legacyHintHTML}
+          <div class="field">
+            <label for="st-current-password">${esc(t('settings_current_password_label'))}</label>
+            <input type="password" id="st-current-password" autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label for="st-new-password">${esc(t('settings_new_password_label'))}</label>
+            <input type="password" id="st-new-password" autocomplete="new-password">
+            <p class="hint">${esc(t('auth_password_hint'))}</p>
+          </div>
+          <div class="field">
+            <label for="st-new-password2">${esc(t('settings_new_password_confirm_label'))}</label>
+            <input type="password" id="st-new-password2" autocomplete="new-password">
+          </div>
+          <div class="error" id="stPasswordError" hidden></div>
+          <button class="btn gold" id="stPasswordSave">${esc(t('settings_change_password_btn'))}</button>
+          <p class="hint">${esc(t('settings_password_signout_hint'))}</p>
+          <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
+            <p class="hint" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
+            <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
+          </div>
+        </section>`)}
 
-    <div class="card">
-      <h3 style="margin-top:0;">${esc(t('settings_security_section'))}</h3>
-      ${legacyHintHTML}
-      <div class="field">
-        <label for="st-current-password">${esc(t('settings_current_password_label'))}</label>
-        <input type="password" id="st-current-password" autocomplete="current-password">
-      </div>
-      <div class="field">
-        <label for="st-new-password">${esc(t('settings_new_password_label'))}</label>
-        <input type="password" id="st-new-password" autocomplete="new-password">
-        <p class="hint">${esc(t('auth_password_hint'))}</p>
-      </div>
-      <div class="field">
-        <label for="st-new-password2">${esc(t('settings_new_password_confirm_label'))}</label>
-        <input type="password" id="st-new-password2" autocomplete="new-password">
-      </div>
-      <div class="error" id="stPasswordError" hidden></div>
-      <button class="btn gold" id="stPasswordSave">${esc(t('settings_change_password_btn'))}</button>
-      <p class="hint">${esc(t('settings_password_signout_hint'))}</p>
-      <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
-        <p class="hint" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
-        <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
-      </div>
+      ${panel('connections', `
+        <section class="settings-section">
+          <h3>${esc(t('profile_social_label'))}</h3>
+          <div class="field-row" style="flex-wrap:wrap;">
+            ${SOCIAL_KEYS.map(k=>`
+              <div class="field" style="min-width:150px;">
+                <label for="st-social-${k}" style="font-weight:400; text-transform:none; font-size:11px;">${esc(SOCIAL_META[k].name)}</label>
+                <input type="text" id="st-social-${k}" placeholder="https://…" value="${esc((u.socialLinks&&u.socialLinks[k])||'')}">
+              </div>
+            `).join('')}
+          </div>
+          <div class="error" id="stSocialError" hidden></div>
+          <button class="btn gold" id="stSocialSave">${esc(t('save_changes_btn'))}</button>
+        </section>
+
+        ${steamSectionHTML(u)}`)}
     </div>
   `;
 
+  wireSettingsTabs();
   wireSteamCard();
 
   let pendingSettingsAvatarFile = null;
@@ -173,15 +237,12 @@ function renderSettingsView(){
     reader.readAsDataURL(file);
   };
 
-  // Guardar Perfil: si hay foto nueva, la sube primero; después manda usuario/bio/redes en un solo PUT. Si cambió el nombre de usuario, actualiza también las reseñas ya cargadas en memoria para que muestren el nombre nuevo sin recargar la página.
+  // Guardar Perfil: si hay foto nueva, la sube primero; después manda usuario y descripción en un solo PUT. Si cambió el nombre de usuario, actualiza también las reseñas ya cargadas en memoria para que muestren el nombre nuevo sin recargar la página.
   document.getElementById('stProfileSave').onclick = async ()=>{
     const errEl = document.getElementById('stProfileError');
     errEl.hidden = true;
     const username = document.getElementById('st-username').value.trim();
     const bio = document.getElementById('st-bio').value.trim();
-    const socialLinks = {};
-    SOCIAL_KEYS.forEach(k=>{ const v=document.getElementById('st-social-'+k).value.trim(); if(v) socialLinks[k]=v; });
-    if(hasBadSocialLink(socialLinks)){ errEl.textContent = t('err_social_link'); errEl.hidden = false; return; }
     try{
       if(pendingSettingsAvatarFile){
         const fd = new FormData();
@@ -191,7 +252,7 @@ function renderSettingsView(){
         pendingSettingsAvatarFile = null;
       }
       const oldUsername = state.user.username;
-      const { user } = await apiPut('/profile', { username, bio, socialLinks });
+      const { user } = await apiPut('/profile', { username, bio });
       if(user.username !== oldUsername){
         state.reviews.forEach(r=>{ if(r.username===oldUsername) r.username = user.username; });
       }
@@ -203,6 +264,20 @@ function renderSettingsView(){
         : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : t('err_save_user');
       errEl.hidden = false;
     }
+  };
+
+  // Guardar Conexiones (redes y plataformas de juego): solo los enlaces; el servidor deja igual el resto del perfil.
+  document.getElementById('stSocialSave').onclick = async ()=>{
+    const errEl = document.getElementById('stSocialError');
+    errEl.hidden = true;
+    const socialLinks = {};
+    SOCIAL_KEYS.forEach(k=>{ const v=document.getElementById('st-social-'+k).value.trim(); if(v) socialLinks[k]=v; });
+    if(hasBadSocialLink(socialLinks)){ errEl.textContent = t('err_social_link'); errEl.hidden = false; return; }
+    try{
+      const { user } = await apiPut('/profile', { socialLinks });
+      state.user = user;
+      toast(t('toast_profile_saved'));
+    }catch(e){ errEl.textContent = t('err_save_user'); errEl.hidden = false; }
   };
 
   // Guardar Cuenta: solo el email. Si cambia, el servidor pide la contraseña actual.
