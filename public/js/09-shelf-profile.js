@@ -251,7 +251,7 @@ function renderProfileBody(el, username, profile, editable){
       }
     };
     renderWishlistGrid();
-    document.getElementById('libraryPrivacyLink').onclick = spa(()=> goView('settings'));
+    document.getElementById('libraryPrivacyLink').onclick = spa(()=>{ state.settingsTab = 'connections'; goView('settings'); });
     const importBtn = document.getElementById('steamImportBtn');
     if(importBtn) importBtn.onclick = openSteamImportModal;
     renderActivityCalendar(document.getElementById('activityCal'), username);
