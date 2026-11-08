@@ -77,11 +77,12 @@ const GENRE_ORDER = Object.keys(GENRE_EMOJI);
 // Devuelve la clase CSS "tint-N" (N entre 0 y 4) que le da a cada género un color de fondo distinto y estable.
 function genreTint(genre){ const i = GENRE_ORDER.indexOf(genre); return 'tint-' + (i<0 ? 4 : i%5); }
 // Nombre visible de cada tienda/plataforma soportada.
-const PLATFORM_NAMES = { steam:"Steam", epic:"Epic Games", psn:"PlayStation Store", xbox:"Xbox", switch:"Nintendo eShop" };
+const PLATFORM_NAMES = { steam:"Steam", epic:"Epic Games", riot:"Riot Games", psn:"PlayStation Store", xbox:"Xbox", switch:"Nintendo eShop" };
 // Color de marca + sigla de 2 letras de cada plataforma, usados en los chips de plataforma.
 const PLATFORM_META = {
   steam:  { color:"#1b2838", mono:"ST" },
   epic:   { color:"#2a2a2a", mono:"EP" },
+  riot:   { color:"#d13639", mono:"RG" },
   psn:    { color:"#003791", mono:"PS" },
   xbox:   { color:"#107c10", mono:"XB" },
   switch: { color:"#c8102e", mono:"NS" }
@@ -90,6 +91,7 @@ const PLATFORM_META = {
 const STORE_SEARCH = {
   steam:  (title)=> `https://store.steampowered.com/search/?term=${encodeURIComponent(title)}`,
   epic:   (title)=> `https://store.epicgames.com/en-US/browse?q=${encodeURIComponent(title)}&sortBy=relevancy&sortDir=DESC`,
+  riot:   ()=> 'https://www.riotgames.com/',
   psn:    (title)=> `https://store.playstation.com/en-us/search/${encodeURIComponent(title)}`,
   xbox:   (title)=> `https://www.xbox.com/en-us/search/results/games?q=${encodeURIComponent(title)}`,
   switch: (title)=> `https://www.nintendo.com/us/search/?q=${encodeURIComponent(title)}&p=1&cat=Games`
