@@ -36,13 +36,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_synced_at TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS library_public INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_hours_public INTEGER NOT NULL DEFAULT 1;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam_id ON users(steam_id);
--- Horas jugadas (en minutos) de cada persona en los juegos del catálogo que tiene en Steam; se reemplazan por completo en cada sincronización.
+-- Horas jugadas (en minutos) de cada persona en los juegos del catálogo que tiene en Steam; se actualizan en cada sincronización.
 CREATE TABLE IF NOT EXISTS steam_playtime (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   game_id TEXT NOT NULL,
   minutes INTEGER NOT NULL,
   PRIMARY KEY (user_id, game_id)
 );
+-- Logros del juego (obtenidos y totales): solo se traen para el juego favorito. NULL = todavía no se trajeron; total 0 = el juego no tiene logros en Steam.
+ALTER TABLE steam_playtime ADD COLUMN IF NOT EXISTS achievements_unlocked INTEGER;
+ALTER TABLE steam_playtime ADD COLUMN IF NOT EXISTS achievements_total INTEGER;
 -- Varias cuentas sin email siguen permitidas (NULL no choca con NULL en un índice único).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- Los nombres de usuario no distinguen mayúsculas (la app los busca con lower()).

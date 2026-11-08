@@ -310,9 +310,12 @@ function celebrateFavorite(originEl){
   }
 }
 async function selectFavoriteGame(gameId){
-  if(state.user.favoriteGameId !== gameId) state.user.favoritePlatinum = false; // el platino es del favorito anterior
+  if(state.user.favoriteGameId !== gameId){ state.user.favoritePlatinum = false; state.user.favoriteSteam = null; } // el platino, las horas y los logros eran del favorito anterior
   state.user.favoriteGameId = gameId;
-  try{ await apiPut('/profile/favorite', { gameId }); }catch(e){ toast(t('err_save_user')); }
+  try{
+    const r = await apiPut('/profile/favorite', { gameId });
+    state.user.favoritePlatinum = r.favoritePlatinum; state.user.favoriteSteam = r.favoriteSteam; // el servidor dice si el nuevo favorito está en su Steam (y trae sus logros)
+  }catch(e){ toast(t('err_save_user')); }
   toast(t('toast_fav_updated'));
   renderShelf();
   celebrateFavorite(document.getElementById('favPanel'));
@@ -403,6 +406,12 @@ function libraryCard(g, minutes){
 async function loadSteamHours(){
   try{ state.steamHours = (await apiGet('/steam/hours')).hours; }catch(e){ state.steamHours = {}; }
 }
+// Guarda en memoria lo que respondió /steam/sync: las horas de todos los juegos y las horas y logros del favorito.
+function applySteamSync(d){
+  state.steamHours = Object.fromEntries(d.matches.map(m=>[m.gameId, m.minutes])); state.steamHoursFor = state.user.username;
+  state.user.steam.syncedAt = d.syncedAt;
+  state.user.favoritePlatinum = d.favoritePlatinum; state.user.favoriteSteam = d.favoriteSteam;
+}
 // Texto para cada error de la sincronización con Steam (el servidor manda el código en e.message).
 function steamErrorText(e){
   return t({ steam_private:'steam_err_private', steam_not_configured:'steam_err_not_configured' }[e.message] || 'steam_err_unavailable');
@@ -423,9 +432,7 @@ async function openSteamImportModal(){
   let data;
   try{ data = await apiPost('/steam/sync'); }
   catch(e){ body.innerHTML = `<p class="error">${esc(steamErrorText(e))}</p>${closeBtn}`; body.querySelector('[data-act="close"]').onclick = close; return; }
-  state.steamHours = Object.fromEntries(data.matches.map(m=>[m.gameId, m.minutes]));
-  state.steamHoursFor = state.user.username;
-  state.user.steam.syncedAt = data.syncedAt;
+  applySteamSync(data);
   const inLibrary = new Set(state.user.wishlist || []);
   const rows = data.matches.map(m=>({ g: findGame(m.gameId), minutes: m.minutes })).filter(r=>r.g).sort((a,b)=>b.minutes-a.minutes);
   if(!rows.length){ body.innerHTML = `<p class="hint">${esc(t('steam_import_empty'))}</p>${closeBtn}`; body.querySelector('[data-act="close"]').onclick = close; renderWishlistGrid(true); return; }

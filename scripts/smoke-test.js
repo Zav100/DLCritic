@@ -383,11 +383,13 @@ const today = new Date().toISOString().slice(0, 10);
     assert.deepEqual([pub.username, pub.bio, pub.reviewCount], ['smoketest_a', 'Nueva bio', 0]);
   });
   console.log('Steam');
-  await step('vincular con OpenID (un Steam por cuenta, nonce y firma), horas, importar, privacidad y desvincular', async () => {
+  await step('vincular con OpenID (un Steam por cuenta, nonce y firma), horas, logros del favorito, importar, privacidad y desvincular', async () => {
     if (REMOTE) return; // el Steam de mentira solo lo alcanza la app en proceso
     const { startSteamMock } = require('./steam-mock');
-    const mock = await startSteamMock({ games: '111:600,222:0,999:50' }); // 111 y 222 existen en el catálogo (abajo); 999 no
+    const mock = await startSteamMock({ games: '111:600,222:0,999:50', achievements: '111:15/35' }); // 111 y 222 existen en el catálogo (abajo); 999 no. 222 queda sin logros
     const slots = { 111: gameId, 222: otherGameId };
+    const clearWriteLimits = () => db.prepare("DELETE FROM rate_limits WHERE key LIKE 'write:u:%'").run(); // esta prueba hace muchas escrituras seguidas de la misma cuenta
+    await clearWriteLimits();
     const setAppid = (id, appid) => db.prepare('UPDATE games SET steam_appid = ? WHERE id = ?').run(appid, id);
     // El cliente de prueba guarda una sola cookie: aquí se arma la cabecera a mano para llevar la de sesión y la del nonce.
     const raw = (c, p, extraCookie) => fetch(publicBase + p, { redirect: 'manual', headers: { 'X-Forwarded-For': '10.9.1.1', 'X-Forwarded-Host': PUBLIC_HOST, Cookie: [c.getCookie(), extraCookie].filter(Boolean).join('; ') } });
@@ -408,9 +410,10 @@ const today = new Date().toISOString().slice(0, 10);
       assert.equal(first.status, 302);
       assert.ok(first.loc.startsWith(mock.url + '/openid/login?') && first.loc.includes('openid.return_to='), 'redirige al OpenID de Steam');
       assert.ok(first.nonce.length > 'steam_link_nonce='.length, 'cookie con el nonce');
-      assert.equal(await comeBack(a, first), '/ajustes?steam=linked');
+      assert.equal(await comeBack(a, first), '/ajustes?steam=linked&sync=ok'); // el favorito de la cuenta es gameId (paso anterior): ya trae sus horas y logros
       const me = (await a('GET', '/api/auth/me')).body.user;
       assert.deepEqual([me.steam.id, me.steam.hoursPublic, me.libraryPublic], [mock.steamId, true, true]);
+      assert.deepEqual([me.favoriteSteam, me.favoritePlatinum], [{ minutes: 600, unlocked: 15, total: 35 }, false]);
 
       // Otra cuenta con el mismo Steam: 409 lógico ("taken"). Y los regresos falsos no vinculan nada.
       assert.equal(await comeBack(b, await start(b)), '/ajustes?steam=taken');
@@ -430,6 +433,31 @@ const today = new Date().toISOString().slice(0, 10);
       assert.deepEqual(sync.matches.sort((x, y) => y.minutes - x.minutes), [{ gameId, minutes: 600 }, { gameId: otherGameId, minutes: 0 }]);
       assert.deepEqual((await a('GET', '/api/steam/hours')).body.hours, { [gameId]: 600, [otherGameId]: 0 });
       assert.deepEqual((await anon('GET', '/api/users/smoketest_a')).body.user.libraryHours, {}); // en el perfil público solo salen las horas de juegos que están en la biblioteca
+
+      // Logros del favorito (está en su cuenta de Steam): obtenidos/total; el platino sale de ahí (todos) y no se marca a mano.
+      assert.deepEqual([sync.favoriteSteam, sync.favoritePlatinum], [{ minutes: 600, unlocked: 15, total: 35 }, false]);
+      assert.equal((await a('PUT', '/api/profile/favorite/platinum', { platinum: true })).body.error, 'platinum_from_steam');
+      mock.state.achievements.set(111, { unlocked: 35, total: 35 });
+      const done = (await a('POST', '/api/steam/sync')).body;
+      assert.deepEqual([done.favoriteSteam.unlocked, done.favoritePlatinum], [35, true]);
+      const pubFav = async () => { const u = (await anon('GET', '/api/users/smoketest_a')).body.user; return [u.favoriteSteam, u.favoritePlatinum]; };
+      assert.deepEqual(await pubFav(), [{ minutes: 600, unlocked: 35, total: 35 }, true]);
+      await a('PUT', '/api/profile/privacy', { steamHoursPublic: false }); // oculto en Ajustes: las demás personas no ven horas, logros ni platino; la dueña sí
+      assert.deepEqual(await pubFav(), [null, false]);
+      assert.equal((await a('GET', '/api/auth/me')).body.user.favoriteSteam.unlocked, 35);
+      await a('PUT', '/api/profile/privacy', { steamHoursPublic: true });
+      // Un favorito sin logros en Steam (el de mentira contesta «no stats»): 0/0 y sin platino. Elegirlo trae sus datos al instante.
+      const noAch = (await a('PUT', '/api/profile/favorite', { gameId: otherGameId })).body;
+      assert.deepEqual([noAch.favoriteSteam, noAch.favoritePlatinum], [{ minutes: 0, unlocked: 0, total: 0 }, false]);
+      // Si Steam no dio los logros todavía hay horas pero no números (se avisa, no se inventa un 0).
+      await db.prepare('UPDATE steam_playtime SET achievements_unlocked = NULL, achievements_total = NULL WHERE game_id = ?').run(otherGameId);
+      assert.deepEqual((await a('GET', '/api/auth/me')).body.user.favoriteSteam, { minutes: 0, unlocked: null, total: null });
+      // Un favorito que no está en su cuenta de Steam sigue con el platino manual.
+      const notOwned = (await anon('GET', '/api/games')).body.games.find(g => g.id !== gameId && g.id !== otherGameId).id;
+      assert.equal((await a('PUT', '/api/profile/favorite', { gameId: notOwned })).body.favoriteSteam, null);
+      assert.equal((await a('PUT', '/api/profile/favorite/platinum', { platinum: true })).body.favoritePlatinum, true);
+      assert.equal((await a('PUT', '/api/profile/favorite', { gameId })).body.favoritePlatinum, true); // al cambiar de favorito se borra el manual; gameId es de Steam y ya tiene 35/35: platino automático
+      assert.equal((await db.prepare("SELECT favorite_platinum AS p FROM users WHERE lower(username) = 'smoketest_a'").get()).p, 0);
       mock.state.privateIds.add(mock.steamId);
       assert.equal((await a('POST', '/api/steam/sync')).body.error, 'steam_private');
       mock.state.privateIds.delete(mock.steamId);
@@ -456,13 +484,17 @@ const today = new Date().toISOString().slice(0, 10);
       await a('PUT', '/api/profile/privacy', { libraryPublic: true, steamHoursPublic: true });
 
       // Desvincular borra el SteamID y las horas, y el Steam queda libre para otra cuenta.
-      assert.equal((await a('POST', '/api/steam/unlink')).body.ok, true);
-      assert.equal((await a('GET', '/api/auth/me')).body.user.steam, null);
+      assert.deepEqual((await a('POST', '/api/steam/unlink')).body, { ok: true, favoritePlatinum: false });
+      const after = (await a('GET', '/api/auth/me')).body.user;
+      assert.deepEqual([after.steam, after.favoriteSteam], [null, null]);
       assert.deepEqual((await a('GET', '/api/steam/hours')).body.hours, {});
-      assert.equal(await comeBack(b, await start(b)), '/ajustes?steam=linked');
+      mock.state.privateIds.add(mock.steamId); // vincula, pero Steam no deja ver los juegos: el regreso lo avisa para que la persona ponga el perfil en Público
+      assert.equal(await comeBack(b, await start(b)), '/ajustes?steam=linked&sync=private');
+      mock.state.privateIds.delete(mock.steamId);
       assert.equal((await b('POST', '/api/steam/unlink')).body.ok, true);
     } finally {
       for (const id of Object.values(slots)) await setAppid(id, null);
+      await clearWriteLimits();
       await db.prepare("UPDATE users SET wishlist = '[]' WHERE lower(username) = 'smoketest_a'").run();
       mock.server.close();
     }

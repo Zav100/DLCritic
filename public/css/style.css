@@ -5685,6 +5685,56 @@ a.rc-author:hover {
   gap: 10px;
 }
 
+/* «Cuenta de Steam vinculada» + el botón «Ver perfil de Steam» (mismo estilo que «Desvincular»). */
+.steam-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 6px;
+}
+
+a.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* Aviso en tarjeta al centro (noticeDialog): icono, título, texto y un único botón. */
+.confirm-box.notice-box {
+  max-width: 400px;
+  padding: 28px 26px 24px;
+  text-align: center;
+}
+
+.notice-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  color: var(--teal);
+}
+
+.notice-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.notice-box h3 {
+  margin: 0 0 10px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.notice-box .confirm-actions {
+  justify-content: center;
+}
+
+.fav-row .hours-tag {
+  margin-top: 0;
+}
+
 .steam-import-tools {
   display: flex;
   gap: 8px;

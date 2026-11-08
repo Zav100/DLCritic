@@ -54,14 +54,14 @@ const authLimiter = rateLimit({ name: 'auth', windowMs: 10 * 60 * 1000, max: 8 }
 const passwordCheckLimiter = rateLimit({ name: 'pwcheck', windowMs: 15 * 60 * 1000, max: 5, keyFn: req => 'u:' + req.user.id });
 const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
 
-function publicUser(u) {
+async function publicUser(u) {
   if (!u) return null;
   return {
     username: u.username,
     email: u.email || null,
     joined: u.joined_at,
     favoriteGameId: u.favorite_game_id || null,
-    favoritePlatinum: !!u.favorite_platinum,
+    ...(await steam.favoriteView(u, true)), // favoritePlatinum y favoriteSteam (horas y logros del favorito si es de su cuenta de Steam)
     libraryPublic: !!u.library_public,
     steam: u.steam_id ? { id: u.steam_id, syncedAt: u.steam_synced_at, hoursPublic: !!u.steam_hours_public } : null,
     wishlist: JSON.parse(u.wishlist || '[]'),
@@ -147,7 +147,7 @@ const insertUser = db.prepare('INSERT INTO users (username, email, pin_hash, joi
 const setPasswordHash = db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?');
 
 app.get('/api/auth/me', async (req, res) => {
-  res.json({ user: publicUser(await currentUser(req)) });
+  res.json({ user: await publicUser(await currentUser(req)) });
 });
 
 // Registration now happens in two client-side steps (email+password, then
@@ -180,7 +180,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   }
   // Al crear la cuenta la sesión se recuerda 24 horas: no se cierra apenas se cierra la pestaña, pero para los 20 días hay que iniciar sesión y marcar la casilla.
   setSessionCookie(res, await createSession(created.id, 'day'));
-  res.json({ user: publicUser(await findUserByNameCI.get(username)) });
+  res.json({ user: await publicUser(await findUserByNameCI.get(username)) });
 });
 
 // Accepts an email (new accounts) or a username (accounts grandfathered in
@@ -209,7 +209,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
   // remember: la casilla "Recordar este dispositivo". Solo vale el booleano true.
   setSessionCookie(res, await createSession(user.id, req.body.remember === true ? 'remember' : 'short'));
-  res.json({ user: publicUser(user) });
+  res.json({ user: await publicUser(user) });
 });
 
 // Cambia la contraseña y cierra las sesiones de los demás dispositivos (la de quien la cambia sigue abierta).
@@ -611,19 +611,24 @@ const setFavoritePlatinum = db.prepare('UPDATE users SET favorite_platinum = ? W
 const setWishlist = db.prepare('UPDATE users SET wishlist = ? WHERE id = ?');
 const setActivityDates = db.prepare('UPDATE users SET activity_dates = ? WHERE id = ?');
 
-app.put('/api/profile/favorite', requireAuth, async (req, res) => {
+// Tiene límite de uso porque, si el favorito está en la cuenta de Steam de la persona, se le piden sus logros a Steam.
+app.put('/api/profile/favorite', requireAuth, writeLimiter, async (req, res) => {
   const gameId = req.body.gameId || null;
   if (gameId !== null && (typeof gameId !== 'string' || !await findGameById.get(gameId))) return res.status(400).json({ error: 'invalid_game' });
   // El platino es del juego favorito: si cambia el favorito, la marca se borra.
   const platinum = gameId !== null && gameId === req.user.favorite_game_id ? req.user.favorite_platinum : 0;
   await setFavoriteGame.run(gameId, platinum, req.user.id);
-  res.json({ favoriteGameId: gameId, favoritePlatinum: !!platinum });
+  const user = { ...req.user, favorite_game_id: gameId, favorite_platinum: platinum };
+  await steam.refreshAchievements(user, gameId);
+  res.json({ favoriteGameId: gameId, ...(await steam.favoriteView(user, true)) });
 });
 
 // Marca (o desmarca) que el juego favorito está platinado. PlayStation no tiene una API pública de trofeos, así que lo marca la persona a mano.
+// Si el favorito está en su cuenta de Steam no se marca a mano: el platino sale de los logros (todos obtenidos).
 app.put('/api/profile/favorite/platinum', requireAuth, writeLimiter, async (req, res) => {
   if (typeof req.body.platinum !== 'boolean') return res.status(400).json({ error: 'invalid_platinum' });
   if (!req.user.favorite_game_id) return res.status(400).json({ error: 'no_favorite' });
+  if ((await steam.favoriteView(req.user, true)).favoriteSteam) return res.status(400).json({ error: 'platinum_from_steam' });
   await setFavoritePlatinum.run(req.body.platinum ? 1 : 0, req.user.id);
   res.json({ favoritePlatinum: req.body.platinum });
 });
@@ -691,7 +696,8 @@ async function shapePublicProfile(u, viewer) {
   const isFollowing = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id));
   const isFriend = !!(viewer && viewer.id !== u.id && await findFollow.get(viewer.id, u.id) && await findFollow.get(u.id, viewer.id));
   return {
-    username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null, favoritePlatinum: !!u.favorite_platinum,
+    username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null,
+    ...(await steam.favoriteView(u, !!(viewer && viewer.id === u.id))), // favoritePlatinum y favoriteSteam (solo si no ocultó sus horas y logros)
     isAdmin: !!u.is_admin, bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
@@ -750,7 +756,7 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
   } catch (e) {
     return res.status(409).json({ error: 'username_taken' });
   }
-  res.json({ user: publicUser(await findUserById.get(req.user.id)) });
+  res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
 });
 
 const avatarUploadLimiter = rateLimit({ name: 'avatar', windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
@@ -761,7 +767,7 @@ app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, re
   catch (e) { return res.status(400).json({ error: 'upload_failed' }); }
   if (!file) return res.status(400).json({ error: 'invalid_file' });
   await setAvatarUrl.run(await saveImage(file), req.user.id);
-  res.json({ user: publicUser(await findUserById.get(req.user.id)) });
+  res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
 });
 
 app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, res) => {

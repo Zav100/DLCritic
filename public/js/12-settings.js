@@ -12,11 +12,11 @@
  *     obligatorio, ver el aviso "legacyHintHTML" más abajo).
  */
 /* ---------- ajustes ---------- */
-// Tarjeta "Steam y biblioteca": vincular/desvincular Steam, traer las horas, y qué se ve en el perfil público (la biblioteca y las horas, por separado).
+// Tarjeta "Steam y biblioteca": vincular/desvincular Steam, traer las horas y los logros, y qué se ve en el perfil público (la biblioteca, y las horas con los logros, por separado).
 function steamCardHTML(u){
   const s = u.steam;
   const status = s ? `
-      <p style="margin:0 0 4px;"><strong>${esc(t('steam_linked_label'))}</strong> · <a href="https://steamcommunity.com/profiles/${esc(s.id)}" target="_blank" rel="noopener noreferrer">${esc(t('steam_view_profile'))} ↗</a></p>
+      <div class="steam-status"><strong>${esc(t('steam_linked_label'))}</strong><a class="btn-ghost" href="https://steamcommunity.com/profiles/${esc(s.id)}" target="_blank" rel="noopener noreferrer">${esc(t('steam_view_profile'))} ↗</a></div>
       <p class="hint" style="margin:0 0 12px;">${s.syncedAt? esc(t('steam_last_sync'))+' '+esc(fmtDate(s.syncedAt)) : esc(t('steam_never_synced'))}</p>
       <div class="steam-actions"><button type="button" class="btn small" id="stSteamSync">${esc(t('steam_sync_btn'))}</button><button type="button" class="btn-ghost" id="stSteamUnlink">${esc(t('steam_unlink_btn'))}</button></div>`
     : `
@@ -33,7 +33,7 @@ function steamCardHTML(u){
       </div>
     </div>`;
 }
-// Engancha la tarjeta de Steam y avisa el resultado cuando se vuelve de Steam (/ajustes?steam=linked | taken | error).
+// Engancha la tarjeta de Steam y avisa el resultado cuando se vuelve de Steam (/ajustes?steam=linked | taken | error, y con linked también &sync=ok | private | none).
 function wireSteamCard(){
   const u = state.user;
   const errEl = document.getElementById('stSteamError');
@@ -53,9 +53,7 @@ function wireSteamCard(){
   if(sync) sync.onclick = async ()=>{
     sync.disabled = true; errEl.hidden = true;
     try{
-      const d = await apiPost('/steam/sync');
-      state.steamHours = Object.fromEntries(d.matches.map(m=>[m.gameId, m.minutes])); state.steamHoursFor = u.username;
-      u.steam.syncedAt = d.syncedAt;
+      applySteamSync(await apiPost('/steam/sync'));
       toast(t('toast_steam_synced'));
       renderSettingsView();
     }catch(e){ errEl.textContent = steamErrorText(e); errEl.hidden = false; sync.disabled = false; }
@@ -64,16 +62,17 @@ function wireSteamCard(){
   if(unlink) unlink.onclick = async ()=>{
     if(!await confirmDialog(t('steam_unlink_confirm'))) return;
     try{
-      await apiPost('/steam/unlink');
-      u.steam = null; state.steamHours = {}; state.steamHoursFor = u.username;
+      const r = await apiPost('/steam/unlink');
+      u.steam = null; u.favoriteSteam = null; u.favoritePlatinum = r.favoritePlatinum; state.steamHours = {}; state.steamHoursFor = u.username;
       toast(t('toast_steam_unlinked'));
       renderSettingsView();
     }catch(e){ toast(t('err_save_user')); }
   };
-  const result = new URLSearchParams(location.search).get('steam');
+  const params = new URLSearchParams(location.search), result = params.get('steam');
   if(result){
-    toast(t({ linked:'toast_steam_linked', taken:'toast_steam_taken' }[result] || 'toast_steam_error'));
     history.replaceState(null, '', '/ajustes');
+    if(result==='linked') noticeDialog(t('steam_linked_title'), t({ ok:'steam_linked_ok', private:'steam_linked_private' }[params.get('sync')] || 'steam_linked_none'), ICONS.checkCircle);
+    else noticeDialog(t('steam_failed_title'), t(result==='taken'? 'toast_steam_taken' : 'toast_steam_error'));
   }
 }
 // Arma las 3 tarjetas de Ajustes (Perfil/Cuenta/Seguridad) con los datos actuales del usuario, y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.

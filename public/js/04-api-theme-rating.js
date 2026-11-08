@@ -139,9 +139,9 @@ function loadTheme(){
 
 /* ---------- compact display gauge ---------- */
 // Barra de progreso que muestra una nota fija (no interactiva) — se usa en las cards de reseñas. Anima el llenado con requestAnimationFrame para que se vea la transición CSS.
-function renderGauge(container, value){
-  container.innerHTML = `<div class="gauge"><div class="gauge-track"><div class="gauge-fill"></div></div><div class="gauge-num">${value}/10</div></div>`;
-  requestAnimationFrame(()=>{ const f=container.querySelector('.gauge-fill'); if(f) f.style.width=(value*10)+'%'; });
+function renderGauge(container, value, max=10){ // max: la escala (10 para las notas; los logros usan su total)
+  container.innerHTML = `<div class="gauge"><div class="gauge-track"><div class="gauge-fill"></div></div><div class="gauge-num">${value}/${max}</div></div>`;
+  requestAnimationFrame(()=>{ const f=container.querySelector('.gauge-fill'); if(f) f.style.width=(value/max*100)+'%'; });
 }
 
 /* ---------- calificación rápida (independiente de la reseña) ---------- */
