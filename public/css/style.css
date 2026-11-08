@@ -5735,6 +5735,10 @@ a.rc-author:hover {
   margin-top: 0;
 }
 
+.settings-group + .settings-group {
+  margin-top: 22px;
+}
+
 .settings-section + .settings-section {
   margin-top: 26px;
   padding-top: 22px;
