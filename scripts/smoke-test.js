@@ -353,6 +353,16 @@ const today = new Date().toISOString().slice(0, 10);
   await step('favorito, wishlist, actividad y reto diario', async () => {
     assert.equal((await a('PUT', '/api/profile/favorite', { gameId })).body.favoriteGameId, gameId);
     assert.equal((await a('PUT', '/api/profile/favorite', { gameId: 'no-existe' })).body.error, 'invalid_game');
+    // Platino del favorito (marca manual): se valida lo que llega, se ve en /api/auth/me, se conserva con el mismo favorito y se borra al cambiar de favorito.
+    assert.equal((await a('PUT', '/api/profile/favorite/platinum', { platinum: 'si' })).body.error, 'invalid_platinum');
+    assert.equal((await a('PUT', '/api/profile/favorite/platinum', { platinum: true })).body.favoritePlatinum, true);
+    assert.equal((await a('GET', '/api/auth/me')).body.user.favoritePlatinum, true);
+    assert.equal((await a('PUT', '/api/profile/favorite', { gameId })).body.favoritePlatinum, true);
+    const otherGame = (await anon('GET', '/api/games')).body.games.find(g => g.id !== gameId);
+    assert.equal((await a('PUT', '/api/profile/favorite', { gameId: otherGame.id })).body.favoritePlatinum, false);
+    assert.equal((await a('PUT', '/api/profile/favorite', { gameId: null })).body.favoriteGameId, null);
+    assert.equal((await a('PUT', '/api/profile/favorite/platinum', { platinum: true })).body.error, 'no_favorite');
+    assert.equal((await a('PUT', '/api/profile/favorite', { gameId })).body.favoriteGameId, gameId); // deja el favorito como estaba para lo que sigue
     assert.deepEqual((await a('POST', '/api/profile/wishlist/toggle', { gameId })).body.wishlist, [gameId]);
     assert.deepEqual((await a('POST', '/api/profile/wishlist/toggle', { gameId })).body.wishlist, []);
     assert.deepEqual((await a('POST', '/api/profile/activity', { date: today })).body.activityDates, [today]);

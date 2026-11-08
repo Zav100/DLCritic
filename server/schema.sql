@@ -25,6 +25,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_recovery TEXT NOT NULL DEFAULT '[]';
+-- El juego favorito marcado como platinado (lo marca la persona a mano; se muestra en su panel de Juego favorito, junto a los logros).
+-- Es del juego favorito: al cambiar de favorito el servidor lo vuelve a 0.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS favorite_platinum INTEGER NOT NULL DEFAULT 0;
 -- Varias cuentas sin email siguen permitidas (NULL no choca con NULL en un índice único).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- Los nombres de usuario no distinguen mayúsculas (la app los busca con lower()).

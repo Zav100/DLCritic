@@ -5494,3 +5494,122 @@ a.rc-author:hover {
 .glass-panel .sectionhead h2 {
   color: var(--ink);
 }
+
+/* ---- panel «Juego favorito» del perfil ---- */
+.fav-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.fav-panel.fav-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.fav-cover-link {
+  display: block;
+  border-radius: 14px;
+}
+
+.fav-cover-link .gc-cover {
+  margin: 0;
+  font-size: 44px;
+}
+
+.fav-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.fav-title {
+  font-family: 'Bungee', sans-serif;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.fav-title:hover {
+  text-decoration: underline;
+}
+
+.fav-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fav-genre {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--paper-alt);
+  color: var(--ink);
+}
+
+.fav-row {
+  width: 100%;
+}
+
+.fav-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.fav-achv {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fav-muted {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* El listón de platino lleva colores fijos (no dependen del tema) para que se lea igual en claro y en oscuro. */
+.platinum-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #9fb3c9;
+  background: linear-gradient(135deg, #eef3f9, #b9c9dc 55%, #e6eef7);
+  color: #1f3550;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.platinum-badge svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .fav-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fav-title {
+    font-size: 17px;
+  }
+}
