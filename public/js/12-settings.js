@@ -10,7 +10,7 @@
  *     contraseña actual; para cuentas viejas con PIN, "la contraseña actual" ES el
  *     PIN de 4 dígitos — cambiarla es opcional, nunca obligatorio, ver el aviso
  *     "legacyHintHTML"); y al final cerrar sesión en todos los dispositivos
- *   - Conexiones: redes y plataformas de juego -> PUT /api/profile (solo los enlaces),
+ *   - Conexiones: redes sociales y plataformas de juego (dos grupos, un solo botón) -> PUT /api/profile (solo los enlaces),
  *     y "Steam y biblioteca" con su guía (se refresca sola, sin recargar la vista)
  * La pestaña abierta vive en state.settingsTab (se borra al salir de Ajustes).
  */
@@ -95,6 +95,16 @@ function wireSteamCard(){
     if(result==='linked') noticeDialog(t('steam_linked_title'), t({ ok:'steam_linked_ok', private:'steam_linked_private' }[params.get('sync')] || 'steam_linked_none'), ICONS.checkCircle);
     else noticeDialog(t('steam_failed_title'), t(result==='taken'? 'toast_steam_taken' : 'toast_steam_error'));
   }
+}
+// Los enlaces del perfil (SOCIAL_META, 01-icons-and-catalog-meta.js) se muestran en dos grupos: redes sociales y plataformas de juego.
+// Las plataformas son todo lo que no está en esta lista, así una clave nueva de SOCIAL_KEYS nunca queda fuera del formulario (guardar reemplaza todos los enlaces).
+const SOCIAL_NETWORK_KEYS = ['instagram', 'facebook', 'x', 'youtube'];
+function socialFieldsHTML(keys, links){
+  return `<div class="field-row" style="flex-wrap:wrap;">${keys.map(k=>`
+    <div class="field" style="min-width:150px;">
+      <label for="st-social-${k}" style="font-weight:400; text-transform:none; font-size:11px;">${esc(SOCIAL_META[k].name)}</label>
+      <input type="text" id="st-social-${k}" placeholder="https://…" value="${esc((links&&links[k])||'')}">
+    </div>`).join('')}</div>`;
 }
 // Las pestañas de Ajustes (todas dentro de una sola tarjeta). Cada una guarda lo suyo por separado. Los textos de las pestañas están en 02-i18n.js.
 const SETTINGS_TABS = [
@@ -207,14 +217,14 @@ function renderSettingsView(){
 
       ${panel('connections', `
         <section class="settings-section">
-          <h3>${esc(t('profile_social_label'))}</h3>
-          <div class="field-row" style="flex-wrap:wrap;">
-            ${SOCIAL_KEYS.map(k=>`
-              <div class="field" style="min-width:150px;">
-                <label for="st-social-${k}" style="font-weight:400; text-transform:none; font-size:11px;">${esc(SOCIAL_META[k].name)}</label>
-                <input type="text" id="st-social-${k}" placeholder="https://…" value="${esc((u.socialLinks&&u.socialLinks[k])||'')}">
-              </div>
-            `).join('')}
+          <div class="settings-group">
+            <h3>${esc(t('settings_social_networks'))}</h3>
+            ${socialFieldsHTML(SOCIAL_KEYS.filter(k=>SOCIAL_NETWORK_KEYS.includes(k)), u.socialLinks)}
+          </div>
+          <div class="settings-group">
+            <h3>${esc(t('settings_game_platforms'))}</h3>
+            <p class="hint" style="margin:0 0 10px;">${esc(t('settings_game_platforms_hint'))}</p>
+            ${socialFieldsHTML(SOCIAL_KEYS.filter(k=>!SOCIAL_NETWORK_KEYS.includes(k)), u.socialLinks)}
           </div>
           <div class="error" id="stSocialError" hidden></div>
           <button class="btn gold" id="stSocialSave">${esc(t('save_changes_btn'))}</button>
