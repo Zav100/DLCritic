@@ -72,8 +72,11 @@
           nombre de usuario y un PIN, y pueden no tener correo.</li>
         <li><strong>Perfil:</strong> tu nombre de usuario y, si quieres, una foto, una descripción y enlaces a tus redes
           o perfiles de plataformas de juego.</li>
+        <li><strong>Steam (opcional):</strong> si vinculas tu cuenta de Steam, guardamos tu ID público de Steam y las horas
+          que jugaste en los juegos que están en DLCritic. Inicias sesión en el sitio de Steam: nunca vemos ni guardamos tu
+          contraseña de Steam. Puedes desvincularla en Ajustes y se borra todo lo guardado de Steam.</li>
         <li><strong>Lo que haces en el Sitio:</strong> reseñas y calificaciones de juegos y personajes, votos de
-          «útil», listas (públicas o privadas), lista de deseos, juego favorito, a quién sigues y quién te sigue,
+          «útil», listas (públicas o privadas), biblioteca, juego favorito, a quién sigues y quién te sigue,
           notificaciones, tu progreso en el Reto del día, los días en que usaste el Sitio y las sugerencias de juegos o
           personajes que envíes.</li>
       </ul>
@@ -90,10 +93,10 @@
 
       <h2>3. Qué es público y qué no</h2>
       <p><strong>Es público</strong> (lo puede ver cualquier visitante, tenga o no cuenta): tu nombre de usuario, foto,
-        descripción, enlaces que agregues a tu perfil, fecha en que te uniste, juego favorito, cantidad y promedio de tus
+        descripción, enlaces que agregues a tu perfil, fecha en que te uniste, juego favorito, tu biblioteca de juegos y, si vinculaste Steam, tus horas jugadas (cada una se puede ocultar en Ajustes), cantidad y promedio de tus
         reseñas, cuántas personas te siguen y a cuántas sigues, tus reseñas y calificaciones, y tus listas marcadas como
         públicas.</p>
-      <p><strong>No es público:</strong> tu correo, tu contraseña, tu lista de deseos, tu actividad, tus notificaciones y
+      <p><strong>No es público:</strong> tu correo, tu contraseña, tu ID de Steam, tu actividad, tus notificaciones y
         tus listas privadas. Las personas que administran el Sitio pueden ver los datos de las cuentas desde el panel de
         administración, solo para moderar y dar soporte.</p>
       <p>Piénsalo antes de escribir en tu perfil o en una reseña: no publiques datos que no quieras que vea cualquiera.</p>
@@ -123,7 +126,9 @@
         <li><strong>Google Fonts</strong>: las tipografías del Sitio se cargan desde servidores de Google, que puede
           recibir tu dirección IP y datos de tu navegador al hacerlo.</li>
         <li><strong>Tiendas y servicios de juegos</strong> (por ejemplo, Steam): algunas portadas se cargan desde sus
-          servidores, que pueden ver tu IP al pedirlas. Nunca les enviamos datos de las cuentas.</li>
+          servidores, que pueden ver tu IP al pedirlas. Salvo lo de Steam que se explica abajo, nunca les enviamos datos de las cuentas.</li>
+        <li><strong>Steam</strong> (Valve), solo si vinculas tu cuenta: el inicio de sesión se hace en el sitio de Steam, que nos confirma
+          tu ID público de Steam. Después, nuestro servidor le pide a Steam (Steam Web API) la lista de tus juegos y tus horas, y para eso le envía ese ID.</li>
       </ul>
       <p>Si tocas «compartir» y eliges una red o aplicación (WhatsApp, X, etc.), o abres un enlace a una tienda, pasas
         a otro servicio con su propia política de privacidad. También podemos compartir datos con autoridades si una
@@ -231,8 +236,11 @@
           a PIN, and may have no email.</li>
         <li><strong>Profile:</strong> your username and, if you want, a photo, a bio and links to your social networks
           or gaming platform profiles.</li>
+        <li><strong>Steam (optional):</strong> if you link your Steam account, we keep your public Steam ID and the hours you
+          played in the games that are on DLCritic. You sign in on Steam’s own site: we never see or store your Steam
+          password. You can unlink it in Settings and everything stored from Steam is deleted.</li>
         <li><strong>What you do on the Site:</strong> reviews and ratings of games and characters, “helpful” votes,
-          lists (public or private), wishlist, favorite game, who you follow and who follows you, notifications, your
+          lists (public or private), library, favorite game, who you follow and who follows you, notifications, your
           progress in the Daily Challenge, the days you used the Site, and the game or character suggestions you send.</li>
       </ul>
       <h3>What is generated when you use the Site</h3>
@@ -247,9 +255,9 @@
 
       <h2>3. What is public and what is not</h2>
       <p><strong>Public</strong> (anyone can see it, with or without an account): your username, photo, bio, links you
-        add to your profile, the date you joined, favorite game, the number and average of your reviews, how many people
+        add to your profile, the date you joined, favorite game, your game library and, if you linked Steam, your hours played (each can be hidden in Settings), the number and average of your reviews, how many people
         follow you and how many you follow, your reviews and ratings, and the lists you mark as public.</p>
-      <p><strong>Not public:</strong> your email, your password, your wishlist, your activity, your notifications and your
+      <p><strong>Not public:</strong> your email, your password, your Steam ID, your activity, your notifications and your
         private lists. The people who run the Site can see account data in the admin panel, only to moderate and give
         support.</p>
       <p>Think before writing on your profile or in a review: don’t post details you don’t want just anyone to see.</p>
@@ -279,7 +287,9 @@
         <li><strong>Google Fonts</strong>: the Site’s typefaces are loaded from Google’s servers, which may receive your
           IP address and browser details when doing so.</li>
         <li><strong>Game stores and services</strong> (for example, Steam): some covers are loaded from their servers,
-          which can see your IP when you request them. We never send them account data.</li>
+          which can see your IP when you request them. Except for the Steam item below, we never send them account data.</li>
+        <li><strong>Steam</strong> (Valve), only if you link your account: signing in happens on Steam’s own site, which confirms
+          your public Steam ID to us. After that, our server asks Steam (Steam Web API) for your game list and hours, and sends it that ID to do so.</li>
       </ul>
       <p>If you tap “share” and choose a network or app (WhatsApp, X, etc.), or open a link to a store, you move to
         another service with its own privacy policy. We may also share data with authorities if a law or a court order

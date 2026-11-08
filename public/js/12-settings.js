@@ -12,6 +12,70 @@
  *     obligatorio, ver el aviso "legacyHintHTML" más abajo).
  */
 /* ---------- ajustes ---------- */
+// Tarjeta "Steam y biblioteca": vincular/desvincular Steam, traer las horas, y qué se ve en el perfil público (la biblioteca y las horas, por separado).
+function steamCardHTML(u){
+  const s = u.steam;
+  const status = s ? `
+      <p style="margin:0 0 4px;"><strong>${esc(t('steam_linked_label'))}</strong> · <a href="https://steamcommunity.com/profiles/${esc(s.id)}" target="_blank" rel="noopener noreferrer">${esc(t('steam_view_profile'))} ↗</a></p>
+      <p class="hint" style="margin:0 0 12px;">${s.syncedAt? esc(t('steam_last_sync'))+' '+esc(fmtDate(s.syncedAt)) : esc(t('steam_never_synced'))}</p>
+      <div class="steam-actions"><button type="button" class="btn small" id="stSteamSync">${esc(t('steam_sync_btn'))}</button><button type="button" class="btn-ghost" id="stSteamUnlink">${esc(t('steam_unlink_btn'))}</button></div>`
+    : `
+      <p class="hint" style="margin-top:0;">${esc(t('steam_intro'))}</p>
+      <a class="btn" id="stSteamLink" href="/api/steam/link">${esc(t('steam_link_btn'))}</a>`;
+  return `
+    <div class="card" style="margin-bottom:18px;" id="steamCard">
+      <h3 style="margin-top:0;">${esc(t('settings_steam_section'))}</h3>
+      ${status}
+      <div class="error" id="stSteamError" hidden></div>
+      <div class="field" style="margin:16px 0 0; padding-top:14px; border-top:1px dashed var(--line-dark);">
+        <label class="check-row"><input type="checkbox" id="st-library-public" ${u.libraryPublic?'checked':''}><span>${esc(t('library_public_label'))}</span></label>
+        ${s? `<label class="check-row"><input type="checkbox" id="st-hours-public" ${s.hoursPublic?'checked':''}><span>${esc(t('steam_hours_public_label'))}</span></label>` : ''}
+      </div>
+    </div>`;
+}
+// Engancha la tarjeta de Steam y avisa el resultado cuando se vuelve de Steam (/ajustes?steam=linked | taken | error).
+function wireSteamCard(){
+  const u = state.user;
+  const errEl = document.getElementById('stSteamError');
+  const savePrivacy = async (field, input)=>{
+    try{
+      const r = await apiPut('/profile/privacy', { [field]: input.checked });
+      u.libraryPublic = r.libraryPublic;
+      if(u.steam) u.steam.hoursPublic = r.steamHoursPublic;
+      toast(t('toast_privacy_saved'));
+    }catch(e){ input.checked = !input.checked; toast(t('err_save_user')); }
+  };
+  const lib = document.getElementById('st-library-public');
+  if(lib) lib.onchange = ()=> savePrivacy('libraryPublic', lib);
+  const hours = document.getElementById('st-hours-public');
+  if(hours) hours.onchange = ()=> savePrivacy('steamHoursPublic', hours);
+  const sync = document.getElementById('stSteamSync');
+  if(sync) sync.onclick = async ()=>{
+    sync.disabled = true; errEl.hidden = true;
+    try{
+      const d = await apiPost('/steam/sync');
+      state.steamHours = Object.fromEntries(d.matches.map(m=>[m.gameId, m.minutes])); state.steamHoursFor = u.username;
+      u.steam.syncedAt = d.syncedAt;
+      toast(t('toast_steam_synced'));
+      renderSettingsView();
+    }catch(e){ errEl.textContent = steamErrorText(e); errEl.hidden = false; sync.disabled = false; }
+  };
+  const unlink = document.getElementById('stSteamUnlink');
+  if(unlink) unlink.onclick = async ()=>{
+    if(!await confirmDialog(t('steam_unlink_confirm'))) return;
+    try{
+      await apiPost('/steam/unlink');
+      u.steam = null; state.steamHours = {}; state.steamHoursFor = u.username;
+      toast(t('toast_steam_unlinked'));
+      renderSettingsView();
+    }catch(e){ toast(t('err_save_user')); }
+  };
+  const result = new URLSearchParams(location.search).get('steam');
+  if(result){
+    toast(t({ linked:'toast_steam_linked', taken:'toast_steam_taken' }[result] || 'toast_steam_error'));
+    history.replaceState(null, '', '/ajustes');
+  }
+}
 // Arma las 3 tarjetas de Ajustes (Perfil/Cuenta/Seguridad) con los datos actuales del usuario, y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.
 function renderSettingsView(){
   if(!state.user){ goView('auth'); return; }
@@ -70,6 +134,8 @@ function renderSettingsView(){
       <button class="btn gold" id="stAccountSave">${esc(t('save_changes_btn'))}</button>
     </div>
 
+    ${steamCardHTML(u)}
+
     <div class="card">
       <h3 style="margin-top:0;">${esc(t('settings_security_section'))}</h3>
       ${legacyHintHTML}
@@ -95,6 +161,8 @@ function renderSettingsView(){
       </div>
     </div>
   `;
+
+  wireSteamCard();
 
   let pendingSettingsAvatarFile = null;
   document.getElementById('st-avatar-file').onchange = (e)=>{

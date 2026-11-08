@@ -28,6 +28,21 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_recovery TEXT NOT NULL DEFAULT '
 -- El juego favorito marcado como platinado (lo marca la persona a mano; se muestra en su panel de Juego favorito, junto a los logros).
 -- Es del juego favorito: al cambiar de favorito el servidor lo vuelve a 0.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS favorite_platinum INTEGER NOT NULL DEFAULT 0;
+-- Cuenta de Steam vinculada (SteamID64, de 17 dígitos; lo confirma Steam con OpenID, nunca vemos su contraseña). Un Steam solo puede estar en una cuenta.
+-- steam_synced_at: la última vez que se trajeron las horas. library_public: la biblioteca se ve en el perfil público (encendido por defecto; se apaga en Ajustes).
+-- steam_hours_public: las horas de Steam se ven en el perfil público (también encendido por defecto).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_synced_at TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS library_public INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_hours_public INTEGER NOT NULL DEFAULT 1;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam_id ON users(steam_id);
+-- Horas jugadas (en minutos) de cada persona en los juegos del catálogo que tiene en Steam; se reemplazan por completo en cada sincronización.
+CREATE TABLE IF NOT EXISTS steam_playtime (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  game_id TEXT NOT NULL,
+  minutes INTEGER NOT NULL,
+  PRIMARY KEY (user_id, game_id)
+);
 -- Varias cuentas sin email siguen permitidas (NULL no choca con NULL en un índice único).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- Los nombres de usuario no distinguen mayúsculas (la app los busca con lower()).
@@ -110,6 +125,8 @@ CREATE TABLE IF NOT EXISTS games (
 );
 -- Las búsquedas por título (portadas) comparan en minúsculas.
 CREATE INDEX IF NOT EXISTS idx_games_title_lower ON games(lower(title));
+-- Id del juego en Steam (el número de store.steampowered.com/app/<id>): con él se cruzan los juegos de la cuenta de Steam con el catálogo. Los juegos fuera de Steam quedan en NULL.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS steam_appid INTEGER;
 
 CREATE TABLE IF NOT EXISTS date_events (
   id TEXT PRIMARY KEY,
