@@ -27,7 +27,7 @@ function iconLabel(icon, text){ return `${ICON_SVG[icon]} ${esc(text)}`; }
 // Listas fijas para los <select>/checkboxes del formulario de juego — deben coincidir con lo que usa la app principal (public/js/01-icons-and-catalog-meta.js) aunque estén repetidas aquí (son dos páginas separadas, sin código compartido).
 const GENRES = ["Acción","Aventura","Casuales","Indie","Multijugador","Carreras","Rol","Simulación","Deportes","Estrategia","Disparos","Terror"];
 const PLATFORMS = [
-  { key:'steam', name:'Steam' }, { key:'epic', name:'Epic Games' }, { key:'psn', name:'PlayStation Store' },
+  { key:'steam', name:'Steam' }, { key:'epic', name:'Epic Games' }, { key:'riot', name:'Riot Games' }, { key:'psn', name:'PlayStation Store' },
   { key:'xbox', name:'Xbox' }, { key:'switch', name:'Nintendo eShop' },
 ];
 

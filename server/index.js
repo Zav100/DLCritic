@@ -120,7 +120,7 @@ function uid() {
 /* ---------------- validación compartida de entradas ---------------- */
 
 const MAX_REVIEW_TEXT = 600; // mismo tope que el maxlength del textarea del cliente
-const KNOWN_PLATFORMS = new Set(['steam', 'epic', 'psn', 'xbox', 'switch']);
+const KNOWN_PLATFORMS = new Set(['steam', 'epic', 'riot', 'psn', 'xbox', 'switch']);
 // Fecha YYYY-MM-DD válida y a ≤3 días de hoy (margen para husos horarios). Sin este tope, un usuario podía
 // crear filas / entradas de historial ilimitadas mandando fechas inventadas.
 function isPlausibleDate(s) {
