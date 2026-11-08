@@ -17,7 +17,7 @@
 // Arma un objeto "perfil" con la forma que espera renderProfileBody(), a partir de state.user (que tiene más campos que un perfil público, como el email — por eso no se puede pasar state.user directo).
 function profileShapeFromSelf(u){
   return {
-    username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum,
+    username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum, favoriteSteam: u.favoriteSteam,
     bio: u.bio, avatarUrl: u.avatarUrl, socialLinks: u.socialLinks,
     isFollowing:false, isFriend:false, followerCount:0, followingCount:0,
   };
@@ -50,8 +50,27 @@ function renderProfile(username){
     el.innerHTML = emptyState(ICONS.helpCircle, t('profile_not_found_t'), t('profile_not_found_s'));
   });
 }
-// Panel «Juego favorito» del perfil: portada 16:9 y título (enlaces a la ficha), géneros, la nota que le puso esa persona y, en la fila de logros, el listón
-// de platino. El platino lo marca el dueño a mano (PlayStation no tiene API de trofeos); la barra «obtenidos / total» de Steam irá en esa misma fila.
+// Fila «Logros del juego» del panel de favorito. Si el juego está en la cuenta de Steam de la persona (profile.favoriteSteam), los logros salen de Steam:
+// barra «obtenidos / total» y el listón de platino aparece solo cuando están todos; no hay botón. Si no, el platino lo marca el dueño a mano
+// (PlayStation y los demás no tienen API de trofeos). Devuelve '' si no hay nada que mostrar.
+function favAchievementsHTML(profile, editable){
+  const st = profile.favoriteSteam, platinum = !!profile.favoritePlatinum;
+  const badge = platinum? `<span class="platinum-badge">${ICONS.ribbon}<span>${esc(t('fav_platinum'))}</span></span>` : '';
+  let body;
+  if(st){
+    if(st.total>0) body = '<div id="favAchGauge"></div>' + badge;
+    else if(st.total===0) body = `<span class="fav-muted">${esc(t('fav_ach_none'))}</span>`;
+    else if(editable) body = `<span class="fav-muted">${esc(t('fav_ach_missing'))}</span>`; // Steam no los dio (privado o caído): solo se le avisa al dueño
+    else return '';
+  } else {
+    if(!platinum && !editable) return '';
+    body = (badge || `<span class="fav-muted">${esc(t('fav_no_platinum'))}</span>`)
+      + (editable? `<button type="button" class="btn small" id="platinumBtn">${esc(t(platinum? 'fav_platinum_unmark' : 'fav_platinum_mark'))}</button>` : '');
+  }
+  return `<div class="fav-row"><div class="fav-label">${esc(t('fav_achievements'))}</div><div class="fav-achv">${body}</div></div>`;
+}
+// Panel «Juego favorito» del perfil: portada 16:9 y título (enlaces a la ficha), géneros, la nota que le puso esa persona, las horas de Steam (si el juego
+// está en su cuenta de Steam y no las ocultó) y la fila de logros (ver favAchievementsHTML).
 // Sin favorito, el dueño ve una invitación a elegir uno y las demás personas no ven el panel.
 function favPanelHTML(profile, favGame, editable, reviews){
   if(!favGame && !editable) return '';
@@ -62,7 +81,7 @@ function favPanelHTML(profile, favGame, editable, reviews){
   const rv = reviews.find(r=>r.gameId===favGame.id && r.rating!=null);
   const href = gameHref(favGame.id);
   const genres = (favGame.genres && favGame.genres.length) ? favGame.genres : [favGame.genre || 'Otro'];
-  const platinum = !!profile.favoritePlatinum;
+  const st = profile.favoriteSteam;
   return head + `
     <div class="card fav-panel" id="favPanel">
       <a class="fav-cover-link" id="favCoverLink" href="${esc(href)}" aria-label="${esc(favGame.title)}">
@@ -75,18 +94,13 @@ function favPanelHTML(profile, favGame, editable, reviews){
           <div class="fav-label">${esc(t(editable? 'fav_rating_you' : 'fav_rating_other'))}</div>
           ${rv? '<div id="favGauge"></div>' : `<span class="no-rating-tag">${esc(t('no_rating_yet'))}</span>`}
         </div>
-        ${(platinum || editable)? `<div class="fav-row">
-          <div class="fav-label">${esc(t('fav_achievements'))}</div>
-          <div class="fav-achv">
-            ${platinum? `<span class="platinum-badge">${ICONS.ribbon}<span>${esc(t('fav_platinum'))}</span></span>` : `<span class="fav-muted">${esc(t('fav_no_platinum'))}</span>`}
-            ${editable? `<button type="button" class="btn small" id="platinumBtn">${esc(t(platinum? 'fav_platinum_unmark' : 'fav_platinum_mark'))}</button>` : ''}
-          </div>
-        </div>` : ''}
+        ${st? `<div class="fav-row"><div class="fav-label">${esc(t('fav_hours'))}</div><span class="hours-tag">${ICONS.clock} ${esc(fmtHours(st.minutes))}</span></div>` : ''}
+        ${favAchievementsHTML(profile, editable)}
         ${editable? `<button class="btn-fav" id="favPickBtn">${ICONS.star} ${t('change_fav_btn')}</button>` : ''}
       </div>
     </div>`;
 }
-// Engancha el panel recién pintado: los dos enlaces a la ficha (sin recargar), la barra de la nota y el botón de platino.
+// Engancha el panel recién pintado: los dos enlaces a la ficha (sin recargar), la barra de la nota, la de logros y el botón de platino.
 function wireFavPanel(profile, favGame, editable, reviews){
   if(!favGame) return;
   const open = spa(()=>{ state.currentGame = favGame.id; state.gameOrigin = 'shelf'; goView('game'); });
@@ -94,6 +108,8 @@ function wireFavPanel(profile, favGame, editable, reviews){
   const rv = reviews.find(r=>r.gameId===favGame.id && r.rating!=null);
   const gauge = document.getElementById('favGauge');
   if(rv && gauge) renderGauge(gauge, rv.rating);
+  const achGauge = document.getElementById('favAchGauge');
+  if(achGauge && profile.favoriteSteam) renderGauge(achGauge, profile.favoriteSteam.unlocked, profile.favoriteSteam.total);
   const btn = document.getElementById('platinumBtn');
   if(editable && btn) btn.onclick = async ()=>{
     const next = !state.user.favoritePlatinum;

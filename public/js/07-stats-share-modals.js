@@ -255,6 +255,29 @@ function confirmDialog(message){
   });
 }
 
+// Aviso en una tarjeta en el centro de la pantalla: no se cierra al tocar afuera, hay que apretar «Entendido» (o Escape). Es una Promise que se resuelve al cerrarlo.
+// icon: ICONS.checkCircle para una buena noticia; sin icon, solo el texto.
+function noticeDialog(title, message, icon){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box notice-box" role="alertdialog" aria-modal="true" aria-labelledby="noticeTitle" aria-describedby="noticeText">
+        ${icon? `<div class="notice-icon">${icon}</div>` : ''}
+        <h3 id="noticeTitle">${esc(title)}</h3>
+        <p id="noticeText">${esc(message)}</p>
+        <div class="confirm-actions"><button class="btn gold" data-act="ok">${esc(t('notice_ok_btn'))}</button></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const ok = overlay.querySelector('[data-act="ok"]');
+    function cleanup(){ overlay.remove(); document.removeEventListener('keydown', onKey); resolve(); }
+    function onKey(e){ if(e.key==='Escape') cleanup(); }
+    ok.onclick = cleanup;
+    document.addEventListener('keydown', onKey);
+    ok.focus();
+  });
+}
+
 /* ---------- sugerir un juego (footer) ---------- */
 // Modal del botón "Sugerir un juego" del footer: un formulario simple que
 // manda la sugerencia a /api/suggestions (la revisa un admin desde el
