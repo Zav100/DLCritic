@@ -63,6 +63,7 @@ async function publicUser(u) {
     favoriteGameId: u.favorite_game_id || null,
     ...(await steam.favoriteView(u, true)), // favoritePlatinum y favoriteSteam (horas y logros del favorito si es de su cuenta de Steam)
     libraryPublic: !!u.library_public,
+    followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n, // para los contadores de su propio perfil
     steam: u.steam_id ? { id: u.steam_id, syncedAt: u.steam_synced_at, hoursPublic: !!u.steam_hours_public } : null,
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
@@ -783,6 +784,30 @@ app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, r
   const isFollowing = !!await findFollow.get(req.user.id, target.id);
   const isFriend = isFollowing && !!await findFollow.get(target.id, req.user.id);
   res.json({ isFollowing, isFriend, followerCount: (await countFollowers.get(target.id)).n });
+});
+
+// Quiénes siguen a una persona y a quiénes sigue: listas públicas, igual que los contadores de su perfil (solo nombre y foto). Las más recientes primero.
+// Tope de 100 por lista (el total real viene aparte); si alguna vez hace falta más, paginar por created_at.
+const FOLLOW_LIST_LIMIT = 100;
+const lookupLimiter = rateLimit({ name: 'lookup', windowMs: 60 * 1000, max: 90 }); // por IP: lo usan estas listas y el buscador, que se consulta al teclear
+const listFollowers = db.prepare(`SELECT u.username, u.avatar_url FROM follows f JOIN users u ON u.id = f.follower_id WHERE f.followed_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
+const listFollowing = db.prepare(`SELECT u.username, u.avatar_url FROM follows f JOIN users u ON u.id = f.followed_id WHERE f.follower_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
+const publicPerson = r => ({ username: r.username, avatarUrl: r.avatar_url || null });
+const followListRoute = (listPeople, countPeople) => async (req, res) => {
+  const target = await findUserByNameCI.get(req.params.username);
+  if (!target) return res.status(404).json({ error: 'not_found' });
+  res.json({ total: (await countPeople.get(target.id)).n, users: (await listPeople.all(target.id)).map(publicPerson) });
+};
+app.get('/api/users/:username/followers', lookupLimiter, followListRoute(listFollowers, countFollowers));
+app.get('/api/users/:username/following', lookupLimiter, followListRoute(listFollowing, countFollowing));
+
+// Buscador de perfiles del header: nombres que contienen el texto (primero los que empiezan con él). Mínimo 2 letras. Devuelve solo nombre y foto, que ya son públicos.
+// strpos en vez de LIKE: así el guion bajo y el % del texto buscado no cuentan como comodines. La ruta no es /api/users/search para que ninguna cuenta llamada "search" choque con ella.
+const searchUsers = db.prepare('SELECT username, avatar_url FROM users WHERE strpos(lower(username), @q) > 0 ORDER BY (strpos(lower(username), @q) = 1) DESC, lower(username) LIMIT 8');
+app.get('/api/user-search', lookupLimiter, async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase().slice(0, 20);
+  if (q.length < 2) return res.json({ users: [] });
+  res.json({ users: (await searchUsers.all({ q })).map(publicPerson) });
 });
 
 /* ---------------- notifications ---------------- */

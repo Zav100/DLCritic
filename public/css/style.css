@@ -5893,3 +5893,243 @@ a.btn-ghost {
   color: var(--ink-soft);
   white-space: nowrap;
 }
+
+/* ---- seguidores y seguidos: contadores que abren la lista, y la lista ---- */
+.statbox-btn {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .15s var(--spring), box-shadow .15s ease;
+}
+
+.statbox-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px var(--shadow-soft), 0 10px 22px var(--shadow-strong);
+}
+
+.statbox-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.mini-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.confirm-box.follow-list-modal {
+  max-width: 380px;
+}
+
+.follow-list-owner {
+  margin: -6px 0 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+}
+
+.follow-rows {
+  max-height: min(52vh, 380px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.follow-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.follow-row:last-child {
+  border-bottom: none;
+}
+
+.follow-row:hover,
+.follow-row:focus-visible {
+  background: var(--hover-tint);
+}
+
+/* ---- buscador de perfiles del header ----
+   Pantallas anchas (desde 1400 px): el cuadro está a la vista y los resultados caen debajo.
+   Las demás: una lupa que abre el cuadro y los resultados juntos, como una tarjeta bajo el header (en celular ocupa todo el ancho). */
+.user-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.user-search-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper-alt);
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .2s ease, color .2s ease, transform .15s ease;
+}
+
+.user-search-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.user-search-toggle:hover,
+.user-search.open .user-search-toggle {
+  background: var(--paper);
+  color: var(--gold);
+}
+
+.user-search-panel {
+  display: none;
+}
+
+.user-search.open .user-search-panel {
+  display: block;
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 70;
+  width: min(340px, calc(100vw - 24px));
+  padding: 12px;
+  background: var(--paper); /* sólido: el header ya tiene su propio desenfoque y uno dentro de otro no se ve */
+  border: 1px solid var(--line-dark);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px var(--shadow-strong);
+  color: var(--ink);
+}
+
+.user-search-field {
+  position: relative;
+}
+
+.user-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.user-search .user-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid var(--line-dark);
+  border-radius: 12px;
+  background: var(--paper-alt);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.user-search-results {
+  max-height: 320px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.user-search-results a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.user-search-results a:hover,
+.user-search-results li.active a {
+  background: var(--hover-tint);
+}
+
+.user-search-note {
+  padding: 8px 10px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .user-search {
+    position: static;
+  }
+
+  .user-search.open .user-search-panel {
+    top: calc(100% + 8px);
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+@media (min-width: 1400px) {
+  .user-search-toggle {
+    display: none;
+  }
+
+  .user-search-panel,
+  .user-search.open .user-search-panel {
+    display: block;
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: auto;
+    width: 176px;
+    padding: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .user-search .user-search-input {
+    padding: 7px 12px 7px 34px;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    font-size: 13px;
+  }
+
+  .user-search-results {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 70;
+    width: 280px;
+    margin: 0;
+    padding: 6px;
+    background: var(--paper);
+    border: 1px solid var(--line-dark);
+    border-radius: 16px;
+    box-shadow: 0 16px 36px var(--shadow-strong);
+  }
+}
