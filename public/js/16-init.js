@@ -48,6 +48,8 @@ function setupConnectionNotice(){
   if(!navigator.onLine) goOffline();
 }
 setupConnectionNotice();
+document.getElementById('verifyResendBtn').onclick = resendVerification;
+document.getElementById('verifyBannerClose').onclick = ()=>{ try{ sessionStorage.setItem('dlcVerifyBannerOff', '1'); }catch(e){} document.getElementById('verifyBanner').hidden = true; };
 if('serviceWorker' in navigator) window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{ /* sin service worker no hay pantalla sin conexión propia: no pasa nada más */ }); });
 
 // Secuencia de arranque, en orden: tema y idioma primero (para que no haya parpadeo visual), esqueletos de carga, después los datos reales, y recién al final se decide y pinta la vista.

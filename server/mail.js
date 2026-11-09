@@ -50,6 +50,23 @@ function siteUrlOrEmpty() { try { return publicUrl(); } catch { return ''; } }
 
 const EMAILS = {
   es: {
+    verify: (name, link) => ({
+      subject: 'Confirma tu correo de DLCritic',
+      preheader: 'Confirma que este correo es tuyo: el enlace vale 24 horas.',
+      title: 'Confirma tu correo',
+      paragraphs: ['Para terminar de configurar tu cuenta de DLCritic, confirma que este correo es tuyo. Así podrás recuperar tu contraseña si algún día la olvidas.'],
+      box: { label: 'Enlace de un solo uso', button: { text: 'Confirmar mi correo', url: link }, fallback: 'Si el botón no funciona, copia y pega este enlace en tu navegador:', note: 'Si no creaste una cuenta en DLCritic, ignora este mensaje. El enlace vale 24 horas.' },
+    }),
+    googleLinked: (name, takeover) => ({
+      subject: 'Se vinculó Google a tu cuenta de DLCritic',
+      preheader: 'Alguien inició sesión en DLCritic con tu cuenta de Google.',
+      title: 'Vinculamos tu cuenta de Google',
+      paragraphs: [
+        'Alguien inició sesión en DLCritic con la cuenta de Google de este correo, y desde ahora se puede entrar con el botón «Continuar con Google».',
+        ...(takeover ? ['Como el correo de tu cuenta no estaba confirmado, por seguridad se borró su contraseña anterior y se cerraron sus sesiones. Si quieres volver a usar una contraseña, elige una con «¿Olvidaste tu contraseña?».'] : []),
+      ],
+      box: { label: 'Si no fuiste tú', note: 'Responde a este correo cuanto antes.', accent: C.pink },
+    }),
     reset: (name, link) => ({
       subject: 'Restablece tu contraseña de DLCritic',
       preheader: 'Enlace para elegir una contraseña nueva: vale 1 hora.',
@@ -66,6 +83,23 @@ const EMAILS = {
     }),
   },
   en: {
+    verify: (name, link) => ({
+      subject: 'Confirm your DLCritic email',
+      preheader: 'Confirm this email is yours: the link is valid for 24 hours.',
+      title: 'Confirm your email',
+      paragraphs: ['To finish setting up your DLCritic account, confirm that this email is yours. That way you can recover your password if you ever forget it.'],
+      box: { label: 'One-time link', button: { text: 'Confirm my email', url: link }, fallback: "If the button doesn't work, copy and paste this link into your browser:", note: "If you didn't create a DLCritic account, ignore this message. The link is valid for 24 hours." },
+    }),
+    googleLinked: (name, takeover) => ({
+      subject: 'Google was linked to your DLCritic account',
+      preheader: 'Someone signed in to DLCritic with your Google account.',
+      title: 'We linked your Google account',
+      paragraphs: [
+        'Someone signed in to DLCritic with the Google account of this email, and from now on you can sign in with the "Continue with Google" button.',
+        ...(takeover ? ["Because your account's email wasn't confirmed, for security its previous password was deleted and its sessions were closed. If you want to use a password again, choose one with \"Forgot your password?\"."] : []),
+      ],
+      box: { label: "If it wasn't you", note: 'Reply to this email right away.', accent: C.pink },
+    }),
     reset: (name, link) => ({
       subject: 'Reset your DLCritic password',
       preheader: 'Link to choose a new password: valid for 1 hour.',
@@ -84,6 +118,8 @@ const EMAILS = {
 };
 
 const resetEmail = (lang, name, link) => buildEmail(lang, name, EMAILS[lang].reset(name, link), siteUrlOrEmpty());
+const verifyEmail = (lang, name, link) => buildEmail(lang, name, EMAILS[lang].verify(name, link), siteUrlOrEmpty());
+const googleLinkedEmail = (lang, name, takeover) => buildEmail(lang, name, EMAILS[lang].googleLinked(name, takeover), siteUrlOrEmpty());
 const passwordChangedEmail = (lang, name) => buildEmail(lang, name, EMAILS[lang].changed(name), siteUrlOrEmpty());
 
-module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, outbox };
+module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, outbox };

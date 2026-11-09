@@ -36,6 +36,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_synced_at TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS library_public INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_hours_public INTEGER NOT NULL DEFAULT 1;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam_id ON users(steam_id);
+-- Correo confirmado: la fecha en que la persona abrió el enlace que le llegó (o en que Google lo confirmó). NULL = sin confirmar; cambiar el correo en Ajustes lo vuelve a NULL.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TEXT;
+-- Inicio de sesión con Google: google_sub es el identificador estable de su cuenta de Google (único). has_password es 0 en las cuentas creadas con Google (y en las que se
+-- vincularon sin correo confirmado): su pin_hash es una clave al azar que nadie conoce, y para tener contraseña usan «¿Olvidaste tu contraseña?».
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS has_password INTEGER NOT NULL DEFAULT 1;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub);
+-- Enlaces para confirmar el correo: se guarda el hash del token (como en password_resets) y el correo al que se mandó, para que valga solo si sigue siendo el de la cuenta.
+CREATE TABLE IF NOT EXISTS email_verifications (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
 -- Horas jugadas (en minutos) de cada persona en los juegos del catálogo que tiene en Steam; se actualizan en cada sincronización.
 CREATE TABLE IF NOT EXISTS steam_playtime (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

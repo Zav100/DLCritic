@@ -6,7 +6,8 @@ const { Readable } = require('node:stream');
 const { receiveImage, saveImage } = require('./upload');
 const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
-const { sendMail, publicUrl, resetEmail, passwordChangedEmail } = require('./mail');
+const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail } = require('./mail');
+const google = require('./google');
 const { checkSecondFactor } = require('./twofactor');
 const steam = require('./steam');
 const {
@@ -62,6 +63,9 @@ async function publicUser(u) {
   return {
     username: u.username,
     email: u.email || null,
+    emailVerified: !!u.email_verified_at, // la persona ya confirmó su correo (o lo confirmó Google)
+    hasPassword: !!u.has_password, // las cuentas creadas con Google no tienen contraseña hasta que la eligen con «¿Olvidaste tu contraseña?»
+    googleLinked: !!u.google_sub,
     joined: u.joined_at,
     favoriteGameId: u.favorite_game_id || null,
     ...(await steam.favoriteView(u, true)), // favoritePlatinum y favoriteSteam (horas y logros del favorito si es de su cuenta de Steam)
@@ -103,10 +107,22 @@ function isStrongPassword(val) {
 // La contraseña no puede tener emojis: cambian según el teclado y el sistema, y es fácil quedarse sin poder escribirla en otro dispositivo.
 // Cuenta cualquier carácter con aspecto de emoji, los tonos de piel, las banderas, el unir-emojis (ZWJ) y el selector de emoji. © ® ™ sí valen.
 const EMOJI_RE = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
-// Devuelve el código de error de una contraseña rechazada ('password_emoji' o 'weak_password'), o null si sirve.
+// Las contraseñas más comunes pasan la regla de mayúscula + número + símbolo («Password1!», «Qwerty123!»), pero son de las primeras que se prueban en cualquier ataque.
+// Se comparan sin mayúsculas, tildes ni símbolos y también sin los números del final.
+const COMMON_PASSWORDS = new Set((
+  'password passw0rd contrasena clave admin administrador qwerty qwertyuiop asdfgh asdfghjkl zxcvbnm abc123 abcdefg letmein welcome bienvenido iloveyou teamo tequiero monkey dragon master '
+  + 'football futbol soccer baseball superman batman princess sunshine shadow michael jordan harley hunter ranger trustno1 starwars pokemon minecraft fortnite gamer gaming videojuegos '
+  + 'dlcritic steam playstation nintendo xbox 123456 1234567 12345678 123456789 1q2w3e4r 1qaz2wsx 123qwe 123abc secret login changeme default test testing usuario'
+).split(/\s+/));
+function isCommonPassword(val) {
+  const plain = String(val).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return COMMON_PASSWORDS.has(plain) || COMMON_PASSWORDS.has(plain.replace(/[0-9]+$/, ''));
+}
+// Devuelve el código de error de una contraseña rechazada ('password_emoji', 'weak_password' o 'common_password'), o null si sirve.
 function passwordProblem(val) {
   if (typeof val === 'string' && EMOJI_RE.test(val)) return 'password_emoji';
-  return isStrongPassword(val) ? null : 'weak_password';
+  if (!isStrongPassword(val)) return 'weak_password';
+  return isCommonPassword(val) ? 'common_password' : null;
 }
 function sanitizeSocialLinks(input) {
   const out = {};
@@ -149,9 +165,56 @@ const findUserByNameCI = db.prepare('SELECT * FROM users WHERE lower(username) =
 const findUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertUser = db.prepare('INSERT INTO users (username, email, pin_hash, joined_at, bio, social_links) VALUES (?, ?, ?, ?, ?, ?) RETURNING id');
 const setPasswordHash = db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?');
+const markHasPassword = db.prepare('UPDATE users SET has_password = 1, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?');
 
 app.get('/api/auth/me', async (req, res) => {
-  res.json({ user: await publicUser(await currentUser(req)) });
+  res.json({ user: await publicUser(await currentUser(req)), googleLogin: google.configured() }); // googleLogin: si se muestra el botón «Continuar con Google»
+});
+
+/* ---- confirmar el correo ---- */
+
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // el enlace vale 24 horas
+const verifyLimiter = rateLimit({ name: 'verify', windowMs: 10 * 60 * 1000, max: 20 });
+const deleteVerificationsOf = db.prepare('DELETE FROM email_verifications WHERE user_id = ?');
+const insertVerification = db.prepare('INSERT INTO email_verifications (token_hash, user_id, email, created_at, expires_at) VALUES (?, ?, ?, ?, ?)');
+const findVerification = db.prepare('SELECT * FROM email_verifications WHERE token_hash = ?');
+const useVerification = db.prepare('DELETE FROM email_verifications WHERE token_hash = ?');
+const markEmailVerified = db.prepare('UPDATE users SET email_verified_at = ? WHERE id = ?');
+const clearEmailVerified = db.prepare('UPDATE users SET email_verified_at = NULL WHERE id = ?');
+// Manda el enlace para confirmar el correo de la cuenta (un enlace nuevo anula el anterior). Si falla el envío no se rompe lo que la persona estaba haciendo: se anota y ya.
+async function sendVerification(user, lang) {
+  if (!user.email) return;
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const now = new Date();
+    await deleteVerificationsOf.run(user.id);
+    await insertVerification.run(sha256(token), user.id, user.email, now.toISOString(), new Date(now.getTime() + VERIFY_TTL_MS).toISOString());
+    await sendMail({ to: user.email, ...verifyEmail(lang === 'en' ? 'en' : 'es', user.username, `${publicUrl()}/verificar?token=${token}`) });
+  } catch (e) {
+    console.error('No se pudo mandar el correo para confirmar el correo:', e.message); // el token nunca se imprime
+  }
+}
+
+// Reenviar el enlace (3 por hora por persona).
+app.post('/api/auth/verify-email/resend', requireAuth, async (req, res) => {
+  if (!req.user.email || req.user.email_verified_at) return res.status(400).json({ error: 'nothing_to_verify' });
+  const r = await consume('verify-resend', 'u:' + req.user.id, 60 * 60 * 1000, 3);
+  if (r.limited) { res.setHeader('Retry-After', String(r.retryAfter)); return res.status(429).json({ error: 'too_many_requests', retryAfter: r.retryAfter }); }
+  await sendVerification(req.user, req.body && req.body.lang);
+  res.json({ ok: true });
+});
+
+// Confirma el correo con el token del enlace (lo llama la página /verificar). Vale solo si el correo sigue siendo el de la cuenta (si lo cambió, el enlace viejo no sirve).
+app.post('/api/auth/verify-email', verifyLimiter, async (req, res) => {
+  const token = String((req.body && req.body.token) || '');
+  const row = /^[0-9a-f]{64}$/.test(token) ? await findVerification.get(sha256(token)) : null;
+  if (!row || new Date(row.expires_at) < new Date()) return res.status(400).json({ error: 'invalid_token' });
+  if ((await useVerification.run(sha256(token))).changes !== 1) return res.status(400).json({ error: 'invalid_token' });
+  const user = await findUserById.get(row.user_id);
+  if (!user || user.email !== row.email) return res.status(400).json({ error: 'invalid_token' });
+  await markEmailVerified.run(new Date().toISOString(), user.id);
+  await deleteVerificationsOf.run(user.id);
+  res.json({ ok: true });
 });
 
 // Registration now happens in two client-side steps (email+password, then
@@ -184,7 +247,9 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   }
   // Al crear la cuenta la sesión se recuerda 24 horas: no se cierra apenas se cierra la pestaña, pero para los 20 días hay que iniciar sesión y marcar la casilla.
   setSessionCookie(res, await createSession(created.id, 'day'));
-  res.json({ user: await publicUser(await findUserByNameCI.get(username)) });
+  const newUser = await findUserByNameCI.get(username);
+  await sendVerification(newUser, b.lang); // se espera: en Vercel la función puede congelarse apenas responde
+  res.json({ user: await publicUser(newUser) });
 });
 
 // Accepts an email (new accounts) or a username (accounts grandfathered in
@@ -193,6 +258,10 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   const identifier = String(req.body.identifier || '').trim();
   const password = String(req.body.password || '');
+  // Además del tope por IP (authLimiter), un tope por cuenta: 12 intentos cada 15 minutos sumando todas las direcciones, para que repartir los intentos entre muchas
+  // IP no permita probar contraseñas sin límite. (Quien tire intentos contra un nombre ajeno solo logra que esa cuenta espere hasta 15 minutos.)
+  const perAccount = await consume('login-user', identifier.toLowerCase().slice(0, 254), 15 * 60 * 1000, 12);
+  if (perAccount.limited) { res.setHeader('Retry-After', String(perAccount.retryAfter)); return res.status(429).json({ error: 'too_many_requests', retryAfter: perAccount.retryAfter }); }
   const user = identifier.includes('@')
     ? await findUserByEmail.get(identifier.toLowerCase())
     : await findUserByNameCI.get(identifier);
@@ -281,6 +350,7 @@ app.post('/api/auth/reset', resetLimiter, async (req, res) => {
   if ((await useReset.run(sha256(token))).changes !== 1) return res.status(400).json({ error: 'invalid_token' });
   const user = await findUserForReset.get(row.user_id);
   await setPasswordHash.run(hashPin(newPassword), user.id);
+  await markHasPassword.run(new Date().toISOString(), user.id); // elegir contraseña con el enlace del correo también confirma que el correo es suyo (a ese correo llegó el enlace)
   await endAllSessions(user.id);
   await deleteResetsOf.run(user.id);
   try { await sendMail({ to: user.email, ...passwordChangedEmail(req.body.lang === 'en' ? 'en' : 'es', user.username) }); }
@@ -301,6 +371,90 @@ app.post('/api/auth/logout-all', requireAuth, async (req, res) => {
   await endAllSessions(req.user.id);
   clearSessionCookie(res);
   res.json({ ok: true });
+});
+
+/* ---- iniciar sesión con Google (ver server/google.js) ---- */
+
+const googleLimiter = rateLimit({ name: 'google', windowMs: 10 * 60 * 1000, max: 30 });
+const GOOGLE_COOKIE = 'dlc_google';
+const findUserByGoogleSub = db.prepare('SELECT * FROM users WHERE google_sub = ?');
+const insertGoogleUser = db.prepare('INSERT INTO users (username, email, pin_hash, joined_at, bio, social_links, google_sub, email_verified_at, has_password) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, 0) RETURNING id');
+const linkGoogle = db.prepare('UPDATE users SET google_sub = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?');
+const dropPassword = db.prepare('UPDATE users SET pin_hash = ?, has_password = 0 WHERE id = ?');
+
+// Solo se vuelve a direcciones del propio sitio (nada de //otro.sitio ni https://...): si no, el inicio de sesión serviría para mandar a la persona a cualquier lado.
+const safeNext = v => (typeof v === 'string' && /^\/[a-zA-Z0-9\-_./]*$/.test(v) && !v.startsWith('//') ? v : '/');
+const googleCookie = value => `${GOOGLE_COOKIE}=${value}; Path=/api/auth/google; HttpOnly; SameSite=Lax; Max-Age=${value ? 600 : 0}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+const sameText = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+
+// Un nombre de usuario libre a partir del nombre (o del correo) de Google: solo letras, números, punto, guion y guion bajo, de 3 a 20 caracteres.
+async function freeUsername(seed) {
+  let base = String(seed || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_.-]+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '').slice(0, 16);
+  if (base.length < 3) base = (base + 'jugador').slice(0, 16);
+  if (!(await findUserByNameCI.get(base))) return base;
+  for (let i = 0; i < 30; i++) {
+    const candidate = base.slice(0, 20 - 4) + crypto.randomInt(10, 9999);
+    if (!(await findUserByNameCI.get(candidate))) return candidate;
+  }
+  return 'jugador' + crypto.randomBytes(5).toString('hex');
+}
+
+// Qué hacer con una persona que llegó con Google: devuelve { user } o { error } (el motivo que ve en /cuenta).
+//   · Ya vinculada (mismo sub): entra.   · Hay una cuenta con ese correo: se vincula si el correo estaba confirmado; si NO lo estaba, Google es quien lo confirma y la cuenta pasa a ser
+//     de esa persona (se borra la contraseña vieja y se cierran las sesiones: quien la registró sin ser dueño del correo queda afuera).   · Si no hay cuenta, se crea.
+// Las cuentas de admin o con verificación en dos pasos no entran por aquí (saltearían el código): tienen que usar su contraseña y su código.
+async function signInWithGoogle(profile, lang) {
+  const byGoogle = await findUserByGoogleSub.get(profile.sub);
+  if (byGoogle) return byGoogle.totp_enabled || byGoogle.is_admin ? { error: 'two_factor' } : { user: byGoogle };
+  const byEmail = await findUserByEmail.get(profile.email);
+  if (byEmail) {
+    if (byEmail.totp_enabled || byEmail.is_admin) return { error: 'two_factor' };
+    const takeover = !byEmail.email_verified_at;
+    await linkGoogle.run(profile.sub, new Date().toISOString(), byEmail.id);
+    if (takeover) { await dropPassword.run(hashPin(crypto.randomBytes(32).toString('hex')), byEmail.id); await endAllSessions(byEmail.id); }
+    try { await sendMail({ to: byEmail.email, ...googleLinkedEmail(lang, byEmail.username, takeover) }); }
+    catch (e) { console.error('No se pudo mandar el aviso de Google vinculado:', e.message); }
+    return { user: await findUserById.get(byEmail.id) };
+  }
+  const username = await freeUsername(profile.name || profile.email.split('@')[0]);
+  const now = new Date().toISOString();
+  try {
+    const created = await insertGoogleUser.get(username, profile.email, hashPin(crypto.randomBytes(32).toString('hex')), now, '{}', profile.sub, now);
+    return { user: await findUserById.get(created.id) };
+  } catch (e) {
+    if (e.code === '23505') { const again = await findUserByGoogleSub.get(profile.sub); if (again) return { user: again }; }
+    throw e;
+  }
+}
+
+// Paso 1: manda a la persona a Google. state y nonce al azar van a una cookie propia (10 minutos) y se comprueban a la vuelta.
+app.get('/api/auth/google/start', googleLimiter, (req, res) => {
+  if (!google.configured()) return res.redirect('/cuenta?google=error&reason=not_configured');
+  const state = crypto.randomBytes(24).toString('hex'), nonce = crypto.randomBytes(24).toString('hex');
+  const saved = Buffer.from(JSON.stringify({ state, nonce, next: safeNext(req.query.next), lang: req.query.lang === 'en' ? 'en' : 'es' })).toString('base64url');
+  res.append('Set-Cookie', googleCookie(saved));
+  res.redirect(google.authorizeUrl({ redirectUri: `${publicUrl()}/api/auth/google/callback`, state, nonce }));
+});
+
+// Paso 2: Google vuelve con un código. Sea cual sea el resultado, se borra la cookie y se vuelve al sitio (con el motivo si falló).
+app.get('/api/auth/google/callback', googleLimiter, async (req, res) => {
+  let saved = null;
+  try { saved = JSON.parse(Buffer.from(parseCookies(req.headers.cookie)[GOOGLE_COOKIE] || '', 'base64url').toString('utf8')); } catch { /* sin cookie válida */ }
+  const clear = () => res.append('Set-Cookie', googleCookie('')); // después de setSessionCookie, que reemplaza el encabezado Set-Cookie
+  const fail = reason => { clear(); res.redirect(`/cuenta?google=error&reason=${reason}`); };
+  if (!google.configured()) return fail('not_configured');
+  if (!saved || !saved.state) return fail('expired');
+  if (req.query.error) return fail(req.query.error === 'access_denied' ? 'denied' : 'failed');
+  if (!sameText(req.query.state, saved.state) || typeof req.query.code !== 'string') return fail('expired');
+  let profile;
+  try { profile = await google.exchangeCode({ code: req.query.code, redirectUri: `${publicUrl()}/api/auth/google/callback`, nonce: saved.nonce }); }
+  catch (e) { console.error('Falló el inicio de sesión con Google:', e.message); return fail('failed'); }
+  if (!profile.emailVerified) return fail('unverified_email');
+  const result = await signInWithGoogle(profile, saved.lang === 'en' ? 'en' : 'es');
+  if (result.error) return fail(result.error);
+  setSessionCookie(res, await createSession(result.user.id, 'day'));
+  clear();
+  res.redirect(safeNext(saved.next));
 });
 
 /* ---------------- games (custom, user-submitted) ---------------- */
@@ -723,6 +877,8 @@ app.get('/api/users/:username', async (req, res) => {
 async function requirePasswordForEmailChange(req, res, next) {
   const email = req.body.email;
   if (typeof email !== 'string' || email.trim().toLowerCase() === (req.user.email || '')) return next();
+  // Una cuenta creada con Google no tiene contraseña con qué confirmar el cambio: primero tiene que elegir una con «¿Olvidaste tu contraseña?».
+  if (!req.user.has_password) return res.status(400).json({ error: 'set_password_first' });
   await passwordCheckLimiter(req, res, () => {
     if (!verifyPin(String(req.body.currentPassword || ''), req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
     next();
@@ -759,6 +915,10 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
     await updateProfile.run(username, email, bio, JSON.stringify(socialLinks), req.user.id);
   } catch (e) {
     return res.status(409).json({ error: 'username_taken' });
+  }
+  if (email !== (req.user.email || null)) { // correo nuevo: queda sin confirmar y se le manda el enlace
+    await clearEmailVerified.run(req.user.id);
+    await sendVerification(await findUserById.get(req.user.id), b.lang);
   }
   res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
 });
@@ -1097,6 +1257,8 @@ app.get('/usuario/:username', async (req, res) => {
   app.get(route, (req, res) => res.set('Cache-Control', 'no-store').type('html').send(readPage(path.join(__dirname, 'views', file))));
 });
 // La página donde se elige la contraseña nueva. La dirección lleva el token: Referrer-Policy: no-referrer evita que viaje en el Referer a otros sitios.
+// La página a la que lleva el enlace del correo de confirmación. Como /restablecer, no manda el token en el Referer a otros sitios.
+app.get('/verificar', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(readPage(path.join(__dirname, 'views', 'verificar.html'))));
 app.get('/restablecer', (req, res) => res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }).type('html').send(readPage(path.join(__dirname, 'views', 'restablecer.html'))));
 
 /* ---------------- admin dashboard ---------------- */

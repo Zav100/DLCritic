@@ -30,6 +30,7 @@ function showRegisterStep(step){
   state.authStep = step;
   document.getElementById('authRegisterStep1').hidden = step!==1;
   document.getElementById('authRegisterStep2').hidden = step!==2;
+  refreshGoogleAuth();
 }
 // Arma los campos de redes sociales del paso 2 (uno por cada red en SOCIAL_KEYS) y resetea el preview de avatar al ícono genérico. Se llama cada vez que se entra a la pestaña de registro.
 function renderRegisterStep2Fields(){
@@ -60,6 +61,30 @@ function setAuthTab(tab){
   document.getElementById('authError').hidden=true;
   document.getElementById('registerStep1Error').hidden=true;
   if(tab==='register') renderRegisterStep2Fields();
+  refreshGoogleAuth();
+}
+// El botón «Continuar con Google» (y su aviso de términos) solo se muestra si el servidor tiene configurado el inicio de sesión con Google (/api/auth/me lo avisa),
+// en las dos pestañas, y solo en el primer paso del registro. Lleva el idioma para los correos que pueda mandar el servidor.
+function refreshGoogleAuth(){
+  const box = document.getElementById('googleAuth');
+  if(!box) return;
+  box.hidden = !state.googleLogin || (state.authTab==='register' && state.authStep!==1) || !document.getElementById('authForgot').hidden;
+  document.getElementById('googleBtn').href = '/api/auth/google/start?next=/&lang=' + (state.lang==='en' ? 'en' : 'es');
+}
+// Al volver de Google con un error, /cuenta?google=error&reason=... : se muestra el motivo en la pestaña de iniciar sesión y se limpia la dirección.
+function showGoogleReturn(){
+  const q = new URLSearchParams(location.search);
+  if(q.get('google')!=='error') return;
+  history.replaceState(null, '', location.pathname);
+  setAuthTab('login');
+  const errEl = document.getElementById('authError');
+  errEl.textContent = t({ denied:'auth_google_denied', expired:'auth_google_expired', unverified_email:'auth_google_unverified', two_factor:'auth_google_two_factor', not_configured:'auth_google_not_configured' }[q.get('reason')] || 'auth_google_failed');
+  errEl.hidden = false;
+}
+// Reenvía el enlace para confirmar el correo (desde el aviso de arriba y desde Ajustes); el servidor deja 3 por hora.
+async function resendVerification(){
+  try{ await apiPost('/auth/verify-email/resend', { lang: state.lang }); toast(t('toast_verify_sent')); }
+  catch(e){ toast(t(e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_user')); }
 }
 // Prepara la vista /cuenta desde cero cada vez que se entra a ella: limpia todos los campos de los 2 formularios, vuelve a la pestaña que estaba activa, y engancha todos los botones/inputs (incluido el preview de la foto elegida en el paso 2).
 function renderAuthForm(){
@@ -77,6 +102,7 @@ function renderAuthForm(){
   document.getElementById('r-terms').checked=false;
   registerAvatarFile = null;
   setAuthTab(state.authTab||'login');
+  showGoogleReturn();
   document.getElementById('authSubmit').onclick = handleLogin;
   document.getElementById('authForgotLink').onclick = showForgot;
   document.getElementById('forgotSubmit').onclick = handleForgot;
@@ -107,6 +133,7 @@ async function afterAuthSuccess(user){
 function showForgot(){
   document.getElementById('authLoginFields').hidden = true;
   document.getElementById('authForgot').hidden = false;
+  refreshGoogleAuth();
   document.getElementById('forgotError').hidden = true;
   document.getElementById('forgotSent').hidden = true;
   const typed = document.getElementById('a-identifier').value.trim();
@@ -116,6 +143,7 @@ function showForgot(){
 function hideForgot(){
   document.getElementById('authForgot').hidden = true;
   document.getElementById('authLoginFields').hidden = false;
+  refreshGoogleAuth();
 }
 async function handleForgot(){
   const errEl = document.getElementById('forgotError'), sentEl = document.getElementById('forgotSent'), btn = document.getElementById('forgotSubmit');
@@ -186,10 +214,10 @@ async function handleRegisterSubmit(){
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
   if(hasBadSocialLink(socialLinks)){ errEl.textContent=t('err_social_link'); errEl.hidden=false; return; }
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', common_password:'err_common_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
-    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));
+    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true, lang: state.lang }));
   }catch(e){ errEl.textContent = t(ERR_MSG[e.body&&e.body.error] || 'err_bad_login'); errEl.hidden=false; return; }
   if(registerAvatarFile){
     try{
