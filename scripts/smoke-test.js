@@ -534,7 +534,7 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await a('GET', '/api/lists/mine')).body.lists.length, 1);
     await a('PUT', `/api/lists/${listId}`, { isPublic: true });
     assert.deepEqual((await anon('GET', '/api/users/smoketest_a/lists')).body.lists[0].gameIds, [gameId]);
-    // armar una lista toca muchos juegos seguidos: tiene su propio límite (300 cada 10 minutos) y no el general de escrituras (40)
+    // armar una lista toca muchos juegos seguidos: tiene su propio límite (300 cada 10 minutos) y no el general de escrituras (120)
     for (let i = 0; i < 50; i++) ok(await a('POST', `/api/lists/${listId}/items/toggle`, { gameId })); // número par: el juego sigue en la lista
     assert.deepEqual((await a('POST', `/api/lists/${listId}/items/toggle`, { gameId })).body.list.gameIds, []);
     ok(await a('DELETE', `/api/lists/${listId}`));
