@@ -223,13 +223,15 @@ function openListDetailModal(listId){
   }
   document.addEventListener('keydown', onKey);
 }
-// Modal "Agregar juegos" de una lista tuya: buscador + grilla del catálogo; tocar una card suma o saca el juego de la lista sin cerrar el
-// modal (así se agregan varios seguidos). Cada cambio pone al día la lista (list.gameIds) y su tarjeta de atrás; al cerrarlo se llama a onClose, que
-// vuelve a mostrar la ventana de la lista (openListDetailModal la dejó escondida, no cerrada).
+// Modal "Agregar juegos" de una lista tuya: buscador + grilla del catálogo. Tocar una card la marca («✓ Se agregará»; todavía no se guarda nada) y el botón de
+// abajo, «Agregar N juegos», guarda todo lo marcado de una vez (POST /api/lists/:id/items). Los juegos que ya están en la lista salen como «En la lista» y no se
+// tocan (para quitarlos está el botón «Quitar de la lista» de la ventana de la lista). Cerrar con juegos marcados pregunta antes de descartarlos. Al cerrar se
+// llama a onClose, que vuelve a mostrar la ventana de la lista (openListDetailModal la dejó escondida, no cerrada).
 function openAddGamesToListModal(listId, onClose){
   const list = (state.profileLists||[]).find(l=>l.id===listId);
   if(!list) return;
   const inList = new Set(list.gameIds);
+  const selected = new Set();
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = `
@@ -244,14 +246,27 @@ function openAddGamesToListModal(listId, onClose){
         </div>
       </div>
       <div class="picker-grid" id="listPickGrid"></div>
-      <div class="confirm-actions" style="margin-top:16px;">
-        <button class="btn gold" data-act="close">${esc(t('back_generic'))}</button>
+      <div class="confirm-actions" id="listPickActions" style="margin-top:16px;">
+        <button type="button" class="btn-ghost" data-act="cancel">${esc(t('cancel_btn'))}</button>
+        <button type="button" class="btn gold" id="listPickAddBtn" disabled>${esc(t('list_add_games_btn'))}</button>
+      </div>
+      <div class="confirm-actions" id="listPickDiscard" style="margin-top:16px;" hidden>
+        <p class="hint">${esc(t('list_pick_discard_msg'))}</p>
+        <button type="button" class="btn-ghost" data-act="discard">${esc(t('list_pick_discard_btn'))}</button>
+        <button type="button" class="btn gold" data-act="keep">${esc(t('list_pick_keep_btn'))}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
   const search = document.getElementById('listPickSearch');
   const grid = document.getElementById('listPickGrid');
-  const subText = id => t(inList.has(id)? 'list_pick_in' : 'wishlist_pick_add');
+  const actions = document.getElementById('listPickActions'), discard = document.getElementById('listPickDiscard');
+  const addBtn = document.getElementById('listPickAddBtn');
+  const subText = id => t(inList.has(id)? 'list_pick_in' : selected.has(id)? 'list_pick_selected' : 'wishlist_pick_add');
+  const refresh = ()=>{
+    const n = selected.size;
+    addBtn.disabled = n===0;
+    addBtn.textContent = n===0 ? t('list_add_games_btn') : t(n===1 ? 'list_pick_add_one' : 'list_pick_add_many').replace('{n}', n);
+  };
   function paint(){
     const q = foldText(search.value).trim();
     const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
@@ -259,20 +274,14 @@ function openAddGamesToListModal(listId, onClose){
     grid.innerHTML = '';
     games.forEach(g=>{
       const card = document.createElement('div');
-      card.className = 'card pickcard'+(inList.has(g.id)? ' featured' : '');
+      card.className = 'card pickcard'+(inList.has(g.id)? ' in-list' : selected.has(g.id)? ' featured' : '');
       card.innerHTML = `<div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div><div class="gc-title">${esc(g.title)}</div><div class="gc-sub">${subText(g.id)}</div>`;
-      card.onclick = async ()=>{
-        if(card.dataset.busy) return; // un toque a la vez por juego, mientras el servidor responde
-        card.dataset.busy = '1';
-        try{
-          await apiPost('/lists/'+listId+'/items/toggle', { gameId:g.id });
-          if(inList.has(g.id)) inList.delete(g.id); else inList.add(g.id);
-          card.classList.toggle('featured', inList.has(g.id));
-          card.querySelector('.gc-sub').textContent = subText(g.id);
-          list.gameIds = inList.has(g.id) ? [...list.gameIds, g.id] : list.gameIds.filter(id=>id!==g.id); // list es el mismo objeto de state.profileLists
-          syncListCard(list);
-        }catch(e){ toastListError(e); }
-        delete card.dataset.busy;
+      card.onclick = ()=>{
+        if(inList.has(g.id)) return;
+        if(selected.has(g.id)) selected.delete(g.id); else selected.add(g.id);
+        card.classList.toggle('featured', selected.has(g.id));
+        card.querySelector('.gc-sub').textContent = subText(g.id);
+        refresh();
       };
       grid.appendChild(card);
     });
@@ -285,9 +294,27 @@ function openAddGamesToListModal(listId, onClose){
     document.removeEventListener('keydown', onKey);
     if(onClose) onClose();
   }
-  function onKey(e){ if(e.key==='Escape') close(); }
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
-  overlay.querySelector('[data-act="close"]').onclick = close;
+  // Cerrar sin guardar: con juegos marcados primero se pregunta (en la misma ventana, sin diálogo aparte); sin nada marcado se cierra directo.
+  function requestClose(){
+    if(selected.size===0){ close(); return; }
+    actions.hidden = true; discard.hidden = false;
+  }
+  function onKey(e){ if(e.key==='Escape') requestClose(); }
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) requestClose(); });
+  overlay.querySelector('[data-act="cancel"]').onclick = requestClose;
+  overlay.querySelector('[data-act="keep"]').onclick = ()=>{ discard.hidden = true; actions.hidden = false; };
+  overlay.querySelector('[data-act="discard"]').onclick = close;
+  addBtn.onclick = async ()=>{
+    if(selected.size===0 || addBtn.dataset.busy) return;
+    addBtn.dataset.busy = '1'; addBtn.disabled = true;
+    try{
+      const { list: updated } = await apiPost('/lists/'+listId+'/items', { gameIds:[...selected] });
+      list.gameIds = updated.gameIds; // list es el mismo objeto de state.profileLists: queda al día
+      syncListCard(list);
+    }catch(e){ delete addBtn.dataset.busy; addBtn.disabled = false; toastListError(e); return; }
+    toast(t('list_pick_added'));
+    close();
+  };
   document.addEventListener('keydown', onKey);
   search.focus();
 }

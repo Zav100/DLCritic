@@ -558,6 +558,16 @@ const today = new Date().toISOString().slice(0, 10);
     // armar una lista toca muchos juegos seguidos: tiene su propio límite (300 cada 10 minutos) y no el general de escrituras (120)
     for (let i = 0; i < 50; i++) ok(await a('POST', `/api/lists/${listId}/items/toggle`, { gameId })); // número par: el juego sigue en la lista
     assert.deepEqual((await a('POST', `/api/lists/${listId}/items/toggle`, { gameId })).body.list.gameIds, []);
+    // sumar varios de una vez: ignora los que no existen y los repetidos, no duplica los que ya estaban y respeta el orden de llegada
+    const lote = await a('POST', `/api/lists/${listId}/items`, { gameIds: [gameId, 'no-existe', gameId] }); ok(lote);
+    assert.deepEqual(lote.body.list.gameIds, [gameId]);
+    const catalogo = (await anon('GET', '/api/games')).body; const otros = (catalogo.games || catalogo).map(g => g.id).filter(id => id !== gameId).slice(0, 2);
+    assert.deepEqual((await a('POST', `/api/lists/${listId}/items`, { gameIds: [otros[1], gameId, otros[0]] })).body.list.gameIds, [gameId, otros[1], otros[0]], 'los nuevos entran en el orden en que llegaron y el que ya estaba no se duplica');
+    ok(await a('POST', `/api/lists/${listId}/items`, { gameIds: [] }), 400);
+    ok(await a('POST', `/api/lists/${listId}/items`, { gameIds: 'x' }), 400);
+    ok(await a('POST', `/api/lists/${listId}/items`, { gameIds: Array(301).fill(gameId) }), 400);
+    ok(await b('POST', `/api/lists/${listId}/items`, { gameIds: [gameId] }), 403); // no es suya
+    ok(await anon('POST', `/api/lists/${listId}/items`, { gameIds: [gameId] }), 401);
     ok(await a('DELETE', `/api/lists/${listId}`));
     assert.equal((await a('GET', '/api/lists/mine')).body.lists.length, 0);
   });
