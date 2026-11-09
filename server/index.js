@@ -536,7 +536,9 @@ app.post('/api/suggestions', writeLimiter, async (req, res) => {
 const listReviewsWithVotes = db.prepare(`
   SELECT r.id, r.game_id AS "gameId", u.username, r.rating, r.text, r.platforms, r.updated_at AS date,
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
-       JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id), '[]') AS "helpfulByJson"
+       JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = 1), '[]') AS "helpfulByJson",
+    COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
+       JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = -1), '[]') AS "dislikedByJson"
   FROM reviews r JOIN users u ON u.id = r.user_id
   ORDER BY r.updated_at DESC, r.id ASC
 `);
@@ -545,15 +547,17 @@ const findReviewById = db.prepare('SELECT * FROM reviews WHERE id = ?');
 const insertReview = db.prepare('INSERT INTO reviews (id, game_id, user_id, rating, text, platforms, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const updateReview = db.prepare('UPDATE reviews SET rating = ?, text = ?, platforms = ?, updated_at = ? WHERE id = ?');
 const deleteReviewById = db.prepare('DELETE FROM reviews WHERE id = ? AND user_id = ?');
-const toggleVoteInsert = db.prepare('INSERT INTO helpful_votes (review_id, user_id) VALUES (?, ?)');
-const toggleVoteDelete = db.prepare('DELETE FROM helpful_votes WHERE review_id = ? AND user_id = ?');
-const findVote = db.prepare('SELECT 1 FROM helpful_votes WHERE review_id = ? AND user_id = ?');
+const insertVote = db.prepare('INSERT INTO helpful_votes (review_id, user_id, value) VALUES (?, ?, ?)');
+const updateVote = db.prepare('UPDATE helpful_votes SET value = ? WHERE review_id = ? AND user_id = ?');
+const deleteVote = db.prepare('DELETE FROM helpful_votes WHERE review_id = ? AND user_id = ?');
+const findVote = db.prepare('SELECT value FROM helpful_votes WHERE review_id = ? AND user_id = ?');
 
 function shapeReviewRow(r) {
   return {
     id: r.id, gameId: r.gameId, username: r.username, rating: r.rating,
     text: r.text, platforms: JSON.parse(r.platforms), date: r.date,
-    helpfulBy: JSON.parse(r.helpfulByJson || '[]').filter(Boolean),
+    helpfulBy: JSON.parse(r.helpfulByJson || '[]').filter(Boolean), // quienes le dieron «Me gusta» (se llama así desde que era «te sirvió»)
+    dislikedBy: JSON.parse(r.dislikedByJson || '[]').filter(Boolean),
   };
 }
 
@@ -624,20 +628,24 @@ app.delete('/api/reviews/id/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// «Me gusta» (value 1, el valor por omisión) o «No me gusta» (value -1). Repetir el mismo voto lo quita y el contrario lo cambia: un solo voto por persona y reseña.
+// Solo un «Me gusta» nuevo le avisa a la autora; no se puede votar la propia reseña.
 app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
   const review = await findReviewById.get(req.params.id);
   if (!review) return res.status(404).json({ error: 'not_found' });
   if (review.user_id === req.user.id) return res.status(400).json({ error: 'own_review' });
 
-  if (await findVote.get(review.id, req.user.id)) {
-    await toggleVoteDelete.run(review.id, req.user.id);
-  } else {
-    await toggleVoteInsert.run(review.id, req.user.id);
+  const value = req.body && req.body.value === -1 ? -1 : 1;
+  const current = await findVote.get(review.id, req.user.id);
+  if (current && current.value === value) await deleteVote.run(review.id, req.user.id);
+  else if (current) await updateVote.run(value, review.id, req.user.id);
+  else await insertVote.run(review.id, req.user.id, value);
+  if (value === 1 && !(current && current.value === 1)) {
     await insertNotification.run(uid(), review.user_id, 'helpful', req.user.id, review.game_id, new Date().toISOString());
   }
 
-  const row = (await listReviewsWithVotes.all()).find(r => r.id === review.id);
-  res.json({ helpfulBy: JSON.parse(row.helpfulByJson || '[]').filter(Boolean) });
+  const row = shapeReviewRow((await listReviewsWithVotes.all()).find(r => r.id === review.id));
+  res.json({ helpfulBy: row.helpfulBy, dislikedBy: row.dislikedBy });
 });
 
 /* ---------------- character reviews (separate from game reviews) ---------------- */

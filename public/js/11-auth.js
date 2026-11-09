@@ -64,11 +64,12 @@ function setAuthTab(tab){
   refreshGoogleAuth();
 }
 // El botón «Continuar con Google» (y su aviso de términos) solo se muestra si el servidor tiene configurado el inicio de sesión con Google (/api/auth/me lo avisa),
-// en las dos pestañas, y solo en el primer paso del registro. Lleva el idioma para los correos que pueda mandar el servidor.
+// en las dos pestañas, y solo en el primer paso del registro. Con él a la vista la tarjeta es del doble de ancho (formulario a la izquierda, Google a la derecha). Lleva el idioma para los correos que pueda mandar el servidor.
 function refreshGoogleAuth(){
   const box = document.getElementById('googleAuth');
   if(!box) return;
   box.hidden = !state.googleLogin || (state.authTab==='register' && state.authStep!==1) || !document.getElementById('authForgot').hidden;
+  document.getElementById('authCard').classList.toggle('has-google', !box.hidden);
   document.getElementById('googleBtn').href = '/api/auth/google/start?next=/&lang=' + (state.lang==='en' ? 'en' : 'es');
 }
 // Al volver de Google con un error, /cuenta?google=error&reason=... : se muestra el motivo en la pestaña de iniciar sesión y se limpia la dirección.

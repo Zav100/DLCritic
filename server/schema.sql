@@ -188,6 +188,8 @@ CREATE TABLE IF NOT EXISTS helpful_votes (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   PRIMARY KEY (review_id, user_id)
 );
+-- value: 1 = «Me gusta» (los votos de «te sirvió» que ya había quedan así), -1 = «No me gusta». Cada persona tiene un solo voto por reseña.
+ALTER TABLE helpful_votes ADD COLUMN IF NOT EXISTS value INTEGER NOT NULL DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS daily_progress (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
