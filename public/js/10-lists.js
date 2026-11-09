@@ -320,7 +320,7 @@ async function selectFavoriteGame(gameId){
   renderShelf();
   celebrateFavorite(document.getElementById('favPanel'));
 }
-// Frase "le diste X/10, la comunidad promedia Y/10, sos más [generoso/exigente/coincides]" — compara tu nota con el promedio de todos.
+// Frase "le diste X/10, la comunidad promedia Y/10, eres más [generoso/exigente/coincides]" — compara tu nota con el promedio de todos.
 function vsCommunityText(you, avg){
   const diff = you - avg;
   const key = diff>=1.5? 'vs_sentence_more' : diff<=-1.5? 'vs_sentence_less' : 'vs_sentence_same';

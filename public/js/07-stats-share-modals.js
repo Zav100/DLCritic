@@ -148,7 +148,7 @@ function userStats(username){
 // Lista de logros: cada uno tiene un ícono, sus claves de traducción para
 // título/descripción, y check(stats) — una función que recibe el objeto de
 // userStats() de arriba y devuelve true/false si el logro está desbloqueado.
-// Para agregar un logro nuevo: sumá una entrada aquí + sus claves ach_XXX_t /
+// Para agregar un logro nuevo: suma una entrada aquí + sus claves ach_XXX_t /
 // ach_XXX_d en el diccionario I18N (02-i18n.js), en los dos idiomas.
 const ACHIEVEMENTS = [
   { id:'first',      icon:ICONS.gamepad, titleKey:'ach_first_t',     descKey:'ach_first_d',     check:s=>s.count>=1 },
@@ -428,8 +428,8 @@ function openShareMenu(anchorEl, rv, game){
 // "story" (1080x1920, formato vertical de Instagram/WhatsApp) con la
 // reseña de un juego, para descargar o compartir como imagen. drawShareCard
 // es la función principal; las demás son helpers que usa.
-// Cómo probar cambios aquí: abrí el modal de compartir (ícono de link en
-// una reseña) -> "Crear tarjeta", cambiá el color de fondo para forzar un
+// Cómo probar cambios aquí: abre el modal de compartir (ícono de link en
+// una reseña) -> "Crear tarjeta", cambia el color de fondo para forzar un
 // redibujado y ver el resultado al instante.
 
 // Carga una URL como HTMLImageElement, para poder dibujarla en el canvas. Nunca rechaza la promise: si falla, resuelve null (y quien llama dibuja un color de fondo en su lugar).

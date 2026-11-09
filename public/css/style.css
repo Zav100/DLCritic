@@ -14,7 +14,7 @@
  *     --ink es el color de texto para ARRIBA DE UNA TARJETA/MODAL (que
  *     siempre tiene fondo claro --paper/--paper-glass, en los dos temas).
  *     Un elemento con fondo --paper necesita texto --ink, no --fg — si
- *     usás --fg ahí, en tema oscuro el texto queda claro sobre fondo
+ *     usas --fg ahí, en tema oscuro el texto queda claro sobre fondo
  *     claro (ilegible). En tema claro esto no se nota porque --fg e
  *     --ink son casi el mismo color ahí, así que un error de estos pasa
  *     desapercibido hasta que alguien prueba el tema oscuro.
@@ -5324,7 +5324,7 @@ input[type="file"]::file-selector-button:active {
 /* =====================================================================
    Enlaces de verdad: lo que lleva a otra sección o página es un <a href>
    (clic derecho -> "Abrir en una pestaña nueva", Ctrl+clic, clic del medio).
-   Acá se les quita el subrayado y el color de los enlaces comunes.
+   Aquí se les quita el subrayado y el color de los enlaces comunes.
    ===================================================================== */
 a.navbtn,
 a.footer-link,

@@ -155,7 +155,7 @@ document.addEventListener('visibilitychange', ()=>{
     try{ currentViewTransition.skipTransition(); }catch(e){}
   }
 });
-// Punto de entrada público para navegar (usalo en vez de applyView directo).
+// Punto de entrada público para navegar (úsalo en vez de applyView directo).
 // Envuelve el cambio de vista en la View Transitions API del navegador
 // (si existe) para el efecto de fade/cross-fade entre pantallas; si esa
 // API no está disponible, o la pestaña está oculta, simplemente aplica la

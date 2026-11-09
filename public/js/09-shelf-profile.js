@@ -22,7 +22,7 @@ function profileShapeFromSelf(u){
     isFollowing:false, isFriend:false, followerCount:u.followerCount||0, followingCount:u.followingCount||0,
   };
 }
-// "Mi estantería": tu propio perfil (siempre editable=true). Si no hay sesión, muestra el estado de "iniciá sesión para ver esto".
+// "Mi estantería": tu propio perfil (siempre editable=true). Si no hay sesión, muestra el estado de "inicia sesión para ver esto".
 function renderShelf(){
   const el = document.getElementById('profileContent');
   if(!state.user){

@@ -61,7 +61,7 @@ function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u0
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---- login / logout ---- */
-// Muestra una de las 3 pantallas grandes: login, "no sos admin" (denied), o el dashboard.
+// Muestra una de las 3 pantallas grandes: login, "no eres admin" (denied), o el dashboard.
 function showView(view){
   document.getElementById('loginView').hidden = view!=='login';
   document.getElementById('setupView').hidden = view!=='setup';
@@ -161,7 +161,7 @@ async function doLogout(){
 document.getElementById('logoutBtn').onclick = doLogout;
 document.getElementById('deniedLogoutBtn').onclick = doLogout;
 
-// Después de un login exitoso (o al arrancar la página, si ya había sesión): si no sos admin te frena en la pantalla de "denied", si sos admin carga los 4 conjuntos de datos del dashboard.
+// Después de un login exitoso (o al arrancar la página, si ya había sesión): si no eres admin te frena en la pantalla de "denied", si eres admin carga los 4 conjuntos de datos del dashboard.
 async function afterLogin(){
   if(!state.user){ showView('login'); return; }
   if(!state.user.isAdmin){ showView('denied'); return; }
