@@ -429,10 +429,8 @@ function isWishlisted(gameId){
   return !!(state.user && state.user.wishlist && state.user.wishlist.includes(gameId));
 }
 // Botón "Agregar a mi biblioteca" de la ficha de un juego: agrega/quita y
-// vuelve a pintar TODA la vista actual (a diferencia de
-// toggleWishlistQuiet más abajo, que solo actualiza la biblioteca sin
-// tocar el resto de la pantalla — se usa cuando este toggle pasa desde
-// DENTRO de un modal que tiene que seguir abierto).
+// vuelve a pintar TODA la vista actual (el modal «Agregar juego», openAddToWishlistModal,
+// no la repinta: cambia la card en su lugar y repinta la biblioteca una vez al cerrar).
 async function toggleWishlist(gameId){
   if(!state.user){ goView('auth'); return; }
   const adding = !(state.user.wishlist||[]).includes(gameId);
@@ -447,7 +445,7 @@ function removeWishlistLoadMore(){
   const existing = document.getElementById('wishlistLoadMoreWrap');
   if(existing) existing.remove();
 }
-// Grilla de "Mi biblioteca" en el perfil, con paginado, más el tile "+ Agregar juego" (siempre presente, aunque la biblioteca esté vacía) que abre openAddToWishlistModal.
+// Grilla de "Mi biblioteca" en el perfil, con paginado. Los juegos se agregan con el botón «Agregar juego» del encabezado (openAddToWishlistModal).
 function renderWishlistGrid(keepPage){
   if(state.user.steam && state.steamHoursFor !== state.user.username){
     state.steamHoursFor = state.user.username; state.steamHours = {};
@@ -465,11 +463,6 @@ function renderWishlistGrid(keepPage){
     const visible = games.slice(0, state.wishlistVisibleCount);
     visible.forEach(g=> grid.appendChild(libraryCard(g, state.steamHours && state.steamHours[g.id])));
   }
-  const addTile=document.createElement('div');
-  addTile.className='card list-create-tile';
-  addTile.innerHTML = `${ICONS.plus}<span>${t('wishlist_add_game_btn')}</span>`;
-  addTile.onclick = openAddToWishlistModal;
-  grid.appendChild(addTile);
   if(games.length > state.wishlistVisibleCount){
     const wrap = document.createElement('div');
     wrap.id = 'wishlistLoadMoreWrap';
@@ -513,116 +506,159 @@ function applySteamSync(d){
 function steamErrorText(e){
   return t({ steam_private:'steam_err_private', steam_not_configured:'steam_err_not_configured' }[e.message] || 'steam_err_unavailable');
 }
-// Modal "Importar desde Steam": trae los juegos de la cuenta de Steam que están en el catálogo (y guarda sus horas) y deja elegir cuáles sumar a la biblioteca.
-async function openSteamImportModal(){
-  if(!state.user || !state.user.steam) return;
-  const overlay = document.createElement('div');
-  overlay.className = 'confirm-overlay';
-  overlay.innerHTML = `<div class="confirm-box suggest-modal steam-import-modal"><h3>${esc(t('steam_import_title'))}</h3><div id="steamImportBody"><p class="hint">${esc(t('steam_import_loading'))}</p></div></div>`;
-  document.body.appendChild(overlay);
-  const close = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
-  function onKey(e){ if(e.key==='Escape') close(); }
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
-  document.addEventListener('keydown', onKey);
-  const body = overlay.querySelector('#steamImportBody');
-  const closeBtn = `<div class="confirm-actions" style="margin-top:16px;"><button class="btn gold" data-act="close">${esc(t('back_generic'))}</button></div>`;
-  let data;
-  try{ data = await apiPost('/steam/sync'); }
-  catch(e){ body.innerHTML = `<p class="error">${esc(steamErrorText(e))}</p>${closeBtn}`; body.querySelector('[data-act="close"]').onclick = close; return; }
-  applySteamSync(data);
-  const inLibrary = new Set(state.user.wishlist || []);
-  const rows = data.matches.map(m=>({ g: findGame(m.gameId), minutes: m.minutes })).filter(r=>r.g).sort((a,b)=>b.minutes-a.minutes);
-  if(!rows.length){ body.innerHTML = `<p class="hint">${esc(t('steam_import_empty'))}</p>${closeBtn}`; body.querySelector('[data-act="close"]').onclick = close; renderWishlistGrid(true); return; }
-  body.innerHTML = `
-    <p class="hint" style="margin-top:0;">${esc(t('steam_import_intro'))}</p>
-    <div class="steam-import-tools"><button type="button" class="btn-ghost" data-all>${esc(t('steam_import_all'))}</button><button type="button" class="btn-ghost" data-none>${esc(t('steam_import_none'))}</button></div>
-    <div class="steam-import-list">${rows.map(r=>{ const have = inLibrary.has(r.g.id); return `
-      <label class="steam-import-row${have?' in-library':''}">
-        <input type="checkbox" value="${esc(r.g.id)}" checked ${have?'disabled':''}>
-        <span class="sir-title">${esc(r.g.title)}${have? `<small>${esc(t('steam_import_in_library'))}</small>` : ''}</span>
-        <span class="sir-hours">${r.minutes>0? esc(fmtHours(r.minutes)) : ''}</span>
-      </label>`; }).join('')}</div>
-    <div class="confirm-actions" style="margin-top:16px;">
-      <button class="btn-ghost" data-act="close">${esc(t('back_generic'))}</button>
-      <button class="btn gold" id="steamImportAdd"></button>
-    </div>`;
-  const boxes = ()=>[...body.querySelectorAll('.steam-import-row:not(.in-library) input')];
-  const addBtn = body.querySelector('#steamImportAdd');
-  const refresh = ()=>{ const n = boxes().filter(b=>b.checked).length; addBtn.textContent = t('steam_import_add').replace('{n}', n); addBtn.disabled = n===0; };
-  body.addEventListener('change', refresh);
-  body.querySelector('[data-all]').onclick = ()=>{ boxes().forEach(b=>b.checked=true); refresh(); };
-  body.querySelector('[data-none]').onclick = ()=>{ boxes().forEach(b=>b.checked=false); refresh(); };
-  body.querySelector('[data-act="close"]').onclick = close;
-  addBtn.onclick = async ()=>{
-    addBtn.disabled = true;
-    try{ state.user.wishlist = (await apiPost('/profile/wishlist/add', { gameIds: boxes().filter(b=>b.checked).map(b=>b.value) })).wishlist; }
-    catch(e){ toast(t('err_save_user')); addBtn.disabled = false; return; }
-    toast(t('toast_steam_imported'));
-    close();
-    renderWishlistGrid();
-  };
-  refresh();
-  renderWishlistGrid(true); // las horas recién traídas ya se ven detrás del modal
+// Cambia el contenido de un contenedor con una transición rápida (≈ 0,3 s) en vez de un salto: lo viejo se desvanece, la altura se ajusta despacio a la
+// del contenido nuevo (la ventana está centrada: crece o se achica sin dar un tirón) y lo nuevo aparece subiendo un poco. swap() es quien pone el
+// contenido nuevo. Usa temporizadores y no animation.finished para terminar igual con la pestaña en segundo plano, y no anima si la persona pidió reducir el movimiento.
+const MORPH_OUT_MS = 110, MORPH_IN_MS = 200;
+async function morphContent(container, swap){
+  if(!container.animate || matchMedia('(prefers-reduced-motion: reduce)').matches){ swap(); return; }
+  const wait = ms => new Promise(r=>setTimeout(r, ms));
+  const from = container.offsetHeight;
+  container.style.height = from+'px';
+  container.style.overflow = 'hidden';
+  const fadeOut = container.animate([{ opacity:1 }, { opacity:0 }], { duration:MORPH_OUT_MS, easing:'ease-out', fill:'forwards' });
+  await wait(MORPH_OUT_MS);
+  swap();
+  container.style.height = 'auto';
+  const to = container.offsetHeight; // lo que mide el contenido nuevo
+  container.style.height = to+'px';
+  fadeOut.cancel();
+  container.animate([{ height:from+'px', opacity:0, transform:'translateY(6px)' }, { height:to+'px', opacity:1, transform:'none' }], { duration:MORPH_IN_MS, easing:'ease-out' });
+  await wait(MORPH_IN_MS);
+  container.style.height = '';
+  container.style.overflow = '';
 }
-// Modal "Agregar juego" de la biblioteca: buscador + grilla del catálogo
-// entero, cada card se puede tocar para sumar/sacar de la biblioteca sin
-// cerrar el modal (así se pueden agregar varios juegos seguidos).
+// Modal "Agregar juego" de la biblioteca (lo abre el botón «Agregar juego» de Mi biblioteca). Tiene dos vistas dentro de la misma ventana, con una
+// transición suave entre ellas (morphContent): el buscador + la grilla del catálogo y, si hay una cuenta de Steam vinculada, «Importar desde Steam».
+// Tocar una card suma o saca el juego sin cerrar la ventana (así se agregan varios seguidos) y sin repintar nada de atrás: la biblioteca se
+// repinta una sola vez, al cerrar, si algo cambió.
 function openAddToWishlistModal(){
   if(!state.user) return;
+  let changed = false;
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = `
-    <div class="confirm-box suggest-modal wishlist-pick-modal">
-      <h3>${esc(t('wishlist_add_game_btn'))}</h3>
-      <div class="field" style="margin-bottom:12px;">
-        <label for="wishlistPickSearch">${esc(t('add_search_label'))}</label>
-        <div class="search-wrap">
-          <input type="text" id="wishlistPickSearch" placeholder="Elden Ring, Hades, Mario Kart…">
-          <button type="button" class="search-clear" data-clears="wishlistPickSearch" hidden>✕</button>
+    <div class="confirm-box suggest-modal wishlist-pick-modal" role="dialog" aria-modal="true" aria-labelledby="wishlistPickTitle">
+      <h3 id="wishlistPickTitle">${esc(t('wishlist_add_game_btn'))}</h3>
+      <div id="wishlistPickBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const body = overlay.querySelector('#wishlistPickBody');
+  function close(){
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    if(changed) renderWishlistGrid();
+  }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+  document.addEventListener('keydown', onKey);
+
+  // Vista 1: buscador y catálogo.
+  function pickView(){
+    body.innerHTML = `
+      <div class="pick-toolbar">
+        <div class="field">
+          <label for="wishlistPickSearch">${esc(t('add_search_label'))}</label>
+          <div class="search-wrap">
+            <input type="text" id="wishlistPickSearch" placeholder="Elden Ring, Hades, Mario Kart…">
+            <button type="button" class="search-clear" data-clears="wishlistPickSearch" hidden>✕</button>
+          </div>
         </div>
+        ${state.user.steam? `<button type="button" class="chip pick-steam-btn" id="pickSteamBtn">${esc(t('steam_import_btn'))}</button>` : ''}
       </div>
       <div class="picker-grid" id="wishlistPickGrid"></div>
       <div class="confirm-actions" style="margin-top:16px;">
-        <button class="btn gold" data-act="close">${esc(t('back_generic'))}</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  function paint(){
-    const q=foldText(document.getElementById('wishlistPickSearch').value).trim();
-    const grid=document.getElementById('wishlistPickGrid');
-    const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
-    if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_pick_t'), t('empty_browse_s')); return; }
-    grid.innerHTML='';
-    games.forEach(g=>{
-      const added = isWishlisted(g.id);
-      const card=document.createElement('div');
-      card.className='card pickcard'+(added?' featured':'');
-      card.innerHTML = `<div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div><div class="gc-title">${esc(g.title)}</div><div class="gc-sub">${added? t('wishlist_pick_added') : t('wishlist_pick_add')}</div>`;
-      card.onclick = async ()=>{ await toggleWishlistQuiet(g.id); paint(); };
-      grid.appendChild(card);
+        <button type="button" class="btn gold" data-act="close">${esc(t('back_generic'))}</button>
+      </div>`;
+    const search = body.querySelector('#wishlistPickSearch'), grid = body.querySelector('#wishlistPickGrid');
+    const subText = id => t(isWishlisted(id)? 'wishlist_pick_added' : 'wishlist_pick_add');
+    function paint(){
+      const q = foldText(search.value).trim();
+      const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
+      if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_pick_t'), t('empty_browse_s')); return; }
+      grid.innerHTML = '';
+      games.forEach(g=>{
+        const card = document.createElement('div');
+        card.className = 'card pickcard'+(isWishlisted(g.id)? ' featured' : '');
+        card.innerHTML = `<div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div><div class="gc-title">${esc(g.title)}</div><div class="gc-sub">${subText(g.id)}</div>`;
+        card.onclick = async ()=>{
+          if(card.dataset.busy) return; // un toque a la vez por juego, mientras el servidor responde
+          card.dataset.busy = '1';
+          const adding = !isWishlisted(g.id);
+          try{
+            state.user.wishlist = (await apiPost('/profile/wishlist/toggle', { gameId:g.id })).wishlist;
+            changed = true;
+            card.classList.toggle('featured', isWishlisted(g.id));
+            card.querySelector('.gc-sub').textContent = subText(g.id);
+            toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'));
+          }catch(e){ toast(t('err_save_user')); }
+          delete card.dataset.busy;
+        };
+        grid.appendChild(card);
+      });
+    }
+    paint();
+    search.oninput = paint;
+    wireSearchClear('wishlistPickSearch');
+    body.querySelector('[data-act="close"]').onclick = close;
+    const steamBtn = body.querySelector('#pickSteamBtn');
+    if(steamBtn) steamBtn.onclick = ()=>{ if(steamBtn.dataset.busy) return; steamBtn.dataset.busy = '1'; showSteam(); };
+  }
+  const showPick = ()=> morphContent(body, pickView);
+
+  // Vista 2: importar desde Steam. Trae los juegos de la cuenta de Steam que están en el catálogo (y guarda sus horas) y deja elegir cuáles sumar.
+  async function showSteam(){
+    await morphContent(body, ()=>{
+      body.innerHTML = `
+        <div class="pick-steam-head">
+          <button type="button" class="chip" data-act="back">${ICONS.arrowLeft} ${esc(t('back_generic'))}</button>
+          <div class="pick-steam-title">${esc(t('steam_import_title'))}</div>
+        </div>
+        <div class="steam-import-body" id="steamImportBody"><p class="hint">${esc(t('steam_import_loading'))}</p></div>`;
+      body.querySelector('[data-act="back"]').onclick = showPick;
+    });
+    const box = body.querySelector('#steamImportBody');
+    const show = html => { if(box && box.isConnected) morphContent(box, ()=>{ box.innerHTML = html; }); };
+    let data;
+    try{ data = await apiPost('/steam/sync'); }
+    catch(e){ show(`<p class="error">${esc(steamErrorText(e))}</p>`); return; }
+    applySteamSync(data);
+    changed = true; // las horas recién traídas se ven en la biblioteca al cerrar
+    if(!box || !box.isConnected) return; // mientras tanto se volvió a la otra vista
+    const inLibrary = new Set(state.user.wishlist || []);
+    const rows = data.matches.map(m=>({ g: findGame(m.gameId), minutes: m.minutes })).filter(r=>r.g).sort((a,b)=>b.minutes-a.minutes);
+    if(!rows.length){ show(`<p class="hint">${esc(t('steam_import_empty'))}</p>`); return; }
+    morphContent(box, ()=>{
+      box.innerHTML = `
+        <p class="hint" style="margin-top:0;">${esc(t('steam_import_intro'))}</p>
+        <div class="steam-import-tools"><button type="button" class="btn-ghost" data-all>${esc(t('steam_import_all'))}</button><button type="button" class="btn-ghost" data-none>${esc(t('steam_import_none'))}</button></div>
+        <div class="steam-import-list">${rows.map(r=>{ const have = inLibrary.has(r.g.id); return `
+          <label class="steam-import-row${have?' in-library':''}">
+            <input type="checkbox" value="${esc(r.g.id)}" checked ${have?'disabled':''}>
+            <span class="sir-title">${esc(r.g.title)}${have? `<small>${esc(t('steam_import_in_library'))}</small>` : ''}</span>
+            <span class="sir-hours">${r.minutes>0? esc(fmtHours(r.minutes)) : ''}</span>
+          </label>`; }).join('')}</div>
+        <div class="confirm-actions" style="margin-top:16px;">
+          <button type="button" class="btn gold" id="steamImportAdd"></button>
+        </div>`;
+      const boxes = ()=>[...box.querySelectorAll('.steam-import-row:not(.in-library) input')];
+      const addBtn = box.querySelector('#steamImportAdd');
+      const refresh = ()=>{ const n = boxes().filter(b=>b.checked).length; addBtn.textContent = t('steam_import_add').replace('{n}', n); addBtn.disabled = n===0; };
+      box.addEventListener('change', refresh);
+      box.querySelector('[data-all]').onclick = ()=>{ boxes().forEach(b=>b.checked=true); refresh(); };
+      box.querySelector('[data-none]').onclick = ()=>{ boxes().forEach(b=>b.checked=false); refresh(); };
+      addBtn.onclick = async ()=>{
+        addBtn.disabled = true;
+        try{ state.user.wishlist = (await apiPost('/profile/wishlist/add', { gameIds: boxes().filter(b=>b.checked).map(b=>b.value) })).wishlist; }
+        catch(e){ toast(t('err_save_user')); addBtn.disabled = false; return; }
+        toast(t('toast_steam_imported'));
+        close();
+      };
+      refresh();
     });
   }
-  paint();
-  document.getElementById('wishlistPickSearch').oninput = paint;
-  wireSearchClear('wishlistPickSearch');
-  function cleanup(){
-    overlay.remove();
-    document.removeEventListener('keydown', onKey);
-  }
-  function onKey(e){ if(e.key==='Escape') cleanup(); }
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
-  overlay.querySelector('[data-act="close"]').onclick = cleanup;
-  document.addEventListener('keydown', onKey);
-}
-// Igual que toggleWishlist, pero solo vuelve a pintar la grilla de la biblioteca (no toda la vista) — para usar desde adentro de openAddToWishlistModal sin que el modal se cierre solo.
-async function toggleWishlistQuiet(gameId){
-  const adding = !(state.user.wishlist||[]).includes(gameId);
-  try{
-    const { wishlist } = await apiPost('/profile/wishlist/toggle', { gameId });
-    state.user.wishlist = wishlist;
-  }catch(e){ toast(t('err_save_user')); return; }
-  toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'));
-  renderWishlistGrid();
+
+  pickView();
 }
 
 /* ---------- helpers sueltos (sin relación con listas, pero vivían aquí en el archivo original) ---------- */
