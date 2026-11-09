@@ -33,6 +33,7 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresh
 window.addEventListener('focus', refreshData);
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('langToggle').addEventListener('click', toggleLang);
+initUserSearch();
 
 // Secuencia de arranque, en orden: tema y idioma primero (para que no haya parpadeo visual), esqueletos de carga, después los datos reales, y recién al final se decide y pinta la vista.
 (async function init(){

@@ -204,6 +204,65 @@ function renderUserBadge(){
     document.getElementById('loginBtn').onclick = spa(()=> goView('auth'));
   }
 }
+/* ---------- buscador de perfiles (header) ---------- */
+// Un cuadro de texto que, a partir de 2 letras, le pide a /api/user-search los perfiles cuyo nombre contiene lo escrito y los muestra en una lista; elegir uno abre su perfil.
+// En pantallas anchas el cuadro está a la vista; en las demás hay una lupa que lo abre como una tarjeta bajo el header (ver .user-search en style.css).
+// Teclado: flechas para moverse por los resultados, Enter para abrir (sin elegir, abre el primero) y Escape para cerrar. Se llama una vez desde 16-init.js.
+function initUserSearch(){
+  const box = document.getElementById('userSearch');
+  const toggle = document.getElementById('userSearchToggle');
+  const input = document.getElementById('userSearchInput');
+  const list = document.getElementById('userSearchResults');
+  let timer = null, seq = 0, active = -1; // seq: cada búsqueda lleva un número, y una respuesta atrasada (de un texto que ya cambió) se descarta
+  const options = ()=> [...list.querySelectorAll('a')];
+  const setActive = i=>{
+    active = i;
+    options().forEach((a, n)=>{
+      a.parentElement.classList.toggle('active', n===i);
+      if(n===i){ input.setAttribute('aria-activedescendant', a.id); a.scrollIntoView({ block:'nearest' }); }
+    });
+    if(i<0) input.removeAttribute('aria-activedescendant');
+  };
+  const move = step=>{ const n = options().length; if(n) setActive(active<0 ? (step>0? 0 : n-1) : (active+step+n)%n); };
+  const hideList = ()=>{ list.hidden = true; list.innerHTML = ''; active = -1; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); };
+  const closeAll = ()=>{ clearTimeout(timer); seq++; hideList(); box.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); };
+  const choose = name=>{ closeAll(); input.value = ''; openProfileOf(name); };
+  const showMessage = text=>{ list.innerHTML = `<li class="user-search-note" role="presentation">${esc(text)}</li>`; list.hidden = false; active = -1; input.setAttribute('aria-expanded', 'false'); };
+  const showUsers = users=>{
+    if(!users.length){ showMessage(t('user_search_empty')); return; }
+    list.innerHTML = users.map((u, i)=>`<li role="presentation"><a role="option" id="userSearchOpt${i}" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span>${esc(u.username)}</span></a></li>`).join('');
+    list.hidden = false; active = -1; input.setAttribute('aria-expanded', 'true');
+    options().forEach(a=>{ a.onclick = spa(()=> choose(a.dataset.user)); });
+  };
+  const search = async ()=>{
+    const q = input.value.trim(), mine = ++seq;
+    if(q.length<2){ hideList(); return; }
+    try{
+      const { users } = await apiGet('/user-search?q='+encodeURIComponent(q));
+      if(mine===seq) showUsers(users);
+    }catch(e){ if(mine===seq) showMessage(t('user_search_error')); }
+  };
+  input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(search, 250); });
+  input.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); move(1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); move(-1); }
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      const pick = options()[active>=0? active : 0];
+      if(pick) choose(pick.dataset.user);
+      else if(input.value.trim().length>=2){ clearTimeout(timer); search(); } // Enter antes de que salgan los resultados: se busca ya
+    } else if(e.key==='Escape'){
+      if(!list.hidden) hideList();
+      else { closeAll(); if(toggle.offsetParent) toggle.focus(); }
+    }
+  });
+  toggle.addEventListener('click', ()=>{
+    const open = box.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+    if(open) input.focus(); else closeAll();
+  });
+  document.addEventListener('click', e=>{ if(!box.contains(e.target)) closeAll(); });
+}
 /* ---------- menú desplegable del avatar (Mi estantería / Notificaciones / Listas / Ajustes / ...) ---------- */
 let currentUserMenu = null; // el <div> del menú actualmente abierto, o null
 // Cierra el menú desplegable si está abierto y saca los listeners globales que lo mantenían escuchando clicks/scroll afuera.

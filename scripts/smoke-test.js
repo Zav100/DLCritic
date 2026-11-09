@@ -499,10 +499,23 @@ const today = new Date().toISOString().slice(0, 10);
       mock.server.close();
     }
   });
-  await step('seguir, amistad mutua, notificación y dejar de seguir', async () => {
+  await step('seguir, amistad mutua, notificación, listas de seguidores y seguidos, y dejar de seguir', async () => {
     const f1 = (await a('POST', '/api/users/smoketest_b/follow')).body; assert.deepEqual([f1.isFollowing, f1.isFriend, f1.followerCount], [true, false, 1]);
     const f2 = (await b('POST', '/api/users/smoketest_a/follow')).body; assert.deepEqual([f2.isFollowing, f2.isFriend], [true, true]);
     assert.ok((await b('GET', '/api/notifications')).body.notifications.some(n => n.type === 'follow' && n.actorUsername === 'smoketest_a'));
+    // Las listas son públicas (sin sesión), con total y solo nombre y foto; el contador propio viaja con la sesión.
+    const lf = (await anon('GET', '/api/users/SMOKETEST_B/followers')).body; assert.deepEqual([lf.total, lf.users], [1, [{ username: 'smoketest_a', avatarUrl: null }]]);
+    const lg = (await anon('GET', '/api/users/smoketest_b/following')).body; assert.deepEqual([lg.total, lg.users.map(u => u.username)], [1, ['smoketest_a']]);
+    ok(await anon('GET', '/api/users/no_existe_nadie/followers'), 404); ok(await anon('GET', '/api/users/no_existe_nadie/following'), 404);
+    const me = (await a('GET', '/api/auth/me')).body.user; assert.deepEqual([me.followerCount, me.followingCount], [1, 1]);
+    // Buscador de perfiles: sin sesión, mínimo 2 letras, sin distinguir mayúsculas, solo nombre y foto, y el texto no cuenta como comodín (% y _).
+    const sq = async q => (await anon('GET', '/api/user-search?q=' + encodeURIComponent(q))).body.users;
+    assert.deepEqual(await sq('s'), []); assert.deepEqual(await sq(''), []);
+    const many = (await sq('SMOKETEST_')).map(u => u.username); // la prueba crea más cuentas smoketest_*: tope de 8, todas con ese comienzo, en orden alfabético
+    assert.ok(many.length <= 8 && many.every(n => n.startsWith('smoketest_')) && many[0] === 'smoketest_a' && many.join() === [...many].sort().join());
+    assert.deepEqual(await sq('smoketest_b'), [{ username: 'smoketest_b', avatarUrl: null }]);
+    assert.deepEqual(await sq('smoketest%'), []); assert.deepEqual(await sq('smoke_est_a'), []);
+    assert.ok((await sq('etest_b')).some(u => u.username === 'smoketest_b'), 'también busca en medio del nombre');
     ok(await a('POST', '/api/users/smoketest_a/follow'), 400);
     ok(await a('POST', '/api/users/no_existe_nadie/follow'), 404);
     assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);

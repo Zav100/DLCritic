@@ -19,7 +19,7 @@ function profileShapeFromSelf(u){
   return {
     username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum, favoriteSteam: u.favoriteSteam,
     bio: u.bio, avatarUrl: u.avatarUrl, socialLinks: u.socialLinks,
-    isFollowing:false, isFriend:false, followerCount:0, followingCount:0,
+    isFollowing:false, isFriend:false, followerCount:u.followerCount||0, followingCount:u.followingCount||0,
   };
 }
 // "Mi estantería": tu propio perfil (siempre editable=true). Si no hay sesión, muestra el estado de "iniciá sesión para ver esto".
@@ -149,10 +149,11 @@ function renderProfileBody(el, username, profile, editable){
         ${profile.isFriend? `<span class="first-badge">${esc(t('friends_badge'))}</span>` : ''}
       ` : '');
 
-  const statsExtraHTML = !editable ? `
-      <div class="statbox"><div class="n" id="followerCountEl" style="color:var(--teal-dim);">${profile.followerCount}</div><div class="l">${t('followers_label')}</div></div>
-      <div class="statbox"><div class="n" style="color:var(--gold-dim);">${profile.followingCount}</div><div class="l">${t('following_count_label')}</div></div>
-  ` : '';
+  // Seguidores y seguidos, en todos los perfiles (también el propio): cada contador es un botón que abre la lista (openFollowListModal).
+  const statsExtraHTML = `
+      <button type="button" class="statbox statbox-btn" data-follow-list="followers" aria-label="${esc(t('follow_list_open_followers'))}"><div class="n" id="followerCountEl" style="color:var(--teal-dim);">${profile.followerCount||0}</div><div class="l">${t('followers_label')}</div></button>
+      <button type="button" class="statbox statbox-btn" data-follow-list="following" aria-label="${esc(t('follow_list_open_following'))}"><div class="n" id="followingCountEl" style="color:var(--gold-dim);">${profile.followingCount||0}</div><div class="l">${t('following_count_label')}</div></button>
+  `;
 
   el.innerHTML = `
     <div class="profilehead">
@@ -167,7 +168,7 @@ function renderProfileBody(el, username, profile, editable){
 
     ${socialLinksHTML(profile.socialLinks)}
 
-    <div class="statsrow">
+    <div class="statsrow"${editable? ' data-own' : ''}>
       <div class="statbox"><div class="n" style="color:var(--teal-dim);">${s.count}</div><div class="l">${t('reviews_label')}</div></div>
       <div class="statbox"><div class="n" style="color:var(--gold-dim);">${avg||'—'}</div><div class="l">${t('avg_label')}</div></div>
       <div class="statbox"><div class="n" style="color:var(--pink-dim);">${ICONS.flame} ${s.streak}</div><div class="l">${t('streak_label')}</div></div>
@@ -259,6 +260,8 @@ function renderProfileBody(el, username, profile, editable){
   } else if(state.user){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
   }
+  el.querySelectorAll('[data-follow-list]').forEach(b=>{ b.onclick = ()=> openFollowListModal(username, b.dataset.followList, editable); });
+  if(editable) refreshOwnFollowCounts();
   const publicGrid = document.getElementById('publicLibraryGrid');
   if(publicGrid) profile.library.map(id=>findGame(id)).filter(Boolean).forEach(g=> publicGrid.appendChild(libraryCard(g, profile.libraryHours && profile.libraryHours[g.id])));
 
@@ -278,6 +281,55 @@ function renderProfileBody(el, username, profile, editable){
   state.shelfReviews = mine;
   state.shelfReviewsEditable = editable;
   renderShelfReviewsList();
+}
+// Avatar chico (la foto, o la inicial en un círculo de color) para las listas de personas: el buscador del header y la lista de seguidores.
+function miniAvatarHTML(username, avatarUrl){
+  if(avatarUrl) return `<img class="mini-avatar" src="${esc(avatarUrl)}" alt="" loading="lazy">`;
+  const color = AVATAR_COLORS[Math.abs(hashStr(username))%AVATAR_COLORS.length];
+  return `<span class="mini-avatar" style="background:${color}">${esc(username[0].toUpperCase())}</span>`;
+}
+// Abre el perfil de una persona: el propio es Mi estantería; el de otra persona, su perfil público.
+function openProfileOf(username){
+  if(state.user && state.user.username.toLowerCase()===username.toLowerCase()) goView('shelf');
+  else { state.profileUsername = username; goView('profile'); }
+}
+// El perfil propio se pinta con los contadores que trajo la sesión; aquí se piden de nuevo por si alguien siguió o dejó de seguir mientras tanto.
+// Solo se toca el contador que está dentro de un .statsrow[data-own]: si mientras tanto se abrió el perfil de otra persona, su contador no se pisa.
+async function refreshOwnFollowCounts(){
+  try{
+    const { user } = await apiGet('/users/'+encodeURIComponent(state.user.username));
+    state.user.followerCount = user.followerCount; state.user.followingCount = user.followingCount;
+    const followers = document.querySelector('.statsrow[data-own] #followerCountEl'), following = document.querySelector('.statsrow[data-own] #followingCountEl');
+    if(followers) followers.textContent = user.followerCount;
+    if(following) following.textContent = user.followingCount;
+  }catch(e){ /* se queda el número que había */ }
+}
+// Ventana con quiénes siguen a una persona (kind 'followers') o a quiénes sigue (kind 'following'); se abre al tocar los contadores de un perfil.
+// Cada fila lleva al perfil de esa persona. El servidor manda las 100 más recientes y el total.
+async function openFollowListModal(username, kind, isSelf){
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box follow-list-modal" role="dialog" aria-modal="true" aria-labelledby="followListTitle">
+      <h3 id="followListTitle">${esc(t(kind==='followers'? 'follow_list_followers_title' : 'follow_list_following_title'))}</h3>
+      <p class="hint follow-list-owner">${esc(username)}</p>
+      <div id="followListBody"><p class="hint">${esc(t('loading_label'))}</p></div>
+      <div class="confirm-actions" style="margin-top:16px;"><button type="button" class="btn-ghost" data-act="close">${esc(t('close_btn'))}</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(e){ if(e.key==='Escape') close(); }
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+  overlay.querySelector('[data-act="close"]').onclick = close;
+  document.addEventListener('keydown', onKey);
+  const body = overlay.querySelector('#followListBody');
+  try{
+    const { total, users } = await apiGet('/users/'+encodeURIComponent(username)+'/'+kind);
+    if(!users.length){ body.innerHTML = `<p class="hint">${esc(t('follow_list_empty_'+kind+(isSelf? '_self' : '_other')))}</p>`; return; }
+    body.innerHTML = `<div class="follow-rows">${users.map(u=>`<a class="follow-row" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span>${esc(u.username)}</span></a>`).join('')}</div>`
+      + (total>users.length? `<p class="hint" style="margin:10px 0 0;">${esc(t('follow_list_more').replace('{n}', users.length).replace('{total}', total))}</p>` : '');
+    body.querySelectorAll('.follow-row').forEach(a=>{ a.onclick = spa(()=>{ close(); openProfileOf(a.dataset.user); }); });
+  }catch(e){ body.innerHTML = `<p class="error">${esc(t('follow_list_error'))}</p>`; }
 }
 /* ---------- preview de listas dentro del perfil (el CRUD completo está en 10-lists.js) ---------- */
 // Pinta la grilla de listas de un usuario dentro de un contenedor dado.
@@ -403,6 +455,7 @@ async function toggleFollow(username){
     const res = await apiPost('/users/'+encodeURIComponent(username)+'/follow', {});
     const countEl = document.getElementById('followerCountEl');
     if(countEl) countEl.textContent = res.followerCount;
+    if(state.user) state.user.followingCount = Math.max(0, (state.user.followingCount||0) + (res.isFollowing? 1 : -1)); // a quién sigue la propia persona cambió
     const btn = document.getElementById('followBtn');
     if(btn){
       btn.classList.toggle('active', res.isFollowing);

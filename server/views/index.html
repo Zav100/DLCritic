@@ -78,6 +78,27 @@
         <a class="navbtn" data-view="daily" href="/reto-del-dia" data-i18n="nav_daily">Reto del día</a>
       </nav>
       <div class="headright">
+        <div class="user-search" id="userSearch" role="search">
+          <button type="button" class="user-search-toggle" id="userSearchToggle" aria-expanded="false" aria-controls="userSearchPanel"
+            aria-label="Buscar perfiles de otras personas" title="Buscar perfiles de otras personas" data-i18n-aria="user_search_label" data-i18n-title="user_search_label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
+          <div class="user-search-panel" id="userSearchPanel">
+            <div class="user-search-field">
+              <svg class="user-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="search" class="user-search-input" id="userSearchInput" placeholder="Buscar personas" data-i18n-ph="user_search_placeholder"
+                aria-label="Buscar perfiles de otras personas" data-i18n-aria="user_search_label" autocomplete="off" autocapitalize="off" spellcheck="false"
+                maxlength="20" role="combobox" aria-expanded="false" aria-controls="userSearchResults" aria-autocomplete="list">
+            </div>
+            <ul class="user-search-results" id="userSearchResults" role="listbox" hidden></ul>
+          </div>
+        </div>
         <button class="lang-toggle" id="langToggle" aria-label="Change language" title="Change language">ES</button>
         <button class="theme-toggle" id="themeToggle" aria-label="Cambiar paleta de color"
           title="Cambiar paleta"></button>
