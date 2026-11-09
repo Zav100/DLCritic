@@ -52,8 +52,17 @@ function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u0
 function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Formatea una fecha ISO al formato lindo ("04 sept 2026" / "Sep 04, 2026" según el idioma).
 function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(state.lang==='en'?'en-US':'es-ES',{day:'2-digit',month:'short',year:'numeric'}); }
-// Muestra el mensajito flotante abajo de la pantalla (el "toast") con un texto, y lo oculta solo a los 2.2s.
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), 2200); }
+// Avisa algo con una tarjeta en el centro de la pantalla y un botón «Entendido» (ver noticeDialog en 07-stats-share-modals.js); antes era un mensajito que se iba solo abajo.
+// Si llegan varios seguidos se muestran de a uno, y un texto igual a uno que ya está esperando no se repite.
+const noticeQueue = [];
+function toast(msg){
+  if(noticeQueue.includes(msg)) return;
+  noticeQueue.push(msg);
+  if(noticeQueue.length===1) showNextNotice();
+}
+function showNextNotice(){
+  noticeDialog('', noticeQueue[0]).then(()=>{ noticeQueue.shift(); if(noticeQueue.length) showNextNotice(); });
+}
 // HTML de una card "esqueleto" (gris, animada) que se muestra mientras todavía no cargaron los datos reales.
 function skeletonCardHTML(){
   return `<div class="card newscard skeleton-card"><div class="skel skel-cover"></div><div class="skel skel-title"></div><div class="skel skel-line"></div></div>`;

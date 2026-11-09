@@ -84,7 +84,7 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - **Rutas reales por juego + Open Graph**: cada juego tiene su propia URL (`/juego/elden-ring`, etc.) que se puede compartir, recargar o guardar como favorito del navegador. Al compartir ese link, el servidor genera dinámicamente el título, descripción (con la nota promedio) y la imagen de portada para la vista previa (WhatsApp, Twitter/X, Discord, Slack...).
 - **Rate limiting**: máximo 8 intentos de registro/login cada 10 minutos por IP, y 120 escrituras (reseñas, notas, seguir, ajustes, juegos nuevos) cada 10 minutos por usuario. Agregar y quitar juegos de una lista tiene su propio límite, más holgado (300 cada 10 minutos). Devuelve `429` con `Retry-After`.
 - **Nav inferior en mobile**: en pantallas angostas (≤680px) el menú pasa a una barra fija abajo, más cómoda para el pulgar.
-- **Glassmorphism**: banner de portada difuminada en la ficha de cada juego, tarjetas destacadas, toasts y el diálogo de confirmación (reemplaza el `confirm()` nativo del navegador) ahora usan vidrio esmerilado (`backdrop-filter`).
+- **Glassmorphism**: banner de portada difuminada en la ficha de cada juego, tarjetas destacadas y el diálogo de confirmación (reemplaza el `confirm()` nativo del navegador) ahora usan vidrio esmerilado (`backdrop-filter`). Los avisos (`toast()` en `public/js/03-state-and-utils.js`) ya no son un mensajito que se va solo: salen como una tarjeta al centro con el botón «Entendido» (`noticeDialog`), de a uno si llegan varios.
 - **Transiciones de vista**: cambiar de sección usa la View Transitions API (con fallback silencioso donde no está soportada).
 - **Compartir reseña**: cada reseña tiene un botón para compartirla (nativo, WhatsApp, X o copiar texto+link).
 - **Panel de administración** (`/admin`): ver sección dedicada abajo — administra TODO el catálogo (no solo lo agregado a mano), el calendario de fechas y las noticias.
@@ -132,7 +132,7 @@ Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF
 | PUT | `/api/reviews/:gameId` | ✔ | crear/actualizar tu reseña (rating/texto/plataformas) |
 | DELETE | `/api/reviews/:gameId/text` | ✔ | borrar solo el texto |
 | DELETE | `/api/reviews/id/:id` | ✔ | borrar tu reseña completa |
-| POST | `/api/reviews/id/:id/helpful` | ✔ | votar "te sirvió" |
+| POST | `/api/reviews/id/:id/helpful` | ✔ | «Me gusta» (`value: 1`, por omisión) o «No me gusta» (`value: -1`) en la reseña de otra persona; repetir el voto lo quita y el contrario lo cambia |
 | GET/PUT | `/api/daily` | ✔ | progreso del reto diario |
 | PUT | `/api/profile/favorite` | ✔ | juego favorito |
 | POST | `/api/profile/wishlist/toggle` | ✔ | agregar/quitar de la wishlist |

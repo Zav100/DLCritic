@@ -350,13 +350,25 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await a('PUT', `/api/reviews/${gameId}`, { platforms: ['atari'] })).body.error, 'invalid_platforms');
     ok(await a('PUT', '/api/reviews/no-existe', { rating: 5 }), 404);
   });
-  await step('"útil": no en la propia, sí en la ajena, notifica y se puede quitar', async () => {
-    ok(await a('POST', `/api/reviews/id/${reviewId}/helpful`), 400);
-    const on = await b('POST', `/api/reviews/id/${reviewId}/helpful`); ok(on);
-    assert.deepEqual(on.body.helpfulBy, ['smoketest_b']);
+  await step('"me gusta" / "no me gusta": no en la propia, sí en la ajena; solo el "me gusta" notifica; un voto por persona (cambiar, quitar)', async () => {
+    const vote = (who, value) => who('POST', `/api/reviews/id/${reviewId}/helpful`, value === undefined ? undefined : { value });
+    const shape = res => [res.body.helpfulBy, res.body.dislikedBy];
+    ok(await vote(a), 400); ok(await vote(a, -1), 400);
+    const nHelpful = async () => (await a('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'helpful' && n.actorUsername === 'smoketest_b').length;
+    const on = await vote(b); ok(on); // sin cuerpo cuenta como "me gusta" (así sigue andando el cliente de antes)
+    assert.deepEqual(shape(on), [['smoketest_b'], []]);
     const notes = (await a('GET', '/api/notifications')).body.notifications;
     assert.ok(notes.some(n => n.type === 'helpful' && n.actorUsername === 'smoketest_b' && n.read === false));
-    assert.deepEqual((await b('POST', `/api/reviews/id/${reviewId}/helpful`)).body.helpfulBy, []);
+    assert.equal(await nHelpful(), 1);
+    // cambiar a "no me gusta": sale de los me gusta, entra en los no me gusta y no avisa
+    assert.deepEqual(shape(await vote(b, -1)), [[], ['smoketest_b']]);
+    assert.equal(await nHelpful(), 1);
+    const listed = (await anon('GET', '/api/reviews')).body.reviews.find(x => x.id === reviewId);
+    assert.deepEqual([listed.helpfulBy, listed.dislikedBy], [[], ['smoketest_b']]);
+    // repetir el mismo voto lo quita; un valor raro cuenta como "me gusta"
+    assert.deepEqual(shape(await vote(b, -1)), [[], []]);
+    assert.deepEqual(shape(await vote(b, 7)), [['smoketest_b'], []]);
+    assert.deepEqual(shape(await vote(b, 1)), [[], []]);
     ok(await a('POST', '/api/notifications/read'));
     assert.ok((await a('GET', '/api/notifications')).body.notifications.every(n => n.read === true));
   });

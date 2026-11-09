@@ -495,7 +495,7 @@ async function renderNotificationsView(){
       const gameTitle = game ? esc(game.title) : '';
       const text = n.type==='follow'
         ? (state.lang==='en' ? `<b>${actor}</b> started following you` : `<b>${actor}</b> empezó a seguirte`)
-        : (state.lang==='en' ? `<b>${actor}</b> found your review of ${gameTitle} helpful` : `A <b>${actor}</b> le pareció útil tu reseña de ${gameTitle}`);
+        : (state.lang==='en' ? `<b>${actor}</b> liked your review of ${gameTitle}` : `A <b>${actor}</b> le gustó tu reseña de ${gameTitle}`);
       const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
       const row = document.createElement('div');
       row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');

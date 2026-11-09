@@ -202,31 +202,31 @@ function isFirstReview(rv){
   const earliest = candidates.reduce((a,b)=> new Date(a.date)<=new Date(b.date)? a : b);
   return earliest.id === rv.id;
 }
-// Botón "¿Te sirvió esta reseña?": vota/desvota y actualiza SOLO el botón y el contador en el lugar (no re-renderiza toda la vista), así la página no salta al principio cada vez que alguien vota.
-async function toggleHelpful(reviewId){
+// Botones «Me gusta» y «No me gusta» de una reseña ajena, con su contador (solo si hay votos). Un solo voto por persona: repetirlo lo quita y el otro botón lo cambia.
+// Los botones se dibujan siempre con esta función (al armar la card y después de votar): son HTML con íconos, así que van con innerHTML, nunca con textContent.
+function voteRowHTML(rv){
+  const me = state.user && state.user.username;
+  const likes = rv.helpfulBy || [], dislikes = rv.dislikedBy || [];
+  const btn = (value, icon, key, list)=>{
+    const on = !!me && list.includes(me);
+    return `<button type="button" class="vote-btn ${value>0? 'like' : 'dislike'} ${on? 'voted' : ''}" data-vote="${value}" aria-pressed="${on}">${icon}<span>${esc(t(key))}</span>${list.length? `<span class="vote-count">${list.length}</span>` : ''}</button>`;
+  };
+  return btn(1, ICONS.thumbsUp, 'like_btn', likes) + btn(-1, ICONS.thumbsDown, 'dislike_btn', dislikes);
+}
+function paintVoteRow(row, rv){
+  row.innerHTML = voteRowHTML(rv);
+  row.querySelectorAll('[data-vote]').forEach(b=>{ b.onclick = ()=> castVote(rv.id, Number(b.dataset.vote)); });
+}
+// Vota y actualiza SOLO los botones en el lugar (no re-renderiza toda la vista), así la página no salta al principio cada vez que alguien vota.
+async function castVote(reviewId, value){
   if(!state.user){ goView('auth'); return; }
   const rv = state.reviews.find(r=>r.id===reviewId);
   if(!rv) return;
-  let helpfulBy;
   try{
-    ({ helpfulBy } = await apiPost('/reviews/id/'+encodeURIComponent(reviewId)+'/helpful'));
-    rv.helpfulBy = helpfulBy;
+    const res = await apiPost('/reviews/id/'+encodeURIComponent(reviewId)+'/helpful', { value });
+    rv.helpfulBy = res.helpfulBy; rv.dislikedBy = res.dislikedBy || [];
   }catch(e){ toast(t('err_save_review')); return; }
-  // Update the button/count in place instead of re-rendering the whole view,
-  // so the page doesn't jump back to the top on every vote.
-  const btn = document.querySelector(`[data-helpful="${CSS.escape(reviewId)}"]`);
-  if(!btn) return;
-  const voted = helpfulBy.includes(state.user.username);
-  btn.classList.toggle('voted', voted);
-  btn.textContent = voted ? t('helpful_yes') : t('helpful_ask');
-  const row = btn.closest('.helpful-row');
-  let countEl = row.querySelector('.helpful-count');
-  if(helpfulBy.length>0){
-    if(!countEl){ countEl=document.createElement('span'); countEl.className='helpful-count'; row.appendChild(countEl); }
-    countEl.textContent = `${helpfulBy.length} ${helpfulBy.length===1? t('helpful_count') : t('helpful_count_pl')}`;
-  } else if(countEl){
-    countEl.remove();
-  }
+  document.querySelectorAll(`.helpful-row[data-review="${CSS.escape(reviewId)}"]`).forEach(row=> paintVoteRow(row, rv));
 }
 /* ---------- confirm dialog (glass, replaces native confirm()) ---------- */
 // Reemplazo con el estilo visual de la app para el confirm() nativo del
@@ -256,15 +256,15 @@ function confirmDialog(message){
 }
 
 // Aviso en una tarjeta en el centro de la pantalla: no se cierra al tocar afuera, hay que apretar «Entendido» (o Escape). Es una Promise que se resuelve al cerrarlo.
-// icon: ICONS.checkCircle para una buena noticia; sin icon, solo el texto.
+// title puede ir vacío (así lo usa toast()); icon: ICONS.checkCircle para una buena noticia; sin icon, solo el texto.
 function noticeDialog(title, message, icon){
   return new Promise(resolve=>{
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML = `
-      <div class="confirm-box notice-box" role="alertdialog" aria-modal="true" aria-labelledby="noticeTitle" aria-describedby="noticeText">
+      <div class="confirm-box notice-box" role="alertdialog" aria-modal="true"${title? ' aria-labelledby="noticeTitle"' : ''} aria-describedby="noticeText">
         ${icon? `<div class="notice-icon">${icon}</div>` : ''}
-        <h3 id="noticeTitle">${esc(title)}</h3>
+        ${title? `<h3 id="noticeTitle">${esc(title)}</h3>` : ''}
         <p id="noticeText">${esc(message)}</p>
         <div class="confirm-actions"><button class="btn gold" data-act="ok">${esc(t('notice_ok_btn'))}</button></div>
       </div>`;
@@ -803,8 +803,6 @@ function reviewCard(rv){
   div.className='card reviewcard';
   const mine = state.user && state.user.username===rv.username;
   const authorLevel = computeLevel(state.reviews.filter(r=>r.username===rv.username).length).current;
-  const helpfulBy = rv.helpfulBy || [];
-  const voted = state.user && helpfulBy.includes(state.user.username);
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
     <div class="rc-top">
@@ -816,10 +814,7 @@ function reviewCard(rv){
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
     </div>
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
-    ${!mine? `<div class="helpful-row">
-      <button class="helpful-btn ${voted?'voted':''}" data-helpful="${rv.id}">${voted? t('helpful_yes') : t('helpful_ask')}</button>
-      ${helpfulBy.length>0? `<span class="helpful-count">${helpfulBy.length} ${helpfulBy.length===1? t('helpful_count') : t('helpful_count_pl')}</span>` : ''}
-    </div>` : ''}
+    ${!mine? `<div class="helpful-row" data-review="${esc(rv.id)}"></div>` : ''}
     <div class="cardfoot">
       <div id="gauge-${rv.id}">${rv.rating==null? `<span class="no-rating-tag">${t('no_rating_yet')}</span>` : ''}</div>
       <div class="rc-actions">
@@ -831,12 +826,8 @@ function reviewCard(rv){
   if(rv.rating!=null) renderGauge(div.querySelector(`#gauge-${rv.id}`), rv.rating);
   div.querySelector('[data-share]').onclick=(e)=> openShareMenu(e.currentTarget, rv, game);
   div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
-  if(mine){
-    div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
-  } else {
-    const hb = div.querySelector('[data-helpful]');
-    if(hb) hb.onclick = ()=> toggleHelpful(rv.id);
-  }
+  if(mine) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
+  else paintVoteRow(div.querySelector('.helpful-row'), rv);
   return div;
 }
 // HTML del "estado vacío" genérico (ícono + título + texto) que se usa en TODA la app cuando una lista/grilla no tiene nada para mostrar. `title` y `sub` van sin escapar porque siempre se les pasa el resultado de t(), nunca texto de usuario.
