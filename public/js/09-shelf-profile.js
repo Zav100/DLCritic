@@ -205,18 +205,18 @@ function renderProfileBody(el, username, profile, editable){
       <div class="picker-grid" id="favPickGrid"></div>
     </div>` : ''}
 
-    <div class="sectionhead"><h2>${t('lists_title')}</h2><span class="count" id="listsCount">0</span></div>
+    <div class="sectionhead"><h2>${t('lists_title')}</h2></div>
     <div class="grid" id="listsGrid" style="margin-bottom:22px;"></div>
 
     ${editable ? `
-    <div class="sectionhead"><h2>${t('wishlist_title')}</h2><span class="count" id="wishlistCount">${(state.user.wishlist||[]).length}</span></div>
+    <div class="sectionhead"><h2>${t('wishlist_title')}</h2></div>
     <div class="library-actions">
       <p class="hint library-hint">${state.user.libraryPublic? ICONS.globe : ICONS.lock} ${esc(t(state.user.libraryPublic? 'library_hint_public' : 'library_hint_private'))} <a href="/ajustes" id="libraryPrivacyLink">${esc(t('library_hint_change'))}</a></p>
       ${state.user.steam? `<button type="button" class="btn small" id="steamImportBtn">${esc(t('steam_import_btn'))}</button>` : ''}
     </div>
     <div class="grid wishlist-grid" id="wishlistGrid" style="margin-bottom:8px;"></div>
     ` : (profile.library && profile.library.some(id=>findGame(id)) ? `
-    <div class="sectionhead"><h2>${t('library_title_other')}</h2><span class="count">${profile.library.filter(id=>findGame(id)).length}</span></div>
+    <div class="sectionhead"><h2>${t('library_title_other')}</h2></div>
     <div class="grid wishlist-grid" id="publicLibraryGrid" style="margin-bottom:22px;"></div>` : '')}
 
     <div class="shelf-layout">
@@ -333,23 +333,20 @@ async function openFollowListModal(username, kind, isSelf){
 }
 /* ---------- preview de listas dentro del perfil (el CRUD completo está en 10-lists.js) ---------- */
 // Pinta la grilla de listas de un usuario dentro de un contenedor dado.
-// gridId/countId son parametrizables porque esta MISMA función se usa
-// tanto para la preview chica dentro del perfil (listsGrid/listsCount)
-// como para la vista completa "/mis-listas" (listsViewGrid/listsViewCount)
+// gridId es parametrizable porque esta MISMA función se usa
+// tanto para la preview chica dentro del perfil (listsGrid)
+// como para la vista completa "/mis-listas" (listsViewGrid)
 // — ver renderListsView() más abajo. Guarda en state.listsRenderTarget a
 // cuál de las dos hay que volver a pintar después de crear/borrar una lista.
-async function renderProfileLists(username, editable, gridId, countId){
+async function renderProfileLists(username, editable, gridId){
   gridId = gridId || 'listsGrid';
-  countId = countId || 'listsCount';
-  state.listsRenderTarget = { gridId, countId };
+  state.listsRenderTarget = { gridId };
   const grid = document.getElementById(gridId);
-  const countEl = document.getElementById(countId);
   try{
     const { lists } = editable ? await apiGet('/lists/mine') : await apiGet('/users/'+encodeURIComponent(username)+'/lists');
     state.profileLists = lists;
     state.profileListsEditable = editable;
     state.profileListsUsername = username;
-    if(countEl) countEl.textContent = lists.length;
     if(!grid) return;
     if(lists.length===0 && !editable){
       grid.innerHTML = emptyState(ICONS.bookmark, t('empty_lists_other_t'), t('empty_lists_other_s'));
@@ -384,13 +381,12 @@ async function renderProfileLists(username, editable, gridId, countId){
 function renderListsView(){
   if(!state.user){
     const el = document.getElementById('listsViewGrid');
-    document.getElementById('listsViewCount').textContent = 0;
     el.innerHTML = emptyState(ICONS.lock, t('empty_login_t'), t('empty_login_s'));
     const btn=document.createElement('a'); btn.href='/cuenta'; btn.className='btn gold'; btn.style.marginTop='14px'; btn.textContent=t('login_btn');
     btn.onclick=spa(()=>goView('auth')); el.appendChild(btn);
     return;
   }
-  renderProfileLists(state.user.username, true, 'listsViewGrid', 'listsViewCount');
+  renderProfileLists(state.user.username, true, 'listsViewGrid');
 }
 /* ---------- notificaciones ---------- */
 // Vista "/notificaciones": te siguieron / le sirvió tu reseña a alguien.

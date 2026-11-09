@@ -83,10 +83,10 @@ function paintBrowseGrid(keepPage){
   if(state.browseGenres.size>0) games = games.filter(g=> (g.genres && g.genres.length ? g.genres : [g.genre]).some(x=>state.browseGenres.has(x)));
   grid.classList.toggle('list-mode', state.browseViewMode==='list');
   removeBrowseLoadMore();
-  if(games.length===0){ document.getElementById('browseCount').textContent = 0; grid.innerHTML = emptyState(ICONS.search, t('empty_browse_t'), t('empty_browse_s')); return; }
+  document.getElementById('browseCount').textContent = games.length; // todos los resultados (sin búsqueda ni filtros, el total del catálogo), no solo los que se ven antes de «Ver más»
+  if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_browse_t'), t('empty_browse_s')); return; }
   games = games.sort(BROWSE_SORTS[state.browseSortMode] || BROWSE_SORTS.rating_desc);
   const visible = games.slice(0, state.browseVisibleCount);
-  document.getElementById('browseCount').textContent = visible.length;
   grid.innerHTML='';
   visible.forEach(g=>{
     const st=gameStats(g.id);

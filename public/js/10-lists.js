@@ -21,7 +21,7 @@ function openCreateListModal(){
       await apiPost('/lists', { title: result.title.trim(), isPublic: result.isPublic });
       toast(t('toast_list_created'));
       const rt = state.listsRenderTarget || {};
-      renderProfileLists(state.user.username, true, rt.gridId, rt.countId);
+      renderProfileLists(state.user.username, true, rt.gridId);
     }catch(e){ toast(t('err_save_user')); }
   });
 }
@@ -144,7 +144,7 @@ function openListDetailModal(listId){
         card.querySelector('[data-remove]').onclick = async (e)=>{
           e.stopPropagation();
           await apiPost('/lists/'+list.id+'/items/toggle', { gameId:g.id });
-          await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId, (state.listsRenderTarget||{}).countId);
+          await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
           overlay.remove();
           openListDetailModal(listId);
         };
@@ -160,7 +160,7 @@ function openListDetailModal(listId){
     document.getElementById('listTogglePublic').onclick = async ()=>{
       const { list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic });
       overlay.remove();
-      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId, (state.listsRenderTarget||{}).countId);
+      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
       openListDetailModal(updated.id);
     };
     document.getElementById('listRenameBtn').onclick = async ()=>{
@@ -168,7 +168,7 @@ function openListDetailModal(listId){
       if(!title || !title.trim()) return;
       await apiPut('/lists/'+list.id, { title: title.trim() });
       overlay.remove();
-      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId, (state.listsRenderTarget||{}).countId);
+      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
       openListDetailModal(list.id);
     };
     document.getElementById('listDeleteBtn').onclick = async ()=>{
@@ -176,7 +176,7 @@ function openListDetailModal(listId){
       if(!ok) return;
       await apiDelete('/lists/'+list.id);
       overlay.remove();
-      renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId, (state.listsRenderTarget||{}).countId);
+      renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
     };
   }
   document.addEventListener('keydown', onKey);
@@ -462,8 +462,6 @@ async function openSteamImportModal(){
     catch(e){ toast(t('err_save_user')); addBtn.disabled = false; return; }
     toast(t('toast_steam_imported'));
     close();
-    const countEl = document.getElementById('wishlistCount');
-    if(countEl) countEl.textContent = state.user.wishlist.length;
     renderWishlistGrid();
   };
   refresh();
@@ -471,9 +469,7 @@ async function openSteamImportModal(){
 }
 // Modal "Agregar juego" de la biblioteca: buscador + grilla del catálogo
 // entero, cada card se puede tocar para sumar/sacar de la biblioteca sin
-// cerrar el modal (así se pueden agregar varios juegos seguidos). El
-// contador "Mi biblioteca N" de la página de atrás recién se actualiza al
-// cerrar el modal (en cleanup()), no en cada click, a propósito.
+// cerrar el modal (así se pueden agregar varios juegos seguidos).
 function openAddToWishlistModal(){
   if(!state.user) return;
   const overlay = document.createElement('div');
@@ -515,8 +511,6 @@ function openAddToWishlistModal(){
   function cleanup(){
     overlay.remove();
     document.removeEventListener('keydown', onKey);
-    const countEl = document.getElementById('wishlistCount');
-    if(countEl) countEl.textContent = (state.user.wishlist||[]).length;
   }
   function onKey(e){ if(e.key==='Escape') cleanup(); }
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
