@@ -535,7 +535,7 @@
           </div>
           <div class="field">
             <label for="r-username" data-i18n="profile_username_label">Nombre de usuario</label>
-            <input type="text" id="r-username" name="username" spellcheck="false" autocapitalize="none" maxlength="20" autocomplete="username" placeholder="tu_nombre">
+            <input type="text" id="r-username" name="profile-name" spellcheck="false" autocapitalize="none" maxlength="20" autocomplete="off" placeholder="tu_nombre">
           </div>
           <div class="field">
             <label for="r-bio" data-i18n="profile_bio_label">Descripción</label>
@@ -647,6 +647,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="/js/no-autofill.js"></script>
   <script src="/js/splash.js"></script>
   <script src="/js/01-icons-and-catalog-meta.js"></script>
   <script src="/js/02-i18n.js"></script>
