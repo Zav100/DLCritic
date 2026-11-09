@@ -94,6 +94,11 @@ function confirmTextPrompt(label, initial, confirmLabel){
     document.addEventListener('keydown', onKey);
   });
 }
+// Aviso cuando falla guardar algo de una lista: si fue el límite de intentos lo dice (con su espera), y si no, un error propio de listas.
+function toastListError(e){
+  const tooMany = e && e.body && e.body.error==='too_many_requests';
+  toast(t(tooMany ? 'err_too_many' : 'err_save_list'));
+}
 // Pone al día, en su lugar, las tarjetas de esa lista que hay detrás de la ventana (título, ícono de visibilidad y cantidad de juegos). Así, al quitar un
 // juego, hacerla pública/privada o renombrarla no hace falta repintar la grilla ni volver a abrir la ventana, que era lo que hacía parpadear la pantalla.
 function syncListCard(list){
@@ -161,7 +166,7 @@ function openListDetailModal(listId){
           if(card.dataset.busy) return; // un toque a la vez mientras el servidor responde
           card.dataset.busy = '1';
           try{ await apiPost('/lists/'+list.id+'/items/toggle', { gameId:g.id }); }
-          catch(err){ delete card.dataset.busy; toast(t('err_save_user')); return; }
+          catch(err){ delete card.dataset.busy; toastListError(err); return; }
           list.gameIds = list.gameIds.filter(id=>id!==g.id); // list es el mismo objeto de state.profileLists: queda al día
           syncListCard(list);
           card.animate([{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.94)' }], { duration:160, easing:'ease-out', fill:'forwards' });
@@ -182,7 +187,7 @@ function openListDetailModal(listId){
     document.getElementById('listTogglePublic').onclick = async ()=>{
       let updated;
       try{ ({ list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic })); }
-      catch(err){ toast(t('err_save_user')); return; }
+      catch(err){ toastListError(err); return; }
       list.isPublic = updated.isPublic;
       document.getElementById('listTogglePublic').innerHTML = visibilityHTML();
       syncListCard(list);
@@ -192,7 +197,7 @@ function openListDetailModal(listId){
       if(!title || !title.trim()) return;
       let updated;
       try{ ({ list: updated } = await apiPut('/lists/'+list.id, { title: title.trim() })); }
-      catch(err){ toast(t('err_save_user')); return; }
+      catch(err){ toastListError(err); return; }
       list.title = updated.title;
       overlay.querySelector('h3').textContent = list.title;
       syncListCard(list);
@@ -252,7 +257,7 @@ function openAddGamesToListModal(listId){
           if(inList.has(g.id)) inList.delete(g.id); else inList.add(g.id);
           card.classList.toggle('featured', inList.has(g.id));
           card.querySelector('.gc-sub').textContent = subText(g.id);
-        }catch(e){ toast(t('err_save_user')); }
+        }catch(e){ toastListError(e); }
         delete card.dataset.busy;
       };
       grid.appendChild(card);

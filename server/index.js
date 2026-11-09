@@ -52,7 +52,10 @@ app.use((req, res, next) => {
 const authLimiter = rateLimit({ name: 'auth', windowMs: 10 * 60 * 1000, max: 8 });
 // Los endpoints que comparan la contraseña actual (cambiar contraseña o correo) tienen su propio tope, más bajo: a quien tuviera una sesión robada no le sirve para adivinar la contraseña.
 const passwordCheckLimiter = rateLimit({ name: 'pwcheck', windowMs: 15 * 60 * 1000, max: 5, keyFn: req => 'u:' + req.user.id });
-const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 40, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
+const writeLimiter = rateLimit({ name: 'write', windowMs: 10 * 60 * 1000, max: 120, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
+// Agregar y quitar juegos de una lista se hace de a uno por toque (el selector de «Agregar juegos» deja agregar muchos seguidos), así que tiene un
+// límite propio y holgado: con el general (que comparte con reseñas, notas, etc.) se agotaba a mitad de armar una lista: antes de subirlo de 40 a 120, 16 juegos y unas quitas ya lo dejaban sin margen.
+const listItemLimiter = rateLimit({ name: 'listitems', windowMs: 10 * 60 * 1000, max: 300, keyFn: req => (req.user ? 'u:' + req.user.id : req.ip) });
 
 async function publicUser(u) {
   if (!u) return null;
@@ -903,7 +906,7 @@ app.delete('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/lists/:id/items/toggle', requireAuth, writeLimiter, async (req, res) => {
+app.post('/api/lists/:id/items/toggle', requireAuth, listItemLimiter, async (req, res) => {
   const list = await findListById.get(req.params.id);
   if (!list) return res.status(404).json({ error: 'not_found' });
   if (list.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
