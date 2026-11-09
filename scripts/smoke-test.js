@@ -369,6 +369,11 @@ const today = new Date().toISOString().slice(0, 10);
     assert.deepEqual(shape(await vote(b, -1)), [[], []]);
     assert.deepEqual(shape(await vote(b, 7)), [['smoketest_b'], []]);
     assert.deepEqual(shape(await vote(b, 1)), [[], []]);
+    // dar y quitar «Me gusta» una y otra vez no llena las notificaciones: sigue habiendo una sola (también tras leerla)
+    ok(await a('POST', '/api/notifications/read'));
+    for (let i = 0; i < 3; i++) { await vote(b, 1); await vote(b, 1); }
+    assert.equal(await nHelpful(), 1, 'una sola notificación por persona y reseña');
+    assert.ok((await a('GET', '/api/notifications')).body.notifications.every(n => n.read === true), 'la repetición no la deja como nueva');
     ok(await a('POST', '/api/notifications/read'));
     assert.ok((await a('GET', '/api/notifications')).body.notifications.every(n => n.read === true));
   });
@@ -562,6 +567,10 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await a('POST', '/api/users/no_existe_nadie/follow'), 404);
     assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);
     assert.equal((await b('POST', '/api/users/smoketest_a/follow')).body.isFollowing, false);
+    // seguir, dejar de seguir y volver a seguir tampoco repite la notificación
+    ok(await a('POST', '/api/users/smoketest_b/follow')); ok(await a('POST', '/api/users/smoketest_b/follow')); ok(await a('POST', '/api/users/smoketest_b/follow'));
+    assert.equal((await b('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'follow' && n.actorUsername === 'smoketest_a').length, 1);
+    assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);
   });
 
   console.log('Confirmar el correo, contraseñas comunes e inicio de sesión con Google');

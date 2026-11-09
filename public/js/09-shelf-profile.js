@@ -265,6 +265,7 @@ function renderProfileBody(el, username, profile, editable){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
   }
   el.querySelectorAll('[data-follow-list]').forEach(b=>{ b.onclick = ()=> openFollowListModal(username, b.dataset.followList, editable); });
+  makeZoomable(el.querySelector('.profile-avatar .avatar-img'), profile.avatarUrl, username); // la foto de perfil se abre en grande (sin foto, la letra no hace nada)
   if(editable) refreshOwnFollowCounts();
   const bioEl = el.querySelector('.profile-bio');
   if(bioEl) wireProfileBio(bioEl, profile.bio, username);
@@ -491,11 +492,12 @@ async function renderNotificationsView(){
     el.innerHTML = '';
     list.forEach(n=>{
       const game = n.gameId ? findGame(n.gameId) : null;
-      const actor = esc(n.actorUsername);
+      // El nombre de quien actúa es un enlace a su perfil (por encima del enlace que cubre toda la tarjeta, que lleva al juego).
+      const actor = `<a class="notif-actor" href="${profileHref(n.actorUsername)}">${esc(n.actorUsername)}</a>`;
       const gameTitle = game ? esc(game.title) : '';
       const text = n.type==='follow'
-        ? (state.lang==='en' ? `<b>${actor}</b> started following you` : `<b>${actor}</b> empezó a seguirte`)
-        : (state.lang==='en' ? `<b>${actor}</b> liked your review of ${gameTitle}` : `A <b>${actor}</b> le gustó tu reseña de ${gameTitle}`);
+        ? (state.lang==='en' ? `${actor} started following you` : `${actor} empezó a seguirte`)
+        : (state.lang==='en' ? `${actor} liked your review of ${gameTitle}` : `A ${actor} le gustó tu reseña de ${gameTitle}`);
       const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
       const row = document.createElement('div');
       row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
@@ -507,6 +509,7 @@ async function renderNotificationsView(){
           <div class="notif-date">${fmtDate(n.createdAt)}</div>
         </div>
       `;
+      row.querySelector('.notif-actor').onclick = spa(e=>{ e.stopPropagation(); state.profileUsername = n.actorUsername; goView('profile'); });
       row.onclick = spa(()=>{
         if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }
         else if(game){ state.currentGame = game.id; state.gameOrigin='feed'; goView('game'); }

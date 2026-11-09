@@ -1264,6 +1264,10 @@ main {
 }
 
 .vote-btn {
+  /* altura fija: sin ella el contador (otra tipografía) agranda el botón 2 px al primer voto y las tarjetas de abajo se corren */
+  box-sizing: border-box;
+  height: 30px;
+  line-height: 1;
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
   font-size: 11.5px;
@@ -1308,6 +1312,7 @@ main {
 }
 
 .vote-count {
+  line-height: 1;
   font-family: 'Space Mono', monospace;
   font-size: 10.5px;
   opacity: 0.85;
@@ -5278,9 +5283,19 @@ a.rc-author:hover {
 }
 
 .has-card-link button,
-.has-card-link .btn {
+.has-card-link .btn,
+.has-card-link .notif-actor {
   position: relative;
   z-index: 2;
+}
+
+.notif-actor {
+  font-weight: 700;
+  color: inherit;
+}
+
+.notif-actor:hover {
+  text-decoration: underline;
 }
 
 /* =====================================================================

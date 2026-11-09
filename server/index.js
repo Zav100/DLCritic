@@ -982,7 +982,15 @@ app.get('/api/user-search', lookupLimiter, async (req, res) => {
 
 /* ---------------- notifications ---------------- */
 
-const insertNotification = db.prepare('INSERT INTO notifications (id, user_id, type, actor_user_id, game_id, read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)');
+// Una sola notificación por persona que actúa, tipo y juego (aunque la anterior ya esté leída): sin esto, quien da y quita «Me gusta» (o sigue y deja de seguir)
+// una y otra vez le llenaba la bandeja a la otra persona. Es una sola sentencia (INSERT ... WHERE NOT EXISTS), así que dos clics seguidos tampoco la duplican.
+// Se llama igual que antes: insertNotification.run(id, para quién, tipo, quién actúa, juego o null, fecha).
+const insertNotificationRow = db.prepare(`INSERT INTO notifications (id, user_id, type, actor_user_id, game_id, read, created_at)
+  SELECT ?::text, ?::int, ?::text, ?::int, ?::text, 0, ?::text
+  WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE user_id = ?::int AND type = ?::text AND actor_user_id = ?::int AND game_id IS NOT DISTINCT FROM ?::text)`);
+const insertNotification = {
+  run: (id, userId, type, actorId, gameId, createdAt) => insertNotificationRow.run(id, userId, type, actorId, gameId, createdAt, userId, type, actorId, gameId),
+};
 const listNotifications = db.prepare(`
   SELECT n.id, n.type, n.game_id, n.read, n.created_at, u.username AS actor_username
   FROM notifications n
