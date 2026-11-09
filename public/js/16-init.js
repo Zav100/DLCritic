@@ -35,6 +35,21 @@ document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('langToggle').addEventListener('click', toggleLang);
 initUserSearch();
 
+// Sin conexión: mientras no hay internet un aviso arriba lo dice (lo que se ve puede no estar al día) y, al volver, dice «Conexión recuperada» un momento y se traen los
+// datos de nuevo. Si se recarga o se abre el sitio sin internet, el service worker (public/sw.js) muestra la pantalla public/offline.html.
+function setupConnectionNotice(){
+  const box = document.getElementById('offlineNotice');
+  let timer = null;
+  const show = (key, kind)=>{ clearTimeout(timer); box.textContent = t(key); box.className = 'offline-notice ' + kind; box.hidden = false; };
+  const goOffline = ()=> show('offline_notice', 'is-offline');
+  const goOnline = ()=>{ show('online_back', 'is-online'); timer = setTimeout(()=>{ box.hidden = true; }, 2500); refreshData(); };
+  window.addEventListener('offline', goOffline);
+  window.addEventListener('online', goOnline);
+  if(!navigator.onLine) goOffline();
+}
+setupConnectionNotice();
+if('serviceWorker' in navigator) window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{ /* sin service worker no hay pantalla sin conexión propia: no pasa nada más */ }); });
+
 // Secuencia de arranque, en orden: tema y idioma primero (para que no haya parpadeo visual), esqueletos de carga, después los datos reales, y recién al final se decide y pinta la vista.
 (async function init(){
   setupTipsRails();

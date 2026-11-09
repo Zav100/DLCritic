@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Sin conexión — DLCritic</title>
+  <!-- La pantalla que sirve el service worker (public/sw.js) cuando no hay internet. Se guarda en el dispositivo la primera vez que se visita el sitio, así que no
+       puede depender de nada más: el CSS, el logo y el script van aquí adentro (sin conexión no se podría cargar nada de afuera). -->
+  <style>
+    :root { --bg: #F2F2F7; --card: #FFFFFF; --ink: #1C1B24; --soft: #7B7A88; --accent: #7B61FF; --mark: #8B7FE8; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #12111F; --card: #E9E6F7; --ink: #211E3D; --soft: #615C8E; --accent: #7B61FF; --mark: #8B7FE8; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
+    main { width: 100%; max-width: 420px; padding: 36px 28px 30px; text-align: center; background: var(--card); border-radius: 22px; box-shadow: 0 1px 2px rgba(28, 27, 36, .06), 0 14px 32px rgba(28, 27, 36, .1); }
+    svg { width: 76px; height: 76px; color: var(--mark); }
+    h1 { margin: 18px 0 8px; font-size: 24px; line-height: 1.2; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: .3px; }
+    p { margin: 0 0 22px; font-size: 15px; line-height: 1.55; color: var(--soft); }
+    button { padding: 12px 26px; font: inherit; font-size: 15px; font-weight: 700; color: #fff; background: var(--accent); border: 0; border-radius: 22px; cursor: pointer; }
+    button:hover { filter: brightness(1.08); }
+    button:focus-visible { outline: 3px solid var(--mark); outline-offset: 3px; }
+    .hint { margin: 18px 0 0; font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <main>
+    <!-- el mismo logo del header del sitio -->
+    <svg viewBox="6 14 288 288" role="img" aria-label="DLCritic">
+      <rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor" />
+      <path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linejoin="round" />
+      <rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D" />
+      <rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D" />
+      <circle cx="200" cy="106" r="21" fill="#211E3D" />
+      <circle cx="242" cy="148" r="21" fill="#F6F3FF" />
+    </svg>
+    <h1>Sin conexión</h1>
+    <p>No pudimos conectar con DLCritic. Revisa tu conexión a internet e inténtalo de nuevo.</p>
+    <button type="button" id="retry">Reintentar</button>
+    <p class="hint" id="state" role="status">Cuando vuelva la conexión, esta página se recarga sola.</p>
+  </main>
+  <script>
+    // Reintentar: si ya hay conexión se recarga; si no, lo dice (recargar sin conexión volvería a mostrar esta misma pantalla sin que se note).
+    var state = document.getElementById('state');
+    function reload() { location.reload(); }
+    document.getElementById('retry').addEventListener('click', function () {
+      state.textContent = 'Comprobando la conexión…';
+      fetch('/', { cache: 'no-store', credentials: 'same-origin' }).then(reload, function () { state.textContent = 'Seguimos sin conexión. Inténtalo de nuevo en un momento.'; });
+    });
+    window.addEventListener('online', reload);
+  </script>
+</body>
+</html>

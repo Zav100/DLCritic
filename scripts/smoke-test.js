@@ -739,6 +739,11 @@ const today = new Date().toISOString().slice(0, 10);
       assert.ok(refs.length >= 3, route + ' carga scripts y estilos');
       for (const ref of refs) { assert.match(ref, /\?v=[0-9a-f]{10}$/, route + ' ' + ref); ok(await pub('GET', ref), 200); }
     }
+    // la pantalla sin conexión: el service worker y la página que sirve cuando no hay internet
+    const sw = await pub('GET', '/sw.js'); ok(sw); assert.match(sw.headers.get('content-type'), /javascript/); assert.ok(sw.text.includes("'/offline.html'"), 'el service worker sirve /offline.html');
+    const off = await pub('GET', '/offline.html'); ok(off);
+    assert.ok(off.text.includes('Sin conexión') && off.text.includes('location.reload'), 'la página sin conexión trae su texto y el reintento');
+    assert.ok(!/<link[^>]+href=/.test(off.text) && !/<script[^>]+src=/.test(off.text) && !/<img/.test(off.text), 'la página sin conexión no depende de nada de afuera (sin conexión no se podría cargar)');
   });
 
   console.log('Dominios y límite de intentos');
