@@ -118,6 +118,8 @@ function titleForView(v){
 }
 function applyView(v){
   state.view=v;
+  const boot = document.getElementById('bootView'); // el estilo que dejaba a la vista la sección de la dirección mientras cargaban los datos (ver el <head> de index.html)
+  if(boot) boot.remove();
   if(v!=='settings') state.settingsTab = null; // la pestaña abierta de Ajustes (12-settings.js) solo se recuerda mientras se está ahí
   document.querySelectorAll('.viewsec').forEach(s=>s.hidden=true);
   const target = v;

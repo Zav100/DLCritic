@@ -42,6 +42,25 @@
       }
     } catch (e) { /* sin sessionStorage o matchMedia: sin pantalla de bienvenida */ }
   </script>
+  <script>
+    // Al recargar en cualquier dirección que no sea el inicio, el HTML trae el inicio a la vista hasta que llegan los datos y la app decide qué vista
+    // mostrar (init() en public/js/16-init.js): se veía el inicio un instante y luego saltaba adonde estabas. Aquí, antes del primer dibujo, se esconde
+    // el inicio y se deja a la vista la sección de esta dirección (todavía sin contenido); applyView() (05-navigation.js) quita este estilo al decidir
+    // la vista de verdad. Si algo falla y eso no llega a pasar, a los 8 s se quita solo. Las direcciones son las de routeFromLocation().
+    (function () {
+      var p = location.pathname, id = {
+        '/explorar': 'browse', '/personajes': 'characters', '/mi-estanteria': 'profile', '/mis-listas': 'lists', '/notificaciones': 'notifications',
+        '/noticias': 'news', '/reto-del-dia': 'daily', '/acerca-de': 'about', '/cuenta': 'auth', '/ajustes': 'settings'
+      }[p];
+      if (!id) id = /^\/juego\/[^/]+$/.test(p) ? 'game' : /^\/personaje\/[^/]+$/.test(p) ? 'character' : /^\/usuario\/[^/]+$/.test(p) ? 'profile' : null;
+      if (!id) return;
+      var s = document.createElement('style');
+      s.id = 'bootView';
+      s.textContent = '#view-feed{display:none}#view-' + id + '{display:block!important}'; // !important: las secciones llevan hidden, y [hidden] en style.css lo usa
+      document.head.appendChild(s);
+      setTimeout(function () { s.remove(); }, 8000);
+    })();
+  </script>
 </head>
 
 <body>
