@@ -6164,3 +6164,42 @@ a.btn-ghost {
   margin: 6px auto 0;
   text-align: center;
 }
+
+/* Descripción del perfil: como máximo 3 renglones. wireProfileBio() (09-shelf-profile.js) corta el texto y deja "… Ver más" al final del tercero;
+   el max-height evita que se vea larga un instante, antes de que el JS la mida, y sostiene el límite aunque el JS no corra. */
+.profile-bio {
+  max-height: calc(1.5em * 3);
+  overflow: hidden;
+}
+
+.profile-bio .bio-more {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--gold-dim);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-bio .bio-more:hover {
+  text-decoration: underline;
+}
+
+.confirm-box.bio-modal {
+  max-width: 440px;
+}
+
+.bio-modal-text {
+  margin: 0;
+  max-height: min(55vh, 360px);
+  overflow-y: auto;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}

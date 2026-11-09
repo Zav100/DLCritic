@@ -262,6 +262,8 @@ function renderProfileBody(el, username, profile, editable){
   }
   el.querySelectorAll('[data-follow-list]').forEach(b=>{ b.onclick = ()=> openFollowListModal(username, b.dataset.followList, editable); });
   if(editable) refreshOwnFollowCounts();
+  const bioEl = el.querySelector('.profile-bio');
+  if(bioEl) wireProfileBio(bioEl, profile.bio, username);
   const publicGrid = document.getElementById('publicLibraryGrid');
   if(publicGrid) profile.library.map(id=>findGame(id)).filter(Boolean).forEach(g=> publicGrid.appendChild(libraryCard(g, profile.libraryHours && profile.libraryHours[g.id])));
 
@@ -330,6 +332,54 @@ async function openFollowListModal(username, kind, isSelf){
       + (total>users.length? `<p class="hint" style="margin:10px 0 0;">${esc(t('follow_list_more').replace('{n}', users.length).replace('{total}', total))}</p>` : '');
     body.querySelectorAll('.follow-row').forEach(a=>{ a.onclick = spa(()=>{ close(); openProfileOf(a.dataset.user); }); });
   }catch(e){ body.innerHTML = `<p class="error">${esc(t('follow_list_error'))}</p>`; }
+}
+/* ---------- descripción del perfil: 3 renglones y "… Ver más" ---------- */
+// La descripción (hasta 500 caracteres) ocupa 3 renglones como máximo. Si el texto es más largo se corta y el tercer renglón termina en
+// "… Ver más"; al tocarlo se abre la descripción completa en una tarjeta. Se mide con el texto ya pintado (se busca por bisección el trozo
+// más largo que cabe junto con el "… Ver más") y se vuelve a calcular si cambia el ancho (girar el móvil, redimensionar) o carga la fuente.
+function wireProfileBio(p, text, username){
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'bio-more';
+  more.textContent = t('load_more_btn');
+  more.onclick = ()=> openBioModal(username, text);
+  const paint = n => { p.textContent = text.slice(0, n).trimEnd(); if(n < text.length) p.append('… ', more); };
+  const overflows = ()=> p.scrollHeight > p.clientHeight + 1; // el CSS le pone max-height de 3 renglones
+  function fit(){
+    paint(text.length);
+    if(!overflows()) return;
+    let lo = 0, hi = text.length; // lo cabe (con el "… Ver más"), hi no cabe
+    while(hi - lo > 1){ const mid = (lo + hi) >> 1; paint(mid); if(overflows()) hi = mid; else lo = mid; }
+    const space = text.lastIndexOf(' ', lo); // si hay un espacio cerca, se corta ahí y no a mitad de palabra
+    paint(space > lo - 15 && space > 0 ? space : lo);
+  }
+  fit();
+  let width = p.clientWidth;
+  const ro = new ResizeObserver(()=>{
+    if(!p.isConnected){ ro.disconnect(); return; }
+    if(p.clientWidth !== width){ width = p.clientWidth; fit(); }
+  });
+  ro.observe(p);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ if(p.isConnected) fit(); });
+}
+// La descripción completa, en una tarjeta al centro de la pantalla.
+function openBioModal(username, text){
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box bio-modal" role="dialog" aria-modal="true" aria-labelledby="bioModalTitle">
+      <h3 id="bioModalTitle">${esc(t('profile_bio_label'))}</h3>
+      <p class="hint follow-list-owner">${esc(username)}</p>
+      <p class="bio-modal-text">${esc(text)}</p>
+      <div class="confirm-actions" style="margin-top:16px;"><button type="button" class="btn-ghost" data-act="close">${esc(t('close_btn'))}</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(e){ if(e.key==='Escape') close(); }
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+  overlay.querySelector('[data-act="close"]').onclick = close;
+  document.addEventListener('keydown', onKey);
+  overlay.querySelector('[data-act="close"]').focus();
 }
 /* ---------- preview de listas dentro del perfil (el CRUD completo está en 10-lists.js) ---------- */
 // Pinta la grilla de listas de un usuario dentro de un contenedor dado.
