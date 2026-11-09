@@ -564,7 +564,7 @@ function openAddToWishlistModal(){
             <button type="button" class="search-clear" data-clears="wishlistPickSearch" hidden>✕</button>
           </div>
         </div>
-        ${state.user.steam? `<button type="button" class="chip pick-steam-btn" id="pickSteamBtn">${esc(t('steam_import_btn'))}</button>` : ''}
+        ${state.user.steam? `<button type="button" class="store-link pick-steam-btn" id="pickSteamBtn" style="--pcolor:${PLATFORM_META.steam.color}"><span class="plat-chip-icon" aria-hidden="true">${PLATFORM_META.steam.mono}</span><span>${esc(t('steam_import_btn'))}</span>${ICONS.download}</button>` : ''}
       </div>
       <div class="picker-grid" id="wishlistPickGrid"></div>
       <div class="confirm-actions" style="margin-top:16px;">

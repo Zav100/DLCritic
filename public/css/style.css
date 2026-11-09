@@ -6553,12 +6553,43 @@ a.btn-ghost {
   margin: 0;
 }
 
+/* «Importar desde Steam»: la píldora de marca de siempre (.store-link, con el color de Steam), a la altura del buscador, con su insignia «ST» y una flecha de descarga. */
 .pick-steam-btn {
   flex-shrink: 0;
+  gap: 9px;
   height: 40px;
-  padding: 0 16px;
+  padding: 0 14px 0 8px;
   font-size: 12px;
   white-space: nowrap;
+  box-shadow: 0 1px 2px var(--shadow-soft);
+}
+
+.pick-steam-btn .plat-chip-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 9.5px;
+}
+
+.pick-steam-btn>svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: .85;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+.pick-steam-btn:hover>svg {
+  opacity: 1;
+  transform: translateY(2px);
+}
+
+.pick-steam-btn:active {
+  transform: scale(0.97);
+}
+
+.pick-steam-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 
 .pick-steam-head {
@@ -6595,5 +6626,6 @@ a.btn-ghost {
 
   .pick-steam-btn {
     width: 100%;
+    justify-content: center;
   }
 }
