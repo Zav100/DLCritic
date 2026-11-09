@@ -212,7 +212,8 @@ function renderUserBadge(){
       </button>`;
     document.getElementById('userMenuTrigger').onclick = (e)=>{ e.stopPropagation(); toggleUserMenu(e.currentTarget); };
   } else {
-    el.innerHTML = `<a class="btn small" id="loginBtn" href="/cuenta">${t('login_btn')}</a>`;
+    // En celulares angostos (≤420 px) el texto se cambia por un círculo con ícono (ver «Header en celulares» en style.css); el nombre accesible no cambia.
+    el.innerHTML = `<a class="btn small" id="loginBtn" href="/cuenta" aria-label="${esc(t('login_btn'))}" title="${esc(t('login_btn'))}"><span class="login-label">${t('login_btn')}</span><span class="login-ico" aria-hidden="true">${ICONS.user}</span></a>`;
     document.getElementById('loginBtn').onclick = spa(()=> goView('auth'));
   }
 }

@@ -6955,3 +6955,60 @@ a.btn-ghost {
   color: inherit;
   font-weight: 700;
 }
+
+/* Header en celulares: siempre una fila. Antes, sin sesión, «Iniciar sesión» no cabía en ≤395 px y los íconos bajaban a una segunda fila, muy pegados.
+   Con ≤420 px el botón de entrar pasa a ser un círculo con ícono (como buscar y el tema) y en ≤340 px se oculta la palabra del logo. */
+.login-ico {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .headbar {
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .headright {
+    gap: 12px;
+  }
+
+  .logo {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .logo {
+    font-size: clamp(18px, 5.2vw, 22px);
+  }
+
+  #loginBtn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #loginBtn .login-label {
+    display: none;
+  }
+
+  #loginBtn .login-ico {
+    display: inline-flex;
+  }
+
+  #loginBtn .login-ico svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 340px) {
+  .logo-word {
+    display: none;
+  }
+}
