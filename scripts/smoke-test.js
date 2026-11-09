@@ -153,11 +153,15 @@ const today = new Date().toISOString().slice(0, 10);
     ok(blocked, 429);
     assert.ok(blocked.headers.get('retry-after'));
   });
-  await step('contraseña: libre, pero con mayúscula, número y carácter especial; una kilométrica no se hashea', async () => {
+  await step('contraseña: libre (solo se exige el largo, sin emojis ni claves comunes); una kilométrica no se hashea', async () => {
     // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y aquí se prueban más de 8
     const reg = (email, password) => client()('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
-    for (const [n, mala] of [['sin mayúscula', 'abcdef1!'], ['sin número', 'Abcdefg!'], ['sin carácter especial', 'Abcdefg1'], ['corta', 'Ab1!'], ['solo letras y números', 'Password123']]) {
+    for (const [n, mala] of [['corta', 'Ab1!'], ['siete caracteres', 'Abcde1!'], ['vacía', '']]) {
       assert.equal((await reg(`p_${n.length}@example.com`, mala)).body.error, 'weak_password', n);
+    }
+    // sin mayúscula, número ni símbolo vale (la barra «Nivel de seguridad» del sitio lo recomienda, pero no lo exige); las comunes y un solo carácter repetido, no
+    for (const [n, comun] of [['clásica', 'Password123'], ['numérica', '12345678'], ['repetida', 'aaaaaaaa'], ['repetida con símbolos', '!!!!!!!!!!']]) {
+      assert.equal((await reg(`p_${n.length}@example.com`, comun)).body.error, 'common_password', n);
     }
     // sin emojis (ni tonos de piel, banderas ni el unir-emojis)
     for (const emoji of ['Abcdef1!😀', 'Abcdef1!❤️', 'Abcdef1!👍🏽', 'Abcdef1!🇦🇷', 'Abcdef1!\u200D']) {
@@ -165,6 +169,9 @@ const today = new Date().toISOString().slice(0, 10);
     }
     // todo lo demás vale (el resultado se frena en el 409 de usuario repetido: pasó la validación)
     assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_sim@example.com', password: 'Abcdef1©✓€→', username: 'smoketest_a' })).body.error, 'username_taken');
+    for (const [n, ok1] of [['solo minúsculas', 'zorrogris'], ['solo mayúsculas', 'ZORROGRIS'], ['solo números', '8472916350'], ['con espacios', 'zorro gris azul']]) {
+      assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: `p_ok${n.length}@example.com`, password: ok1, username: 'smoketest_a' })).body.error, 'username_taken', n);
+    }
     const libre = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_libre@example.com', password: 'password123!A', username: 'smoketest_a' });
     assert.equal(libre.body.error, 'username_taken');
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
@@ -551,7 +558,7 @@ const today = new Date().toISOString().slice(0, 10);
     const mail = require('../server/mail');
     const linkOf = m => m.text.match(/\/verificar\?token=([0-9a-f]{64})/)[1];
     const c = client();
-    // contraseñas comunes: cumplen la regla de mayúscula + número + símbolo, pero se rechazan
+    // contraseñas comunes: se rechazan aunque tengan mayúscula, número y símbolo
     for (const pw of ['Password1!', 'Qwerty123!', 'Contraseña1!', 'Dlcritic123!']) assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_pw@example.com', password: pw, username: 'smoketest_pw' })).body.error, 'common_password', pw);
     const antes = mail.outbox.length;
     const reg = await c('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_v@example.com', password: pass, username: 'smoketest_v', lang: 'en' }); ok(reg);

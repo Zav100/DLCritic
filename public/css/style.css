@@ -6799,3 +6799,49 @@ a.btn-ghost {
 .email-status.ok {
   color: var(--teal-dim);
 }
+
+/* Barra «Nivel de seguridad» de las contraseñas (public/js/password-strength.js): solo recomienda, no bloquea. */
+.pw-meter {
+  margin-top: 8px;
+}
+
+.pw-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.pw-bars i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink-soft) 28%, transparent);
+  transition: background .2s ease;
+}
+
+.pw-meter[data-level="low"] .pw-bars i:nth-child(1) {
+  background: var(--red);
+}
+
+.pw-meter[data-level="mid"] .pw-bars i:nth-child(-n+2) {
+  background: #E2A02A;
+}
+
+.pw-meter[data-level="high"] .pw-bars i {
+  background: var(--success);
+}
+
+.pw-text,
+.pw-tip {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.pw-tip {
+  margin-top: 2px;
+}
+
+.pw-text b {
+  color: inherit;
+  font-weight: 700;
+}

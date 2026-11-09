@@ -206,6 +206,7 @@ function renderSettingsView(){
           <div class="field">
             <label for="st-new-password">${esc(t('settings_new_password_label'))}</label>
             <input type="password" id="st-new-password" autocomplete="new-password">
+            <div class="pw-meter" id="st-pwMeter" hidden></div>
             <p class="hint">${esc(t('auth_password_hint'))}</p>
           </div>
           <div class="field">
@@ -321,6 +322,7 @@ function renderSettingsView(){
 
   // Cambiar contraseña: valida fuerza + coincidencia en el cliente, pide la contraseña actual al servidor (que la compara contra el PIN si es una cuenta vieja), y si sale bien limpia los 3 campos (si falla, los deja para que el usuario pueda corregir sin volver a tipear todo).
   const stPasswordSave = document.getElementById('stPasswordSave');
+  if(stPasswordSave) bindPasswordMeter(document.getElementById('st-new-password'), document.getElementById('st-pwMeter'), t);
   if(stPasswordSave) stPasswordSave.onclick = async ()=>{
     const errEl = document.getElementById('stPasswordError');
     errEl.hidden = true;
@@ -335,6 +337,7 @@ function renderSettingsView(){
       toast(t('toast_password_changed'));
       document.getElementById('st-current-password').value='';
       document.getElementById('st-new-password').value='';
+      document.getElementById('st-new-password').oninput();
       document.getElementById('st-new-password2').value='';
     }catch(e){
       const code = e.body && e.body.error;

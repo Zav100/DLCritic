@@ -97,18 +97,17 @@ function isValidEmail(val) {
   return typeof val === 'string' && val.length <= 254 && EMAIL_RE.test(val);
 }
 // Las cuentas nuevas y los cambios de contraseña tienen que cumplir esto; quienes quedaron de la época del PIN de 4 dígitos
-// no están obligados a cambiarlo para seguir entrando. Fuera de estas reglas la contraseña es libre: de 8 a 200 caracteres,
-// con al menos una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio).
-// La misma regla está en isStrongPasswordClient (11-auth.js), para dar el error al instante.
+// no están obligados a cambiarlo para seguir entrando. Lo único que se exige es el largo (de 8 a 200 caracteres), que no tenga emojis
+// y que no sea una de las comunes. Mayúsculas, números y símbolos se recomiendan con la barra «Nivel de seguridad» (public/js/password-strength.js), pero no se obligan.
+// El largo también se valida en isStrongPasswordClient (11-auth.js), para dar el error al instante.
 function isStrongPassword(val) {
-  return typeof val === 'string' && val.length >= 8 && val.length <= 200
-    && /\p{Lu}/u.test(val) && /[0-9]/.test(val) && /[^\p{L}\p{N}\s]/u.test(val);
+  return typeof val === 'string' && val.length >= 8 && val.length <= 200;
 }
 // La contraseña no puede tener emojis: cambian según el teclado y el sistema, y es fácil quedarse sin poder escribirla en otro dispositivo.
 // Cuenta cualquier carácter con aspecto de emoji, los tonos de piel, las banderas, el unir-emojis (ZWJ) y el selector de emoji. © ® ™ sí valen.
 const EMOJI_RE = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
-// Las contraseñas más comunes pasan la regla de mayúscula + número + símbolo («Password1!», «Qwerty123!»), pero son de las primeras que se prueban en cualquier ataque.
-// Se comparan sin mayúsculas, tildes ni símbolos y también sin los números del final.
+// Las contraseñas más comunes («Password1!», «Qwerty123!», «12345678») son de las primeras que se prueban en cualquier ataque.
+// Se comparan sin mayúsculas, tildes ni símbolos y también sin los números del final. Un solo carácter repetido («aaaaaaaa») tampoco vale.
 const COMMON_PASSWORDS = new Set((
   'password passw0rd contrasena clave admin administrador qwerty qwertyuiop asdfgh asdfghjkl zxcvbnm abc123 abcdefg letmein welcome bienvenido iloveyou teamo tequiero monkey dragon master '
   + 'football futbol soccer baseball superman batman princess sunshine shadow michael jordan harley hunter ranger trustno1 starwars pokemon minecraft fortnite gamer gaming videojuegos '
@@ -116,7 +115,7 @@ const COMMON_PASSWORDS = new Set((
 ).split(/\s+/));
 function isCommonPassword(val) {
   const plain = String(val).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  return COMMON_PASSWORDS.has(plain) || COMMON_PASSWORDS.has(plain.replace(/[0-9]+$/, ''));
+  return COMMON_PASSWORDS.has(plain) || COMMON_PASSWORDS.has(plain.replace(/[0-9]+$/, '')) || /^(.)\1+$/su.test(String(val));
 }
 // Devuelve el código de error de una contraseña rechazada ('password_emoji', 'weak_password' o 'common_password'), o null si sirve.
 function passwordProblem(val) {

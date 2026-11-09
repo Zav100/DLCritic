@@ -18,12 +18,12 @@
  * 12-settings.js (ahí pueden cambiarlo a una contraseña real si quieren).
  */
 /* ---------- auth ---------- */
-// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida aquí TAMBIÉN en el cliente para dar el error al instante, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
+// Misma regla que valida el servidor (server/index.js): de 8 a 200 caracteres, sin emojis (mayúsculas, números y símbolos se recomiendan con la barra de seguridad, no se exigen). Se valida aquí TAMBIÉN en el cliente para dar el error al instante, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
 // Sin emojis (misma regla que EMOJI_RE en server/index.js): cualquier carácter con aspecto de emoji, tonos de piel, banderas, ZWJ y selector de emoji; © ® ™ valen.
 const EMOJI_RE_CLIENT = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
 // Devuelve la clave del texto de error de una contraseña rechazada, o null si sirve.
 function passwordProblemClient(p){ return EMOJI_RE_CLIENT.test(p) ? 'err_password_emoji' : isStrongPasswordClient(p) ? null : 'err_weak_password'; }
-function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200 && /\p{Lu}/u.test(p) && /[0-9]/.test(p) && /[^\p{L}\p{N}\s]/u.test(p); }
+function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200; }
 let registerAvatarFile = null; // el File elegido en el paso 2 del registro, o null; se sube recién después de crear la cuenta (ver handleRegisterSubmit)
 // Muestra el paso 1 o el paso 2 del formulario de registro (los dos <div> ya existen en el HTML, esto solo cambia cuál está oculto).
 function showRegisterStep(step){
@@ -96,6 +96,7 @@ function renderAuthForm(){
   document.getElementById('r-email').value='';
   document.getElementById('r-password').value='';
   document.getElementById('r-password2').value='';
+  bindPasswordMeter(document.getElementById('r-password'), document.getElementById('r-pwMeter'), t);
   document.getElementById('r-username').value='';
   document.getElementById('r-bio').value='';
   document.getElementById('r-avatar-file').value='';

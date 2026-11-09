@@ -4,19 +4,23 @@
   const MSG = {
     es: {
       mismatch: 'Las contraseñas no coinciden.',
-      weak_password: 'La contraseña debe tener al menos 8 caracteres, con una mayúscula, un número y un carácter especial (como ! o *).',
+      weak_password: 'La contraseña debe tener al menos 8 caracteres.',
       password_emoji: 'La contraseña no puede tener emojis.',
       common_password: 'Esa contraseña es demasiado común. Elige otra.',
       too_many_requests: 'Demasiados intentos. Espera unos minutos y vuelve a intentar.',
       fail: 'No se pudo cambiar la contraseña. Intenta de nuevo.',
+      pw_title: 'Nivel de seguridad', pw_low: 'Bajo', pw_mid: 'Medio', pw_high: 'Alto',
+      pw_tip: 'Para subir el nivel: alárgala (12 caracteres o más) y mezcla mayúsculas, números y símbolos.',
     },
     en: {
       mismatch: "The passwords don't match.",
-      weak_password: 'Password must be at least 8 characters, with an uppercase letter, a number and a special character (like ! or *).',
+      weak_password: 'Password must be at least 8 characters.',
       password_emoji: "The password can't contain emojis.",
       common_password: 'That password is too common. Choose another one.',
       too_many_requests: 'Too many attempts. Wait a few minutes and try again.',
       fail: "Couldn't change the password. Try again.",
+      pw_title: 'Security level', pw_low: 'Low', pw_mid: 'Medium', pw_high: 'High',
+      pw_tip: 'To raise it: make it longer (12 characters or more) and mix uppercase letters, numbers and symbols.',
     },
   };
   const $ = id => document.getElementById(id);
@@ -25,6 +29,8 @@
     ['resetForm', 'resetDone', 'resetInvalid'].forEach(id => { $(id).hidden = id !== which; });
     document.querySelectorAll('.reset-intro').forEach(p => { p.hidden = which !== 'resetForm'; }); // la introducción solo va con el formulario
   };
+
+  bindPasswordMeter($('newPassword'), $('pwMeter'), text);
 
   // El token se lee una vez y se saca de la barra de direcciones y del historial.
   const token = new URLSearchParams(location.search).get('token') || '';
