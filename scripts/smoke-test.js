@@ -369,6 +369,11 @@ const today = new Date().toISOString().slice(0, 10);
     assert.deepEqual(shape(await vote(b, -1)), [[], []]);
     assert.deepEqual(shape(await vote(b, 7)), [['smoketest_b'], []]);
     assert.deepEqual(shape(await vote(b, 1)), [[], []]);
+    // dar y quitar «Me gusta» una y otra vez no llena las notificaciones: sigue habiendo una sola (también tras leerla)
+    ok(await a('POST', '/api/notifications/read'));
+    for (let i = 0; i < 3; i++) { await vote(b, 1); await vote(b, 1); }
+    assert.equal(await nHelpful(), 1, 'una sola notificación por persona y reseña');
+    assert.ok((await a('GET', '/api/notifications')).body.notifications.every(n => n.read === true), 'la repetición no la deja como nueva');
     ok(await a('POST', '/api/notifications/read'));
     assert.ok((await a('GET', '/api/notifications')).body.notifications.every(n => n.read === true));
   });
@@ -562,6 +567,36 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await a('POST', '/api/users/no_existe_nadie/follow'), 404);
     assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);
     assert.equal((await b('POST', '/api/users/smoketest_a/follow')).body.isFollowing, false);
+    // seguir, dejar de seguir y volver a seguir tampoco repite la notificación
+    ok(await a('POST', '/api/users/smoketest_b/follow')); ok(await a('POST', '/api/users/smoketest_b/follow')); ok(await a('POST', '/api/users/smoketest_b/follow'));
+    assert.equal((await b('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'follow' && n.actorUsername === 'smoketest_a').length, 1);
+    assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);
+  });
+  await step('notificaciones: marcar una como leída, eliminar una o todas; solo las propias (la ajena da 404)', async () => {
+    const list = async who => (await who('GET', '/api/notifications')).body.notifications;
+    const mine = await list(a);
+    assert.ok(mine.length >= 2, 'smoketest_a tiene la de «me gusta» y la de seguir de smoketest_b');
+    const unread = mine.find(n => n.read === false); assert.ok(unread, 'hay una sin leer');
+    const other = mine.find(n => n.id !== unread.id);
+    const bBefore = (await list(b)).length; assert.ok(bBefore >= 1);
+    // de otra persona o inexistente: 404 y no cambia nada
+    ok(await b('POST', `/api/notifications/${unread.id}/read`), 404); ok(await b('DELETE', `/api/notifications/${unread.id}`), 404);
+    ok(await a('POST', '/api/notifications/no-existe/read'), 404); ok(await a('DELETE', '/api/notifications/no-existe'), 404);
+    assert.deepEqual(await list(a), mine);
+    // marcar una (solo esa)
+    ok(await a('POST', `/api/notifications/${unread.id}/read`));
+    const after = await list(a);
+    assert.equal(after.find(n => n.id === unread.id).read, true);
+    assert.deepEqual(after.filter(n => n.id !== unread.id), mine.filter(n => n.id !== unread.id));
+    // eliminar una (solo esa), y no se puede dos veces
+    ok(await a('DELETE', `/api/notifications/${other.id}`));
+    assert.ok(!(await list(a)).some(n => n.id === other.id)); assert.equal((await list(a)).length, mine.length - 1);
+    ok(await a('DELETE', `/api/notifications/${other.id}`), 404);
+    // eliminar todas: solo las mías
+    ok(await a('DELETE', '/api/notifications'));
+    assert.deepEqual(await list(a), []); assert.equal((await list(b)).length, bBefore);
+    // sin sesión
+    ok(await anon('DELETE', '/api/notifications'), 401); ok(await anon('DELETE', `/api/notifications/${unread.id}`), 401); ok(await anon('POST', `/api/notifications/${unread.id}/read`), 401);
   });
 
   console.log('Confirmar el correo, contraseñas comunes e inicio de sesión con Google');

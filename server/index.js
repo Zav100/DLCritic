@@ -982,7 +982,15 @@ app.get('/api/user-search', lookupLimiter, async (req, res) => {
 
 /* ---------------- notifications ---------------- */
 
-const insertNotification = db.prepare('INSERT INTO notifications (id, user_id, type, actor_user_id, game_id, read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)');
+// Una sola notificación por persona que actúa, tipo y juego (aunque la anterior ya esté leída): sin esto, quien da y quita «Me gusta» (o sigue y deja de seguir)
+// una y otra vez le llenaba la bandeja a la otra persona. Es una sola sentencia (INSERT ... WHERE NOT EXISTS), así que dos clics seguidos tampoco la duplican.
+// Se llama igual que antes: insertNotification.run(id, para quién, tipo, quién actúa, juego o null, fecha).
+const insertNotificationRow = db.prepare(`INSERT INTO notifications (id, user_id, type, actor_user_id, game_id, read, created_at)
+  SELECT ?::text, ?::int, ?::text, ?::int, ?::text, 0, ?::text
+  WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE user_id = ?::int AND type = ?::text AND actor_user_id = ?::int AND game_id IS NOT DISTINCT FROM ?::text)`);
+const insertNotification = {
+  run: (id, userId, type, actorId, gameId, createdAt) => insertNotificationRow.run(id, userId, type, actorId, gameId, createdAt, userId, type, actorId, gameId),
+};
 const listNotifications = db.prepare(`
   SELECT n.id, n.type, n.game_id, n.read, n.created_at, u.username AS actor_username
   FROM notifications n
@@ -992,6 +1000,9 @@ const listNotifications = db.prepare(`
   LIMIT 50
 `);
 const markAllNotificationsRead = db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0');
+const markNotificationRead = db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?');
+const deleteNotification = db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?');
+const deleteAllNotifications = db.prepare('DELETE FROM notifications WHERE user_id = ?');
 
 app.get('/api/notifications', requireAuth, async (req, res) => {
   const rows = await listNotifications.all(req.user.id);
@@ -1009,6 +1020,20 @@ app.get('/api/notifications', requireAuth, async (req, res) => {
 
 app.post('/api/notifications/read', requireAuth, writeLimiter, async (req, res) => {
   await markAllNotificationsRead.run(req.user.id);
+  res.json({ ok: true });
+});
+
+// Marcar una como leída, eliminar una o eliminarlas todas. Solo las propias: la de otra persona (o una que no existe) da 404, igual que si no existiera.
+app.post('/api/notifications/:id/read', requireAuth, writeLimiter, async (req, res) => {
+  if (!(await markNotificationRead.run(req.params.id, req.user.id)).changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+app.delete('/api/notifications/:id', requireAuth, writeLimiter, async (req, res) => {
+  if (!(await deleteNotification.run(req.params.id, req.user.id)).changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+app.delete('/api/notifications', requireAuth, writeLimiter, async (req, res) => {
+  await deleteAllNotifications.run(req.user.id);
   res.json({ ok: true });
 });
 
