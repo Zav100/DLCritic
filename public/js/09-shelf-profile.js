@@ -406,6 +406,7 @@ async function renderProfileLists(username, editable, gridId){
     lists.forEach(list=>{
       const card=document.createElement('div');
       card.className='card list-card';
+      card.dataset.listId = list.id; // para poder ponerla al día en su lugar (syncListCard en 10-lists.js)
       card.innerHTML=`
         <div class="list-card-head">
           <span class="list-visibility-icon" title="${list.isPublic? esc(t('list_public_label')) : esc(t('list_private_label'))}">${list.isPublic? ICONS.globe : ICONS.lock}</span>

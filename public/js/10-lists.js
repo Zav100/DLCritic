@@ -94,6 +94,18 @@ function confirmTextPrompt(label, initial, confirmLabel){
     document.addEventListener('keydown', onKey);
   });
 }
+// Pone al día, en su lugar, las tarjetas de esa lista que hay detrás de la ventana (título, ícono de visibilidad y cantidad de juegos). Así, al quitar un
+// juego, hacerla pública/privada o renombrarla no hace falta repintar la grilla ni volver a abrir la ventana, que era lo que hacía parpadear la pantalla.
+function syncListCard(list){
+  document.querySelectorAll(`.list-card[data-list-id="${CSS.escape(list.id)}"]`).forEach(card=>{
+    card.querySelector('.gc-title').textContent = list.title;
+    const icon = card.querySelector('.list-visibility-icon');
+    icon.innerHTML = list.isPublic ? ICONS.globe : ICONS.lock;
+    icon.title = list.isPublic ? t('list_public_label') : t('list_private_label');
+    const n = list.gameIds.length;
+    card.querySelector('.gc-sub').textContent = `${n} ${t(n===1 ? 'game_count_label' : 'games_count_label')}`;
+  });
+}
 // Modal que muestra los juegos DENTRO de una lista (al hacer click en la
 // card de la lista). Si es tuya (editable), suma botones para hacerla
 // pública/privada, renombrarla, borrarla, agregarle juegos (openAddGamesToListModal) y quitarlos uno por uno.
@@ -104,6 +116,8 @@ function openListDetailModal(listId){
   if(!list) return;
   const editable = state.profileListsEditable;
   const games = list.gameIds.map(id=>findGame(id)).filter(Boolean);
+  const visibilityHTML = ()=> list.isPublic ? ICONS.globe+' '+esc(t('list_public_label')) : ICONS.lock+' '+esc(t('list_private_label'));
+  const emptyHTML = ()=> emptyState(ICONS.bookmark, t('list_empty_t'), editable ? '' : t('list_empty_other_s'));
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = `
@@ -112,7 +126,7 @@ function openListDetailModal(listId){
       ${editable ? `
       <div class="confirm-actions list-detail-actions">
         <button class="chip" id="listAddGamesBtn">${ICONS.plus} ${esc(t('list_add_games_btn'))}</button>
-        <button class="chip" id="listTogglePublic">${list.isPublic? ICONS.globe+' '+esc(t('list_public_label')) : ICONS.lock+' '+esc(t('list_private_label'))}</button>
+        <button class="chip" id="listTogglePublic">${visibilityHTML()}</button>
         <button class="chip" id="listRenameBtn">${esc(t('list_rename_btn'))}</button>
         <button class="chip chip-danger" id="listDeleteBtn">${t('delete_btn')}</button>
       </div>` : ''}
@@ -124,7 +138,7 @@ function openListDetailModal(listId){
   document.body.appendChild(overlay);
   const grid = document.getElementById('listDetailGrid');
   if(games.length===0){
-    grid.innerHTML = emptyState(ICONS.bookmark, t('list_empty_t'), editable ? '' : t('list_empty_other_s'));
+    grid.innerHTML = emptyHTML();
   } else {
     grid.innerHTML='';
     games.forEach(g=>{
@@ -144,10 +158,16 @@ function openListDetailModal(listId){
       if(editable){
         card.querySelector('[data-remove]').onclick = async (e)=>{
           e.stopPropagation();
-          await apiPost('/lists/'+list.id+'/items/toggle', { gameId:g.id });
-          await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
-          overlay.remove();
-          openListDetailModal(listId);
+          if(card.dataset.busy) return; // un toque a la vez mientras el servidor responde
+          card.dataset.busy = '1';
+          try{ await apiPost('/lists/'+list.id+'/items/toggle', { gameId:g.id }); }
+          catch(err){ delete card.dataset.busy; toast(t('err_save_user')); return; }
+          list.gameIds = list.gameIds.filter(id=>id!==g.id); // list es el mismo objeto de state.profileLists: queda al día
+          syncListCard(list);
+          card.animate([{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.94)' }], { duration:160, easing:'ease-out', fill:'forwards' });
+          await new Promise(r=>setTimeout(r, 160)); // con un temporizador y no con animation.finished: se quita igual aunque la pestaña esté en segundo plano
+          card.remove();
+          if(!grid.querySelector('.gamecard')) grid.innerHTML = emptyHTML();
         };
       }
       grid.appendChild(card);
@@ -160,18 +180,22 @@ function openListDetailModal(listId){
   if(editable){
     document.getElementById('listAddGamesBtn').onclick = ()=>{ cleanup(); openAddGamesToListModal(list.id); };
     document.getElementById('listTogglePublic').onclick = async ()=>{
-      const { list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic });
-      overlay.remove();
-      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
-      openListDetailModal(updated.id);
+      let updated;
+      try{ ({ list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic })); }
+      catch(err){ toast(t('err_save_user')); return; }
+      list.isPublic = updated.isPublic;
+      document.getElementById('listTogglePublic').innerHTML = visibilityHTML();
+      syncListCard(list);
     };
     document.getElementById('listRenameBtn').onclick = async ()=>{
       const title = await confirmTextPrompt(t('list_title_label'), list.title);
       if(!title || !title.trim()) return;
-      await apiPut('/lists/'+list.id, { title: title.trim() });
-      overlay.remove();
-      await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
-      openListDetailModal(list.id);
+      let updated;
+      try{ ({ list: updated } = await apiPut('/lists/'+list.id, { title: title.trim() })); }
+      catch(err){ toast(t('err_save_user')); return; }
+      list.title = updated.title;
+      overlay.querySelector('h3').textContent = list.title;
+      syncListCard(list);
     };
     document.getElementById('listDeleteBtn').onclick = async ()=>{
       const ok = await confirmDialog(t('list_delete_confirm'));
