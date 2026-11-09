@@ -115,7 +115,7 @@ function paintCharactersGrid(animate){
     foldText(c.name).includes(q)
     && (!charView.category || (c.categories||[]).includes(charView.category))
     && (!charView.game || characterGames(c).some(g=>g.id===charView.game)));
-  document.getElementById('charactersCount').textContent = list.length;
+  document.getElementById('charactersCount').textContent = all.length; // el total de personajes, no los que pasan el filtro
   if(list.length===0){
     grid.innerHTML = all.length===0
       ? emptyState(ICONS.user, t('empty_characters_t'), t('empty_characters_s'))

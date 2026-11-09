@@ -405,10 +405,14 @@ nav {
   font-size: 13px;
   font-weight: 700;
   border-radius: 20px;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  border-color: color-mix(in srgb, var(--fg) 26%, transparent);
 }
 
 .load-more-btn:hover {
   border-color: var(--gold);
+  background: color-mix(in srgb, var(--fg) 11%, transparent);
   color: var(--fg);
 }
 
