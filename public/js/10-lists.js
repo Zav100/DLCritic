@@ -130,7 +130,7 @@ function openListDetailModal(listId){
         <button class="chip" id="listRenameBtn">${esc(t('list_rename_btn'))}</button>
         <button class="chip chip-danger" id="listDeleteBtn">${t('delete_btn')}</button>
       </div>` : ''}
-      <div class="grid list-detail-grid" id="listDetailGrid"></div>
+      <div class="list-detail-scroll"><div class="grid list-detail-grid" id="listDetailGrid"></div></div>
       <div class="confirm-actions" style="margin-top:16px;">
         <button class="btn-ghost" data-act="cancel">${esc(t('back_generic'))}</button>
       </div>
@@ -147,7 +147,7 @@ function openListDetailModal(listId){
       card.innerHTML=`
         ${cardLinkHTML(gameHref(g.id), g.title)}
         <div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
-        <div class="gc-title">${esc(g.title)}</div>
+        <div class="gc-title" title="${esc(g.title)}">${esc(g.title)}</div>
         <div class="gc-sub">${esc(genreLabelList(g))}</div>
         ${editable ? `<button type="button" class="list-remove-btn" data-remove="${esc(g.id)}">${ICONS.x}<span>${esc(t('list_remove_btn'))}</span></button>` : ''}
       `;
