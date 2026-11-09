@@ -1000,6 +1000,9 @@ const listNotifications = db.prepare(`
   LIMIT 50
 `);
 const markAllNotificationsRead = db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0');
+const markNotificationRead = db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?');
+const deleteNotification = db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?');
+const deleteAllNotifications = db.prepare('DELETE FROM notifications WHERE user_id = ?');
 
 app.get('/api/notifications', requireAuth, async (req, res) => {
   const rows = await listNotifications.all(req.user.id);
@@ -1017,6 +1020,20 @@ app.get('/api/notifications', requireAuth, async (req, res) => {
 
 app.post('/api/notifications/read', requireAuth, writeLimiter, async (req, res) => {
   await markAllNotificationsRead.run(req.user.id);
+  res.json({ ok: true });
+});
+
+// Marcar una como leída, eliminar una o eliminarlas todas. Solo las propias: la de otra persona (o una que no existe) da 404, igual que si no existiera.
+app.post('/api/notifications/:id/read', requireAuth, writeLimiter, async (req, res) => {
+  if (!(await markNotificationRead.run(req.params.id, req.user.id)).changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+app.delete('/api/notifications/:id', requireAuth, writeLimiter, async (req, res) => {
+  if (!(await deleteNotification.run(req.params.id, req.user.id)).changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+app.delete('/api/notifications', requireAuth, writeLimiter, async (req, res) => {
+  await deleteAllNotifications.run(req.user.id);
   res.json({ ok: true });
 });
 

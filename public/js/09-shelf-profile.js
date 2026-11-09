@@ -467,12 +467,12 @@ function renderListsView(){
   renderProfileLists(state.user.username, true, 'listsViewGrid');
 }
 /* ---------- notificaciones ---------- */
-// Vista "/notificaciones": te siguieron / le sirvió tu reseña a alguien.
-// Al abrir la vista, si había notificaciones sin leer, las marca como
-// leídas en el servidor y actualiza el puntito rojo del header.
+// Vista "/notificaciones": te siguieron / le gustó tu reseña a alguien. Ya no se marcan todas como leídas al abrir la vista: cada una se marca con su botón (o al abrirla),
+// «Marcar todas como leídas» las marca juntas, y se pueden eliminar de a una o todas. El puntito rojo del header sigue a las que quedan sin leer.
 async function renderNotificationsView(){
   const el = document.getElementById('notificationsList');
   const countEl = document.getElementById('notificationsCount');
+  document.getElementById('notificationsActions').hidden = true;
   if(!state.user){
     countEl.textContent = 0;
     el.innerHTML = emptyState(ICONS.lock, t('empty_login_t'), t('empty_login_s'));
@@ -484,44 +484,85 @@ async function renderNotificationsView(){
     const { notifications } = await apiGet('/notifications');
     state.notifications = notifications;
   }catch(e){}
+  paintNotifications();
+}
+// Marca una notificación como leída en el servidor y en la lista (sin volver a pedirla). Devuelve true si quedó leída.
+async function markNotificationRead(n){
+  if(n.read) return true;
+  try{ await apiPost('/notifications/'+encodeURIComponent(n.id)+'/read'); }catch(e){ return false; }
+  n.read = true;
+  return true;
+}
+// Dibuja la barra de botones y la lista a partir de state.notifications (se vuelve a llamar después de marcar o eliminar, sin pedir nada al servidor).
+function paintNotifications(){
+  const el = document.getElementById('notificationsList');
+  const countEl = document.getElementById('notificationsCount');
+  const bar = document.getElementById('notificationsActions');
   const list = state.notifications || [];
   countEl.textContent = list.length;
+  bar.hidden = list.length===0;
+  const markAll = document.getElementById('notifMarkAll');
+  markAll.disabled = !list.some(n=>!n.read);
+  markAll.onclick = async ()=>{
+    try{ await apiPost('/notifications/read'); }catch(e){ toast(t('err_save_user')); return; }
+    list.forEach(n=>{ n.read = true; });
+    paintNotifications(); renderUserBadge();
+  };
+  document.getElementById('notifDeleteAll').onclick = async ()=>{
+    if(!(await confirmDialog(t('notif_delete_all_confirm')))) return;
+    try{ await apiDelete('/notifications'); }catch(e){ toast(t('err_save_user')); return; }
+    state.notifications = [];
+    paintNotifications(); renderUserBadge();
+  };
   if(list.length===0){
     el.innerHTML = emptyState(ICONS.bell, t('empty_notifications_t'), t('empty_notifications_s'));
-  } else {
-    el.innerHTML = '';
-    list.forEach(n=>{
-      const game = n.gameId ? findGame(n.gameId) : null;
-      // El nombre de quien actúa es un enlace a su perfil (por encima del enlace que cubre toda la tarjeta, que lleva al juego).
-      const actor = `<a class="notif-actor" href="${profileHref(n.actorUsername)}">${esc(n.actorUsername)}</a>`;
-      const gameTitle = game ? esc(game.title) : '';
-      const text = n.type==='follow'
-        ? (state.lang==='en' ? `${actor} started following you` : `${actor} empezó a seguirte`)
-        : (state.lang==='en' ? `${actor} liked your review of ${gameTitle}` : `A ${actor} le gustó tu reseña de ${gameTitle}`);
-      const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
-      const row = document.createElement('div');
-      row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
-      row.innerHTML = `
-        ${href? cardLinkHTML(href, n.type==='follow'? n.actorUsername : gameTitle) : ''}
-        <div class="notif-icon">${n.type==='follow'? ICONS.heart : ICONS.thumbsUp}</div>
-        <div class="notif-body">
-          <div class="notif-text">${text}</div>
-          <div class="notif-date">${fmtDate(n.createdAt)}</div>
-        </div>
-      `;
-      row.querySelector('.notif-actor').onclick = spa(e=>{ e.stopPropagation(); state.profileUsername = n.actorUsername; goView('profile'); });
-      row.onclick = spa(()=>{
-        if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }
-        else if(game){ state.currentGame = game.id; state.gameOrigin='feed'; goView('game'); }
-      });
-      el.appendChild(row);
+    return;
+  }
+  el.innerHTML = '';
+  list.forEach(n=>{
+    const game = n.gameId ? findGame(n.gameId) : null;
+    // El nombre de quien actúa es un enlace a su perfil (por encima del enlace que cubre toda la tarjeta, que lleva al juego).
+    const actor = `<a class="notif-actor" href="${profileHref(n.actorUsername)}">${esc(n.actorUsername)}</a>`;
+    const gameTitle = game ? esc(game.title) : '';
+    const text = n.type==='follow'
+      ? (state.lang==='en' ? `${actor} started following you` : `${actor} empezó a seguirte`)
+      : (state.lang==='en' ? `${actor} liked your review of ${gameTitle}` : `A ${actor} le gustó tu reseña de ${gameTitle}`);
+    const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
+    const row = document.createElement('div');
+    row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
+    row.innerHTML = `
+      ${href? cardLinkHTML(href, n.type==='follow'? n.actorUsername : gameTitle) : ''}
+      <div class="notif-icon">${n.type==='follow'? ICONS.heart : ICONS.thumbsUp}</div>
+      <div class="notif-body">
+        <div class="notif-text">${text}</div>
+        <div class="notif-date">${fmtDate(n.createdAt)}</div>
+      </div>
+      <div class="notif-actions">
+        ${n.read? '' : `<button type="button" class="notif-act" data-notif-read title="${esc(t('notif_mark_read'))}" aria-label="${esc(t('notif_mark_read'))}">${ICONS.checkCircle}</button>`}
+        <button type="button" class="notif-act del" data-notif-del title="${esc(t('notif_delete'))}" aria-label="${esc(t('notif_delete'))}">${ICONS.trash}</button>
+      </div>
+    `;
+    // Abrir una notificación (la tarjeta o el nombre) también la marca como leída.
+    const opened = ()=>{ markNotificationRead(n).then(ok=>{ if(ok) renderUserBadge(); }); };
+    row.querySelector('.notif-actor').onclick = spa(e=>{ e.stopPropagation(); opened(); state.profileUsername = n.actorUsername; goView('profile'); });
+    row.onclick = spa(()=>{
+      opened();
+      if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }
+      else if(game){ state.currentGame = game.id; state.gameOrigin='feed'; goView('game'); }
     });
-  }
-  if(list.some(n=>!n.read)){
-    try{ await apiPost('/notifications/read'); }catch(e){}
-    state.notifications = list.map(n=>({...n, read:true}));
-    renderUserBadge();
-  }
+    const readBtn = row.querySelector('[data-notif-read]');
+    if(readBtn) readBtn.onclick = async e=>{
+      e.stopPropagation();
+      if(await markNotificationRead(n)){ paintNotifications(); renderUserBadge(); }
+    };
+    row.querySelector('[data-notif-del]').onclick = async e=>{
+      e.stopPropagation();
+      try{ await apiDelete('/notifications/'+encodeURIComponent(n.id)); }catch(err){ toast(t('err_save_user')); return; }
+      state.notifications = state.notifications.filter(x=>x!==n);
+      paintNotifications(); renderUserBadge();
+    };
+    el.appendChild(row);
+  });
 }
 /* ---------- seguir a un usuario ---------- */
 // Sigue/deja de seguir a un usuario desde su perfil, y actualiza el botón + contador de seguidores + medallita de "Amigos" (se siguen mutuamente) en el lugar, sin re-renderizar todo el perfil.

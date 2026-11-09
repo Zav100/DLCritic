@@ -572,6 +572,32 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await b('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'follow' && n.actorUsername === 'smoketest_a').length, 1);
     assert.equal((await a('POST', '/api/users/smoketest_b/follow')).body.isFollowing, false);
   });
+  await step('notificaciones: marcar una como leída, eliminar una o todas; solo las propias (la ajena da 404)', async () => {
+    const list = async who => (await who('GET', '/api/notifications')).body.notifications;
+    const mine = await list(a);
+    assert.ok(mine.length >= 2, 'smoketest_a tiene la de «me gusta» y la de seguir de smoketest_b');
+    const unread = mine.find(n => n.read === false); assert.ok(unread, 'hay una sin leer');
+    const other = mine.find(n => n.id !== unread.id);
+    const bBefore = (await list(b)).length; assert.ok(bBefore >= 1);
+    // de otra persona o inexistente: 404 y no cambia nada
+    ok(await b('POST', `/api/notifications/${unread.id}/read`), 404); ok(await b('DELETE', `/api/notifications/${unread.id}`), 404);
+    ok(await a('POST', '/api/notifications/no-existe/read'), 404); ok(await a('DELETE', '/api/notifications/no-existe'), 404);
+    assert.deepEqual(await list(a), mine);
+    // marcar una (solo esa)
+    ok(await a('POST', `/api/notifications/${unread.id}/read`));
+    const after = await list(a);
+    assert.equal(after.find(n => n.id === unread.id).read, true);
+    assert.deepEqual(after.filter(n => n.id !== unread.id), mine.filter(n => n.id !== unread.id));
+    // eliminar una (solo esa), y no se puede dos veces
+    ok(await a('DELETE', `/api/notifications/${other.id}`));
+    assert.ok(!(await list(a)).some(n => n.id === other.id)); assert.equal((await list(a)).length, mine.length - 1);
+    ok(await a('DELETE', `/api/notifications/${other.id}`), 404);
+    // eliminar todas: solo las mías
+    ok(await a('DELETE', '/api/notifications'));
+    assert.deepEqual(await list(a), []); assert.equal((await list(b)).length, bBefore);
+    // sin sesión
+    ok(await anon('DELETE', '/api/notifications'), 401); ok(await anon('DELETE', `/api/notifications/${unread.id}`), 401); ok(await anon('POST', `/api/notifications/${unread.id}/read`), 401);
+  });
 
   console.log('Confirmar el correo, contraseñas comunes e inicio de sesión con Google');
   await step('confirmar el correo: enlace de un solo uso al registrarse y al cambiar de correo, reenvío con tope, y contraseñas demasiado comunes', async () => {

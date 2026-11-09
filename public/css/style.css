@@ -3672,6 +3672,75 @@ input[type=search]::-webkit-search-cancel-button {
   background: linear-gradient(160deg, var(--paper-alt), var(--paper));
 }
 
+.notif-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.notif-toolbar[hidden] {
+  display: none;
+}
+
+.notif-toolbar .btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.notif-toolbar #notifDeleteAll:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.notif-toolbar .btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.notif-toolbar .btn-ghost:disabled:hover {
+  border-color: var(--line);
+  color: var(--fg-soft);
+}
+
+.notif-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.notif-act {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--ink-soft);
+  background: var(--paper-alt);
+  border: 1px solid var(--line-dark);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.notif-act svg {
+  width: 15px;
+  height: 15px;
+}
+
+.notif-act:hover {
+  color: var(--teal-dim);
+  border-color: var(--teal);
+}
+
+.notif-act.del:hover {
+  color: var(--red-dim);
+  border-color: var(--red);
+}
+
 .notif-icon {
   width: 36px;
   height: 36px;
