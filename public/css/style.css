@@ -6138,6 +6138,33 @@ a.btn-ghost {
   }
 }
 
+/* Ventana de una lista: los botones de arriba (Agregar juegos, Pública/Privada, Renombrar, Borrar) en una fila, con íconos chicos. */
+.list-detail-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 14px;
+}
+
+.list-detail-actions .chip,
+.list-detail-actions .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-detail-actions svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* el aviso de "lista vacía" (en la lista de otra persona) quedaba pegado a la izquierda: se centra como el resto del aviso */
+.list-detail-modal .empty p {
+  margin: 6px auto 0;
+  text-align: center;
+}
+
 /* Descripción del perfil: como máximo 3 renglones. wireProfileBio() (09-shelf-profile.js) corta el texto y deja "… Ver más" al final del tercero;
    el max-height evita que se vea larga un instante, antes de que el JS la mida, y sostiene el límite aunque el JS no corra. */
 .profile-bio {

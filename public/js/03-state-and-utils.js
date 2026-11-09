@@ -67,9 +67,6 @@ function renderSkeletonGrids(){
   });
   document.getElementById('charactersGrid').innerHTML = charSkeletonHTML().repeat(8);
   document.getElementById('characterDetail').innerHTML = `<div class="card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel skel-avatar" style="margin:0;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div></div>`;
-  // Entrando directo a /personajes o a la ficha de uno, mostrar ya esa vista (con sus esqueletos) en vez de dejar Novedades a la vista hasta que lleguen los datos.
-  const early = location.pathname==='/personajes' ? 'view-characters' : location.pathname.startsWith('/personaje/') ? 'view-character' : null;
-  if(early) document.querySelectorAll('.viewsec').forEach(s=> s.hidden = s.id!==early);
 }
 /* ---------- portadas (la URL guardada en cada juego, cargada al hacer scroll) ---------- */
 // Cómo se muestra la portada de un juego, en 3 pasos:

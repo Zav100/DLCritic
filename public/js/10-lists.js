@@ -96,7 +96,7 @@ function confirmTextPrompt(label, initial, confirmLabel){
 }
 // Modal que muestra los juegos DENTRO de una lista (al hacer click en la
 // card de la lista). Si es tuya (editable), suma botones para hacerla
-// pública/privada, renombrarla, borrarla, y quitar juegos uno por uno.
+// pública/privada, renombrarla, borrarla, agregarle juegos (openAddGamesToListModal) y quitarlos uno por uno.
 // Usa la clase "list-detail-modal" para ser más ancho que un modal normal
 // y mostrar los juegos en varias columnas (ver css/style.css).
 function openListDetailModal(listId){
@@ -110,7 +110,8 @@ function openListDetailModal(listId){
     <div class="confirm-box suggest-modal list-detail-modal">
       <h3>${esc(list.title)}</h3>
       ${editable ? `
-      <div class="confirm-actions" style="justify-content:flex-start; margin-bottom:14px;">
+      <div class="confirm-actions list-detail-actions">
+        <button class="btn-ghost" id="listAddGamesBtn">${ICONS.plus} ${esc(t('list_add_games_btn'))}</button>
         <button class="chip" id="listTogglePublic">${list.isPublic? ICONS.globe+' '+esc(t('list_public_label')) : ICONS.lock+' '+esc(t('list_private_label'))}</button>
         <button class="btn-ghost" id="listRenameBtn">${esc(t('list_rename_btn'))}</button>
         <button class="btn-ghost" id="listDeleteBtn" style="color:var(--red);">${t('delete_btn')}</button>
@@ -123,7 +124,7 @@ function openListDetailModal(listId){
   document.body.appendChild(overlay);
   const grid = document.getElementById('listDetailGrid');
   if(games.length===0){
-    grid.innerHTML = emptyState(ICONS.bookmark, t('list_empty_t'), editable ? t('list_empty_s') : t('list_empty_other_s'));
+    grid.innerHTML = emptyState(ICONS.bookmark, t('list_empty_t'), editable ? '' : t('list_empty_other_s'));
   } else {
     grid.innerHTML='';
     games.forEach(g=>{
@@ -157,6 +158,7 @@ function openListDetailModal(listId){
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
   overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
   if(editable){
+    document.getElementById('listAddGamesBtn').onclick = ()=>{ cleanup(); openAddGamesToListModal(list.id); };
     document.getElementById('listTogglePublic').onclick = async ()=>{
       const { list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic });
       overlay.remove();
@@ -180,6 +182,72 @@ function openListDetailModal(listId){
     };
   }
   document.addEventListener('keydown', onKey);
+}
+// Modal "Agregar juegos" de una lista tuya: buscador + grilla del catálogo; tocar una card suma o saca el juego de la lista sin cerrar el
+// modal (así se agregan varios seguidos). Al cerrarlo se vuelve a abrir la lista con los cambios.
+function openAddGamesToListModal(listId){
+  const list = (state.profileLists||[]).find(l=>l.id===listId);
+  if(!list) return;
+  const inList = new Set(list.gameIds);
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box suggest-modal wishlist-pick-modal" role="dialog" aria-modal="true" aria-labelledby="listPickTitle">
+      <h3 id="listPickTitle">${esc(t('list_add_games_btn'))}</h3>
+      <p class="hint follow-list-owner">${esc(list.title)}</p>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="listPickSearch">${esc(t('add_search_label'))}</label>
+        <div class="search-wrap">
+          <input type="text" id="listPickSearch" placeholder="Elden Ring, Hades, Mario Kart…">
+          <button type="button" class="search-clear" data-clears="listPickSearch" hidden>✕</button>
+        </div>
+      </div>
+      <div class="picker-grid" id="listPickGrid"></div>
+      <div class="confirm-actions" style="margin-top:16px;">
+        <button class="btn gold" data-act="close">${esc(t('back_generic'))}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const search = document.getElementById('listPickSearch');
+  const grid = document.getElementById('listPickGrid');
+  const subText = id => t(inList.has(id)? 'list_pick_in' : 'wishlist_pick_add');
+  function paint(){
+    const q = foldText(search.value).trim();
+    const games = allGames().filter(g=> foldText(g.title).includes(q)).slice(0,60);
+    if(games.length===0){ grid.innerHTML = emptyState(ICONS.search, t('empty_pick_t'), t('empty_browse_s')); return; }
+    grid.innerHTML = '';
+    games.forEach(g=>{
+      const card = document.createElement('div');
+      card.className = 'card pickcard'+(inList.has(g.id)? ' featured' : '');
+      card.innerHTML = `<div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div><div class="gc-title">${esc(g.title)}</div><div class="gc-sub">${subText(g.id)}</div>`;
+      card.onclick = async ()=>{
+        if(card.dataset.busy) return; // un toque a la vez por juego, mientras el servidor responde
+        card.dataset.busy = '1';
+        try{
+          await apiPost('/lists/'+listId+'/items/toggle', { gameId:g.id });
+          if(inList.has(g.id)) inList.delete(g.id); else inList.add(g.id);
+          card.classList.toggle('featured', inList.has(g.id));
+          card.querySelector('.gc-sub').textContent = subText(g.id);
+        }catch(e){ toast(t('err_save_user')); }
+        delete card.dataset.busy;
+      };
+      grid.appendChild(card);
+    });
+  }
+  paint();
+  search.oninput = paint;
+  wireSearchClear('listPickSearch');
+  async function close(){
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
+    openListDetailModal(listId);
+  }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+  overlay.querySelector('[data-act="close"]').onclick = close;
+  document.addEventListener('keydown', onKey);
+  search.focus();
 }
 // Modal "Agregar a lista" (botón en la ficha de un juego): un checkbox por
 // cada una de tus listas (tildado si el juego ya está ahí) + la opción de
