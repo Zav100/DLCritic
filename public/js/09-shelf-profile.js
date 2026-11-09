@@ -149,46 +149,51 @@ function renderProfileBody(el, username, profile, editable){
         ${profile.isFriend? `<span class="first-badge">${esc(t('friends_badge'))}</span>` : ''}
       ` : '');
 
-  // Seguidores y seguidos, en todos los perfiles (también el propio): cada contador es un botón que abre la lista (openFollowListModal).
-  const statsExtraHTML = `
-      <button type="button" class="statbox statbox-btn" data-follow-list="followers" aria-label="${esc(t('follow_list_open_followers'))}"><div class="n" id="followerCountEl" style="color:var(--teal-dim);">${profile.followerCount||0}</div><div class="l">${t('followers_label')}</div></button>
-      <button type="button" class="statbox statbox-btn" data-follow-list="following" aria-label="${esc(t('follow_list_open_following'))}"><div class="n" id="followingCountEl" style="color:var(--gold-dim);">${profile.followingCount||0}</div><div class="l">${t('following_count_label')}</div></button>
+  // Progreso hacia el siguiente nivel (0 a 100 %): cuánto de la distancia entre los dos umbrales ya se reunió.
+  const levelPct = lvl.next ? Math.max(0, Math.min(100, Math.round((s.count - lvl.current.min) / (lvl.next.min - lvl.current.min) * 100))) : 100;
+  const levelNextText = lvl.next ? `${t('missing_for')} ${toNext} ${t('to_reach')} ${t(lvl.next.nameKey)}`.trim() : t('max_level');
+
+  // Seguidores y seguidos, en todos los perfiles (también el propio): botones con aspecto de enlace que abren la lista (openFollowListModal).
+  const followsHTML = `
+      <button type="button" class="follow-link" data-follow-list="followers" aria-label="${esc(t('follow_list_open_followers'))}"><b id="followerCountEl">${profile.followerCount||0}</b> <span>${t('followers_label')}</span></button>
+      <button type="button" class="follow-link" data-follow-list="following" aria-label="${esc(t('follow_list_open_following'))}"><b id="followingCountEl">${profile.followingCount||0}</b> <span>${t('following_count_label')}</span></button>
   `;
+  const noData = `<span class="tl">${esc(t('no_data_yet'))}</span>`;
 
+  // Encabezado del perfil en tres bloques: tarjeta de identidad (foto con la insignia del nivel, nombre, nivel y progreso, descripción, seguidores y redes),
+  // franja de estadísticas (una sola tarjeta con celdas) y las píldoras de gustos (género y plataforma favoritos).
   el.innerHTML = `
-    <div class="profilehead">
-      ${avatarHTML}
-      <div style="flex:1; min-width:0;">
-        <div class="rc-game" style="font-size:20px; color:var(--fg);">${esc(username)}</div>
-        <div class="rc-meta" style="color:var(--fg-soft);">${t('member_since')} ${fmtDate(profile.joined)}</div>
+    <div class="profile-card"${editable? ' data-own' : ''}>
+      <div class="profile-avatar">${avatarHTML}<span class="profile-level-badge" title="${esc(t(lvl.current.nameKey))}">${lvl.current.icon}</span></div>
+      <div class="profile-card-main">
+        <div class="profile-card-top">
+          <div>
+            <div class="profile-name">${esc(username)}</div>
+            <div class="profile-since">${t('member_since')} ${fmtDate(profile.joined)}</div>
+          </div>
+          <div class="profile-actions">${headActionsHTML}</div>
+        </div>
+        <div class="profile-level">
+          <span class="level-chip">${lvl.current.icon} ${esc(t(lvl.current.nameKey))}</span>
+          <div class="level-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${levelPct}"><i style="width:${levelPct}%"></i></div>
+          <span class="level-next">${esc(levelNextText)}</span>
+        </div>
         ${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}
-      </div>
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">${headActionsHTML}</div>
-    </div>
-
-    ${socialLinksHTML(profile.socialLinks)}
-
-    <div class="statsrow"${editable? ' data-own' : ''}>
-      <div class="statbox"><div class="n" style="color:var(--teal-dim);">${s.count}</div><div class="l">${t('reviews_label')}</div></div>
-      <div class="statbox"><div class="n" style="color:var(--gold-dim);">${avg||'—'}</div><div class="l">${t('avg_label')}</div></div>
-      <div class="statbox"><div class="n" style="color:var(--pink-dim);">${ICONS.flame} ${s.streak}</div><div class="l">${t('streak_label')}</div></div>
-      ${statsExtraHTML}
-      <div class="statbox">
-        <div class="n" style="font-size:19px; color:var(--gold-dim);">${lvl.current.icon} ${t(lvl.current.nameKey)}</div>
-        <div class="l">${lvl.next? `${t('missing_for')} ${toNext} ${t('to_reach')} ${t(lvl.next.nameKey)}`.trim() : t('max_level')}</div>
+        <div class="profile-follows">${followsHTML}</div>
+        ${socialLinksHTML(profile.socialLinks)}
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:14px;">
-      <div class="infogrid" style="margin-top:0; padding-top:0; border-top:none;">
-        <div class="infoitem"><div class="il">${t('genre_fav_label')}</div><div class="iv">${s.favGenre? (GENRE_EMOJI[s.favGenre]||ICONS.gamepad)+' '+esc(genreLabel(s.favGenre)) : '—'}</div></div>
-        <div class="infoitem"><div class="il">${t('platform_fav_label')}</div><div class="iv">${s.favPlatform || '—'}</div></div>
-        ${editable ? `
-        <div class="infoitem center">
-          <div class="il">${t('wishlist_progress_label')}</div>
-          ${renderProgressRing(wishlistPlayedStats().percent)}
-        </div>` : ''}
-      </div>
+    <div class="statsstrip">
+      <div class="statscell"><div class="n">${s.count}</div><div class="l">${t('reviews_label')}</div></div>
+      <div class="statscell"><div class="n">${avg||'—'}</div><div class="l">${t('avg_label')}</div></div>
+      <div class="statscell"><div class="n">${ICONS.flame} ${s.streak}</div><div class="l">${t('streak_label')}</div></div>
+      ${editable ? `<div class="statscell ring">${renderProgressRing(wishlistPlayedStats().percent)}<div class="l">${t('wishlist_progress_label')}</div></div>` : ''}
+    </div>
+
+    <div class="taste-row">
+      <span class="taste-pill${s.favGenre? '' : ' empty'}">${s.favGenre? (GENRE_EMOJI[s.favGenre]||ICONS.gamepad) : ICONS.gamepad}<span class="tl">${t('genre_fav_label')}</span> ${s.favGenre? esc(genreLabel(s.favGenre)) : noData}</span>
+      <span class="taste-pill${s.favPlatform? '' : ' empty'}">${ICONS.layers}<span class="tl">${t('platform_fav_label')}</span> ${s.favPlatform? esc(s.favPlatform) : noData}</span>
     </div>
 
     ${favPanelHTML(profile, favGame, editable, s.reviews)}
@@ -296,12 +301,12 @@ function openProfileOf(username){
   else { state.profileUsername = username; goView('profile'); }
 }
 // El perfil propio se pinta con los contadores que trajo la sesión; aquí se piden de nuevo por si alguien siguió o dejó de seguir mientras tanto.
-// Solo se toca el contador que está dentro de un .statsrow[data-own]: si mientras tanto se abrió el perfil de otra persona, su contador no se pisa.
+// Solo se toca el contador que está dentro de un .profile-card[data-own]: si mientras tanto se abrió el perfil de otra persona, su contador no se pisa.
 async function refreshOwnFollowCounts(){
   try{
     const { user } = await apiGet('/users/'+encodeURIComponent(state.user.username));
     state.user.followerCount = user.followerCount; state.user.followingCount = user.followingCount;
-    const followers = document.querySelector('.statsrow[data-own] #followerCountEl'), following = document.querySelector('.statsrow[data-own] #followingCountEl');
+    const followers = document.querySelector('.profile-card[data-own] #followerCountEl'), following = document.querySelector('.profile-card[data-own] #followingCountEl');
     if(followers) followers.textContent = user.followerCount;
     if(following) following.textContent = user.followingCount;
   }catch(e){ /* se queda el número que había */ }
