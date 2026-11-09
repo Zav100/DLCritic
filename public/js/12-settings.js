@@ -141,6 +141,9 @@ function renderSettingsView(){
   const u = state.user;
   const el = document.getElementById('settingsContent');
   const avatarHTML = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}">` : esc(u.username[0].toUpperCase());
+  const emailStatusHTML = !u.email ? '' : u.emailVerified
+    ? `<p class="hint email-status ok">${ICONS.checkCircle} ${esc(t('st_email_verified'))}</p>`
+    : `<p class="hint email-status">${esc(t('st_email_unverified'))} <button type="button" class="linklike" id="stEmailResend">${esc(t('st_email_resend'))}</button></p>`;
   const legacyHintHTML = !u.email ? `<p class="hint" data-i18n="settings_legacy_password_hint">${esc(t('settings_legacy_password_hint'))}</p>` : '';
   // Al volver de Steam se abre Conexiones (ahí se ve el resultado); si no, la pestaña en la que estaba la persona, o Perfil.
   const tab = new URLSearchParams(location.search).has('steam') ? 'connections' : (state.settingsTab || 'profile');
@@ -180,6 +183,7 @@ function renderSettingsView(){
           <div class="field">
             <label for="st-email">${esc(t('auth_email_label'))}</label>
             <input type="email" id="st-email" value="${esc(u.email||'')}" placeholder="tu@email.com">
+            ${emailStatusHTML}
           </div>
           <div class="field">
             <label for="st-email-password">${esc(t('settings_current_password_label'))}</label>
@@ -193,6 +197,8 @@ function renderSettingsView(){
         <section class="settings-section">
           <h3>${esc(t('settings_security_section'))}</h3>
           ${legacyHintHTML}
+          ${u.googleLinked ? `<p class="hint email-status ok">${ICONS.checkCircle} ${esc(t('st_google_linked'))}</p>` : ''}
+          ${!u.hasPassword ? `<p class="hint">${esc(t('st_no_password_hint'))}</p>` : `
           <div class="field">
             <label for="st-current-password">${esc(t('settings_current_password_label'))}</label>
             <input type="password" id="st-current-password" autocomplete="current-password">
@@ -200,6 +206,7 @@ function renderSettingsView(){
           <div class="field">
             <label for="st-new-password">${esc(t('settings_new_password_label'))}</label>
             <input type="password" id="st-new-password" autocomplete="new-password">
+            <div class="pw-meter" id="st-pwMeter" hidden></div>
             <p class="hint">${esc(t('auth_password_hint'))}</p>
           </div>
           <div class="field">
@@ -208,7 +215,7 @@ function renderSettingsView(){
           </div>
           <div class="error" id="stPasswordError" hidden></div>
           <button class="btn gold" id="stPasswordSave">${esc(t('settings_change_password_btn'))}</button>
-          <p class="hint">${esc(t('settings_password_signout_hint'))}</p>
+          <p class="hint">${esc(t('settings_password_signout_hint'))}</p>`}
           <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
             <p class="hint" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
             <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
@@ -290,28 +297,33 @@ function renderSettingsView(){
     }catch(e){ errEl.textContent = t('err_save_user'); errEl.hidden = false; }
   };
 
+  const stEmailResend = document.getElementById('stEmailResend');
+  if(stEmailResend) stEmailResend.onclick = resendVerification;
   // Guardar Cuenta: solo el email. Si cambia, el servidor pide la contraseña actual.
   document.getElementById('stAccountSave').onclick = async ()=>{
     const errEl = document.getElementById('stAccountError');
     errEl.hidden = true;
     const email = document.getElementById('st-email').value.trim();
-    const body = { email };
+    const body = { email, lang: state.lang };
     if(email.toLowerCase() !== (state.user.email||'').toLowerCase()) body.currentPassword = document.getElementById('st-email-password').value;
     try{
       const { user } = await apiPut('/profile', body);
       state.user = user;
       document.getElementById('st-email-password').value = '';
+      renderVerifyBanner();
       toast(t('toast_profile_saved'));
     }catch(e){
       const code = e.body && e.body.error;
       errEl.textContent = code==='email_taken' ? t('err_email_taken') : code==='invalid_email' ? t('err_invalid_email')
-        : code==='bad_current_password' ? t('err_bad_current_password') : code==='too_many_requests' ? t('err_too_many') : t('err_save_user');
+        : code==='bad_current_password' ? t('err_bad_current_password') : code==='set_password_first' ? t('err_set_password_first') : code==='too_many_requests' ? t('err_too_many') : t('err_save_user');
       errEl.hidden = false;
     }
   };
 
   // Cambiar contraseña: valida fuerza + coincidencia en el cliente, pide la contraseña actual al servidor (que la compara contra el PIN si es una cuenta vieja), y si sale bien limpia los 3 campos (si falla, los deja para que el usuario pueda corregir sin volver a tipear todo).
-  document.getElementById('stPasswordSave').onclick = async ()=>{
+  const stPasswordSave = document.getElementById('stPasswordSave');
+  if(stPasswordSave) bindPasswordMeter(document.getElementById('st-new-password'), document.getElementById('st-pwMeter'), t);
+  if(stPasswordSave) stPasswordSave.onclick = async ()=>{
     const errEl = document.getElementById('stPasswordError');
     errEl.hidden = true;
     const currentPassword = document.getElementById('st-current-password').value;
@@ -325,11 +337,12 @@ function renderSettingsView(){
       toast(t('toast_password_changed'));
       document.getElementById('st-current-password').value='';
       document.getElementById('st-new-password').value='';
+      document.getElementById('st-new-password').oninput();
       document.getElementById('st-new-password2').value='';
     }catch(e){
       const code = e.body && e.body.error;
       errEl.textContent = code==='bad_current_password' ? t('err_bad_current_password') : code==='password_emoji' ? t('err_password_emoji')
-        : code==='too_many_requests' ? t('err_too_many') : t('err_weak_password');
+        : code==='common_password' ? t('err_common_password') : code==='too_many_requests' ? t('err_too_many') : t('err_weak_password');
       errEl.hidden = false;
     }
   };

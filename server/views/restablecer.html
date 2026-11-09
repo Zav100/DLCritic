@@ -55,7 +55,8 @@
       <div class="field">
         <label for="newPassword"><span data-lang="es">Contraseña nueva</span><span data-lang="en" hidden>New password</span></label>
         <input type="password" id="newPassword" autocomplete="new-password">
-        <p class="hint"><span data-lang="es">Mínimo 8 caracteres, con una mayúscula, un número y un carácter especial (como ! o *). Sin emojis.</span><span data-lang="en" hidden>At least 8 characters, with an uppercase letter, a number and a special character (like ! or *). No emojis.</span></p>
+        <div class="pw-meter" id="pwMeter" hidden></div>
+        <p class="hint"><span data-lang="es">Mínimo 8 caracteres, sin emojis. Una más larga, con mayúsculas, números y símbolos, es más segura.</span><span data-lang="en" hidden>At least 8 characters, no emojis. A longer one, with uppercase letters, numbers and symbols, is safer.</span></p>
       </div>
       <div class="field">
         <label for="newPassword2"><span data-lang="es">Confirmar contraseña nueva</span><span data-lang="en" hidden>Confirm new password</span></label>
@@ -87,6 +88,7 @@
   </footer>
 
   <script src="/js/legal.js"></script>
+  <script src="/js/password-strength.js"></script>
   <script src="/js/reset.js"></script>
 </body>
 

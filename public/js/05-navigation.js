@@ -188,7 +188,16 @@ function goView(v){
 }
 function unreadNotifCount(){ return (state.notifications||[]).filter(n=>!n.read).length; }
 // Pinta la esquina derecha del header: avatar + nombre (con puntito rojo si hay notificaciones sin leer) si hay sesión, o el botón "Iniciar sesión" si no.
+// El aviso de arriba «Confirma tu correo»: se ve si la cuenta tiene correo sin confirmar, hasta que se cierra (solo durante la sesión del navegador) o se confirma.
+function renderVerifyBanner(){
+  const box = document.getElementById('verifyBanner');
+  let off = false; try{ off = sessionStorage.getItem('dlcVerifyBannerOff')==='1'; }catch(e){}
+  const u = state.user;
+  box.hidden = !(u && u.email && !u.emailVerified && !off);
+  if(!box.hidden) document.getElementById('verifyBannerText').textContent = t('verify_banner_text').replace('{email}', u.email);
+}
 function renderUserBadge(){
+  renderVerifyBanner();
   const el=document.getElementById('userBadge');
   if(state.user){
     const u = state.user;

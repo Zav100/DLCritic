@@ -66,7 +66,7 @@ async function loadAll(){
   try{ const r=await apiGet('/reviews'); state.reviews = r.reviews; }catch(e){ state.reviews=[]; }
   try{ const r=await apiGet('/characters'); state.characters = r.characters; }catch(e){ state.characters=[]; }
   try{ const r=await apiGet('/character-reviews'); state.characterReviews = r.characterReviews; }catch(e){ state.characterReviews=[]; }
-  try{ const r=await apiGet('/auth/me'); state.user = r.user; }catch(e){ state.user=null; }
+  try{ const r=await apiGet('/auth/me'); state.user = r.user; state.googleLogin = !!r.googleLogin; }catch(e){ state.user=null; }
   try{ const r=await apiGet('/date-events'); DATE_EVENTS = r.dateEvents; }catch(e){ DATE_EVENTS=[]; }
   try{ const r=await apiGet('/news'); NEWS_ITEMS = r.news; }catch(e){ NEWS_ITEMS=[]; }
   if(state.user){ try{ const r=await apiGet('/notifications'); state.notifications = r.notifications; }catch(e){ state.notifications=[]; } }

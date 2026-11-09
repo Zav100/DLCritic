@@ -6685,3 +6685,163 @@ a.btn-ghost {
 .offline-notice.is-online::before {
   background: #3CB878;
 }
+
+/* Iniciar sesión con Google (botón en la vista /cuenta, solo si el servidor lo tiene configurado) y el aviso para confirmar el correo. */
+.google-auth {
+  margin-bottom: 18px;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3C4043;
+  text-decoration: none;
+  background: #FFFFFF;
+  border: 1px solid #DADCE0;
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+
+.btn-google:hover {
+  background: #F8F9FA;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, .3);
+}
+
+.btn-google:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.btn-google svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.google-auth .hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-dark);
+}
+
+.verify-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 9px 44px 9px 16px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--gold) 16%, var(--paper));
+  border-bottom: 1px solid var(--line-dark);
+}
+
+.verify-banner-close {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.verify-banner-close:hover {
+  background: var(--hover-tint);
+}
+
+.email-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.email-status svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.email-status.ok {
+  color: var(--teal-dim);
+}
+
+/* Barra «Nivel de seguridad» de las contraseñas (public/js/password-strength.js): solo recomienda, no bloquea. */
+.pw-meter {
+  margin-top: 8px;
+}
+
+.pw-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.pw-bars i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink-soft) 28%, transparent);
+  transition: background .2s ease;
+}
+
+.pw-meter[data-level="low"] .pw-bars i:nth-child(1) {
+  background: var(--red);
+}
+
+.pw-meter[data-level="mid"] .pw-bars i:nth-child(-n+2) {
+  background: #E2A02A;
+}
+
+.pw-meter[data-level="high"] .pw-bars i {
+  background: var(--success);
+}
+
+.pw-text,
+.pw-tip {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.pw-tip {
+  margin-top: 2px;
+}
+
+.pw-text b {
+  color: inherit;
+  font-weight: 700;
+}

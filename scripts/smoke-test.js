@@ -55,7 +55,8 @@ function client(kind = 'public') {
 }
 
 let passed = 0, failed = 0;
-const resetLimits = () => (REMOTE ? db.prepare('DELETE FROM rate_limits').run() : null);
+// Entre pasos se limpian los contadores: todos (en remoto) o solo el tope por cuenta de iniciar sesión (en local: los pasos inician sesión muchas veces con las mismas cuentas).
+const resetLimits = () => (REMOTE ? db.prepare('DELETE FROM rate_limits').run() : db.prepare("DELETE FROM rate_limits WHERE key LIKE 'login-user:%'").run());
 async function step(name, fn) {
   try { await resetLimits(); await fn(); passed++; console.log('  ✓', name); }
   catch (e) { failed++; console.log('  ✗', name, '\n     ', String(e.message).split('\n').slice(0, 6).join('\n      ')); }
@@ -152,11 +153,15 @@ const today = new Date().toISOString().slice(0, 10);
     ok(blocked, 429);
     assert.ok(blocked.headers.get('retry-after'));
   });
-  await step('contraseña: libre, pero con mayúscula, número y carácter especial; una kilométrica no se hashea', async () => {
+  await step('contraseña: libre (solo se exige el largo, sin emojis ni claves comunes); una kilométrica no se hashea', async () => {
     // cada intento sale de un cliente nuevo: el límite de intentos es por IP (8 cada 10 minutos) y aquí se prueban más de 8
     const reg = (email, password) => client()('POST', '/api/auth/register', { acceptTerms: true, email, password, username: 'smoketest_x' });
-    for (const [n, mala] of [['sin mayúscula', 'abcdef1!'], ['sin número', 'Abcdefg!'], ['sin carácter especial', 'Abcdefg1'], ['corta', 'Ab1!'], ['solo letras y números', 'Password123']]) {
+    for (const [n, mala] of [['corta', 'Ab1!'], ['siete caracteres', 'Abcde1!'], ['vacía', '']]) {
       assert.equal((await reg(`p_${n.length}@example.com`, mala)).body.error, 'weak_password', n);
+    }
+    // sin mayúscula, número ni símbolo vale (la barra «Nivel de seguridad» del sitio lo recomienda, pero no lo exige); las comunes y un solo carácter repetido, no
+    for (const [n, comun] of [['clásica', 'Password123'], ['numérica', '12345678'], ['repetida', 'aaaaaaaa'], ['repetida con símbolos', '!!!!!!!!!!']]) {
+      assert.equal((await reg(`p_${n.length}@example.com`, comun)).body.error, 'common_password', n);
     }
     // sin emojis (ni tonos de piel, banderas ni el unir-emojis)
     for (const emoji of ['Abcdef1!😀', 'Abcdef1!❤️', 'Abcdef1!👍🏽', 'Abcdef1!🇦🇷', 'Abcdef1!\u200D']) {
@@ -164,6 +169,9 @@ const today = new Date().toISOString().slice(0, 10);
     }
     // todo lo demás vale (el resultado se frena en el 409 de usuario repetido: pasó la validación)
     assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_sim@example.com', password: 'Abcdef1©✓€→', username: 'smoketest_a' })).body.error, 'username_taken');
+    for (const [n, ok1] of [['solo minúsculas', 'zorrogris'], ['solo mayúsculas', 'ZORROGRIS'], ['solo números', '8472916350'], ['con espacios', 'zorro gris azul']]) {
+      assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: `p_ok${n.length}@example.com`, password: ok1, username: 'smoketest_a' })).body.error, 'username_taken', n);
+    }
     const libre = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'p_libre@example.com', password: 'password123!A', username: 'smoketest_a' });
     assert.equal(libre.body.error, 'username_taken');
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_a', password: 'a1'.repeat(300) }), 401);
@@ -293,6 +301,7 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await reset(token2, nueva + '😀')).body.error, 'password_emoji');
     // la buena: cambia la clave, cierra todas las sesiones y avisa por correo
     ok(await reset(token2, nueva));
+    assert.ok((await db.prepare("SELECT email_verified_at AS v FROM users WHERE username = 'smoketest_r'").get()).v, 'elegir contraseña con el enlace del correo también confirma el correo');
     assert.equal((await otraSesion('GET', '/api/auth/me')).body.user, null, 'las sesiones abiertas se cierran');
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: pass }), 401);
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: nueva }));
@@ -543,6 +552,157 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await b('POST', '/api/users/smoketest_a/follow')).body.isFollowing, false);
   });
 
+  console.log('Confirmar el correo, contraseñas comunes e inicio de sesión con Google');
+  await step('confirmar el correo: enlace de un solo uso al registrarse y al cambiar de correo, reenvío con tope, y contraseñas demasiado comunes', async () => {
+    if (REMOTE) return; // los correos se leen de la memoria del proceso (mail.outbox): solo en modo local
+    const mail = require('../server/mail');
+    const linkOf = m => m.text.match(/\/verificar\?token=([0-9a-f]{64})/)[1];
+    const c = client();
+    // contraseñas comunes: se rechazan aunque tengan mayúscula, número y símbolo
+    for (const pw of ['Password1!', 'Qwerty123!', 'Contraseña1!', 'Dlcritic123!']) assert.equal((await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_pw@example.com', password: pw, username: 'smoketest_pw' })).body.error, 'common_password', pw);
+    const antes = mail.outbox.length;
+    const reg = await c('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_v@example.com', password: pass, username: 'smoketest_v', lang: 'en' }); ok(reg);
+    assert.equal(reg.body.user.emailVerified, false); assert.equal(reg.body.user.hasPassword, true);
+    assert.equal(mail.outbox.length, antes + 1);
+    const m1 = mail.outbox.at(-1);
+    assert.equal(m1.to, 'smoketest_v@example.com'); assert.match(m1.subject, /Confirm your DLCritic email/); assert.ok(m1.html.startsWith('<!doctype html>') && m1.html.includes('/verificar?token='));
+    const t1 = linkOf(m1);
+    // reenviar: el enlace nuevo anula el anterior
+    ok(await c('POST', '/api/auth/verify-email/resend', { lang: 'es' }));
+    const m2 = mail.outbox.at(-1); assert.match(m2.subject, /Confirma tu correo/);
+    const t2 = linkOf(m2); assert.notEqual(t1, t2);
+    assert.equal((await client()('POST', '/api/auth/verify-email', { token: t1 })).body.error, 'invalid_token', 'el enlace anterior ya no sirve');
+    // tope: 3 reenvíos por hora (van 1)
+    ok(await c('POST', '/api/auth/verify-email/resend', {})); ok(await c('POST', '/api/auth/verify-email/resend', {}));
+    const tope = await c('POST', '/api/auth/verify-email/resend', {}); ok(tope, 429); assert.ok(tope.headers.get('retry-after'));
+    const t3 = linkOf(mail.outbox.at(-1));
+    // mal formado, inventado y vencido
+    ok(await client()('POST', '/api/auth/verify-email', { token: 'x' }), 400); ok(await client()('POST', '/api/auth/verify-email', { token: '0'.repeat(64) }), 400);
+    await db.prepare("UPDATE email_verifications SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM users WHERE username = 'smoketest_v')").run();
+    assert.equal((await client()('POST', '/api/auth/verify-email', { token: t3 })).body.error, 'invalid_token', 'vencido');
+    // uno bueno: con el enlace basta (sin sesión), y no sirve dos veces
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE 'verify-resend:%'").run();
+    ok(await c('POST', '/api/auth/verify-email/resend', {}));
+    const t4 = linkOf(mail.outbox.at(-1));
+    ok(await client()('POST', '/api/auth/verify-email', { token: t4 }));
+    assert.equal((await c('GET', '/api/auth/me')).body.user.emailVerified, true);
+    assert.equal((await client()('POST', '/api/auth/verify-email', { token: t4 })).body.error, 'invalid_token', 'un enlace solo sirve una vez');
+    ok(await c('POST', '/api/auth/verify-email/resend', {}), 400); // ya está confirmado
+    // cambiar de correo lo deja sin confirmar y manda el enlace al correo nuevo
+    const cambio = await c('PUT', '/api/profile', { email: 'smoketest_v2@example.com', currentPassword: pass, lang: 'es' }); ok(cambio);
+    assert.equal(cambio.body.user.emailVerified, false);
+    const m3 = mail.outbox.at(-1); assert.equal(m3.to, 'smoketest_v2@example.com');
+    ok(await client()('POST', '/api/auth/verify-email', { token: linkOf(m3) }));
+    assert.equal((await c('GET', '/api/auth/me')).body.user.emailVerified, true);
+    // tope por cuenta al iniciar sesión: 12 intentos cada 15 minutos aunque vengan de IP distintas (cada client() simula la suya)
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE 'login-user:%'").run();
+    for (let i = 0; i < 12; i++) ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_v', password: 'Incorrecta-1!' }), 401);
+    const bloqueada = await client()('POST', '/api/auth/login', { identifier: 'smoketest_v', password: 'Incorrecta-1!' });
+    ok(bloqueada, 429); assert.ok(bloqueada.headers.get('retry-after'));
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_v', password: pass }), 429); // tampoco entra con la buena mientras dura
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE 'login-user:%'").run();
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_v', password: pass }));
+  });
+  await step('iniciar sesión con Google: estado y nonce, cuenta nueva, vincular por correo, tomar una cuenta sin confirmar, cuentas con 2FA y datos inválidos', async () => {
+    if (REMOTE) return;
+    const http = require('node:http');
+    const mail = require('../server/mail');
+    let respuesta = null, ultimoPedido = null;
+    const fake = http.createServer((req, res) => { // el "Google" de la prueba: solo el endpoint de tokens
+      let b = ''; req.on('data', d => { b += d; });
+      req.on('end', () => { ultimoPedido = new URLSearchParams(b); res.setHeader('Content-Type', 'application/json'); if (!respuesta) { res.statusCode = 400; return res.end('{"error":"invalid_grant"}'); } res.end(JSON.stringify({ id_token: respuesta() })); });
+    });
+    await new Promise(resolve => fake.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${fake.address().port}`;
+    const ENV = { GOOGLE_CLIENT_ID: 'cliente-de-prueba', GOOGLE_CLIENT_SECRET: 'secreto', GOOGLE_AUTH_URL: base + '/auth', GOOGLE_TOKEN_URL: base + '/token' };
+    Object.assign(process.env, ENV);
+    const jwt = claims => 'cab.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.firma';
+    let ipGoogle = 0; // el tope de /api/auth/google es por IP (30 cada 10 minutos): cada pedido sale de una distinta
+    const headers = cookie => ({ 'X-Forwarded-For': '10.9.3.' + (++ipGoogle % 250 + 1), 'X-Forwarded-Host': PUBLIC_HOST, ...(cookie ? { Cookie: cookie } : {}) });
+    const start = async (next = '/ajustes') => {
+      const r = await fetch(publicBase + '/api/auth/google/start?lang=es&next=' + encodeURIComponent(next), { redirect: 'manual', headers: headers() });
+      const loc = new URL(r.headers.get('location'));
+      return { status: r.status, loc, cookie: r.headers.getSetCookie()[0].split(';')[0], setCookie: r.headers.getSetCookie()[0], state: loc.searchParams.get('state'), nonce: loc.searchParams.get('nonce') };
+    };
+    const callback = (s, extra = {}, cookie = s.cookie) => fetch(publicBase + '/api/auth/google/callback?' + new URLSearchParams({ code: 'codigo-de-prueba', state: s.state, ...extra }), { redirect: 'manual', headers: headers(cookie) });
+    const claims = (s, o = {}) => ({ iss: 'https://accounts.google.com', aud: ENV.GOOGLE_CLIENT_ID, exp: Math.floor(Date.now() / 1000) + 600, nonce: s.nonce, sub: 'g-sub', email: 'smoketest_g@example.com', email_verified: true, name: 'smoketest_google', ...o });
+    const sessionOf = r => r.headers.getSetCookie().map(x => x.split(';')[0]).find(x => x.startsWith('cartridge_session=')) || '';
+    const meWith = async cookie => (await (await fetch(publicBase + '/api/auth/me', { headers: headers(cookie) })).json()).user;
+    const reason = r => new URL(r.headers.get('location'), publicBase).searchParams.get('reason');
+    try {
+      assert.equal((await anonMe()).googleLogin, true, '/api/auth/me avisa que Google está configurado');
+      // paso 1: redirige a Google con client_id, redirect_uri, state y nonce al azar, y deja la cookie del flujo (httpOnly, solo para esa ruta)
+      const s1 = await start();
+      assert.equal(s1.status, 302); assert.equal(s1.loc.origin + s1.loc.pathname, base + '/auth');
+      assert.equal(s1.loc.searchParams.get('client_id'), ENV.GOOGLE_CLIENT_ID); assert.equal(s1.loc.searchParams.get('response_type'), 'code'); assert.match(s1.loc.searchParams.get('scope'), /openid email/);
+      assert.ok(s1.loc.searchParams.get('redirect_uri').endsWith('/api/auth/google/callback'));
+      assert.match(s1.state, /^[0-9a-f]{48}$/); assert.match(s1.nonce, /^[0-9a-f]{48}$/); assert.match(s1.setCookie, /HttpOnly/); assert.match(s1.setCookie, /Path=\/api\/auth\/google/);
+      // cuenta nueva: nombre libre, correo confirmado, sin contraseña, y vuelve a la dirección pedida
+      respuesta = () => jwt(claims(s1, { name: 'smoketest_Ñandú' }));
+      const r1 = await callback(s1);
+      assert.equal(r1.status, 302); assert.equal(r1.headers.get('location'), '/ajustes');
+      assert.equal(ultimoPedido.get('grant_type'), 'authorization_code'); assert.equal(ultimoPedido.get('code'), 'codigo-de-prueba'); assert.equal(ultimoPedido.get('client_secret'), 'secreto');
+      assert.ok(r1.headers.getSetCookie().some(x => x.startsWith('dlc_google=;') && /Max-Age=0/.test(x)), 'la cookie del flujo se borra');
+      const nueva = await meWith(sessionOf(r1));
+      assert.deepEqual([nueva.username, nueva.email, nueva.emailVerified, nueva.hasPassword, nueva.googleLinked], ['smoketest_Nandu', 'smoketest_g@example.com', true, false, true]);
+      // la misma persona otra vez: entra a la misma cuenta (no crea otra), y con contraseña no puede entrar
+      const s2 = await start(); respuesta = () => jwt(claims(s2));
+      assert.equal(await (async () => (await meWith(sessionOf(await callback(s2)))).username)(), 'smoketest_Nandu');
+      assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM users WHERE google_sub = 'g-sub'").get()).n, 1);
+      ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_g@example.com', password: 'Cualquiera-1!' }), 401);
+      // vincular: una cuenta con contraseña y correo CONFIRMADO se une a Google y conserva su contraseña
+      const duena = client(); ok(await duena('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_gl@example.com', password: pass, username: 'smoketest_gl' }));
+      await db.prepare("UPDATE users SET email_verified_at = '2026-01-01T00:00:00.000Z' WHERE username = 'smoketest_gl'").run();
+      const s3 = await start(); respuesta = () => jwt(claims(s3, { sub: 'g-vincular', email: 'smoketest_gl@example.com' }));
+      assert.equal((await meWith(sessionOf(await callback(s3)))).username, 'smoketest_gl');
+      assert.equal((await db.prepare("SELECT google_sub AS g FROM users WHERE username = 'smoketest_gl'").get()).g, 'g-vincular');
+      ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_gl', password: pass }), 200);
+      // tomar una cuenta SIN confirmar: Google confirma el correo, la contraseña vieja se borra y sus sesiones se cierran (quien la registró sin ser dueño del correo queda afuera)
+      const intruso = client(); ok(await intruso('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_gt@example.com', password: pass, username: 'smoketest_gt' }));
+      const cookieIntruso = intruso.getCookie(); assert.ok((await meWith(cookieIntruso)), 'la sesión vieja estaba abierta');
+      const antesAviso = mail.outbox.length;
+      const s4 = await start(); respuesta = () => jwt(claims(s4, { sub: 'g-tomar', email: 'smoketest_gt@example.com' }));
+      const r4 = await callback(s4);
+      assert.equal((await meWith(sessionOf(r4))).username, 'smoketest_gt');
+      assert.equal(await meWith(cookieIntruso), null, 'la sesión vieja se cerró');
+      ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_gt', password: pass }), 401);
+      assert.deepEqual(Object.values(await db.prepare("SELECT has_password AS h, (email_verified_at IS NOT NULL) AS v FROM users WHERE username = 'smoketest_gt'").get()).map(Number), [0, 1]);
+      const aviso = mail.outbox.at(-1); assert.equal(mail.outbox.length, antesAviso + 1); assert.equal(aviso.to, 'smoketest_gt@example.com'); assert.match(aviso.subject, /vinculó Google/); assert.ok(aviso.text.includes('se borró su contraseña anterior'));
+      // las cuentas con verificación en dos pasos (o admin) no entran por Google: se saltearían el código
+      await db.prepare("UPDATE users SET totp_enabled = 1 WHERE username = 'smoketest_gl'").run();
+      const s5 = await start(); respuesta = () => jwt(claims(s5, { sub: 'g-vincular', email: 'smoketest_gl@example.com' }));
+      const r5 = await callback(s5); assert.equal(r5.status, 302); assert.equal(reason(r5), 'two_factor'); assert.equal(sessionOf(r5), '');
+      await db.prepare("UPDATE users SET totp_enabled = 0 WHERE username = 'smoketest_gl'").run();
+      // datos inválidos: cada uno vuelve a /cuenta con su motivo y sin sesión
+      const falla = async (hacer, motivo, msg) => { const s = await start(); respuesta = () => jwt(claims(s, { sub: 'g-x' + Math.random().toString(36).slice(2, 8), email: 'smoketest_x@example.com' })); const r = await hacer(s); assert.equal(r.status, 302, msg); assert.ok(r.headers.get('location').startsWith('/cuenta?google=error'), msg); assert.equal(reason(r), motivo, msg); assert.equal(sessionOf(r), '', msg); };
+      await falla(s => callback({ ...s, state: 'a'.repeat(48) }), 'expired', 'el state no coincide');
+      await falla(s => callback(s, {}, ''), 'expired', 'sin la cookie del flujo');
+      await falla(s => callback(s, { error: 'access_denied' }), 'denied', 'la persona canceló');
+      await falla(s => callback(s, { error: 'server_error' }), 'failed', 'Google devolvió un error');
+      const mal = async (cambios, msg) => { const s = await start(); respuesta = () => jwt(claims(s, { sub: 'g-malo', email: 'smoketest_malo@example.com', ...cambios })); const r = await callback(s); assert.equal(reason(r), msg[0], msg[1]); assert.equal(sessionOf(r), '', msg[1]); };
+      await mal({ email_verified: false }, ['unverified_email', 'correo sin verificar por Google']);
+      await mal({ nonce: 'otro' }, ['failed', 'el nonce no coincide']);
+      await mal({ aud: 'otro-cliente' }, ['failed', 'otra audiencia']);
+      await mal({ iss: 'https://otro.example.com' }, ['failed', 'otro emisor']);
+      await mal({ exp: Math.floor(Date.now() / 1000) - 10 }, ['failed', 'token vencido']);
+      respuesta = null; { const s = await start(); const r = await callback(s); assert.equal(reason(r), 'failed', 'Google rechaza el código'); }
+      assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM users WHERE email IN ('smoketest_x@example.com', 'smoketest_malo@example.com')").get()).n, 0, 'ninguno de los intentos inválidos creó una cuenta');
+      // solo se vuelve a direcciones del propio sitio
+      for (const malo of ['//otro.example.com', 'https://otro.example.com/x', 'javascript:alert(1)']) {
+        const s = await start(malo); respuesta = () => jwt(claims(s, { sub: 'g-sub' }));
+        assert.equal((await callback(s)).headers.get('location'), '/', malo);
+      }
+      // sin las variables de entorno: el botón no aparece y el inicio avisa
+      delete process.env.GOOGLE_CLIENT_ID; delete process.env.GOOGLE_CLIENT_SECRET;
+      assert.equal((await anonMe()).googleLogin, false);
+      const sin = await fetch(publicBase + '/api/auth/google/start', { redirect: 'manual', headers: headers() }); assert.equal(sin.headers.get('location'), '/cuenta?google=error&reason=not_configured');
+    } finally {
+      for (const k of Object.keys(ENV)) delete process.env[k];
+      fake.close();
+    }
+    async function anonMe() { return (await (await fetch(publicBase + '/api/auth/me', { headers: headers() })).json()); }
+  });
+
   console.log('Listas');
   await step('crear, agregar/quitar juegos, editar, listar públicas y borrar', async () => {
     const c = await a('POST', '/api/lists', { title: 'Mis favoritos', isPublic: true }); ok(c);
@@ -733,7 +893,7 @@ const today = new Date().toISOString().slice(0, 10);
   console.log('Archivos estáticos');
   await step('páginas: sus /js y /css llevan ?v=<hash> y cada archivo existe (así el caché de un año es seguro)', async () => {
     const pub = client();
-    for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/creditos', '/restablecer', '/esta-pagina-no-existe']) {
+    for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/creditos', '/restablecer', '/verificar', '/esta-pagina-no-existe']) {
       const page = await pub('GET', route);
       const refs = [...page.text.matchAll(/(?:src|href)="(\/(?:js|css)\/[^"]+)"/g)].map(m => m[1]);
       assert.ok(refs.length >= 3, route + ' carga scripts y estilos');

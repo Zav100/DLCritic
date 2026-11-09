@@ -18,18 +18,19 @@
  * 12-settings.js (ahí pueden cambiarlo a una contraseña real si quieren).
  */
 /* ---------- auth ---------- */
-// Misma regla que valida el servidor (server/index.js): 8+ caracteres, con una mayúscula, un número y un carácter especial (cualquier símbolo que no sea letra, número ni espacio). Se valida aquí TAMBIÉN en el cliente para dar el error al instante, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
+// Misma regla que valida el servidor (server/index.js): de 8 a 200 caracteres, sin emojis (mayúsculas, números y símbolos se recomiendan con la barra de seguridad, no se exigen). Se valida aquí TAMBIÉN en el cliente para dar el error al instante, sin esperar la ida y vuelta al servidor — pero el servidor la vuelve a chequear igual, nunca hay que confiar solo en la validación del cliente.
 // Sin emojis (misma regla que EMOJI_RE en server/index.js): cualquier carácter con aspecto de emoji, tonos de piel, banderas, ZWJ y selector de emoji; © ® ™ valen.
 const EMOJI_RE_CLIENT = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u200D\uFE0F\u20E3]/u;
 // Devuelve la clave del texto de error de una contraseña rechazada, o null si sirve.
 function passwordProblemClient(p){ return EMOJI_RE_CLIENT.test(p) ? 'err_password_emoji' : isStrongPasswordClient(p) ? null : 'err_weak_password'; }
-function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200 && /\p{Lu}/u.test(p) && /[0-9]/.test(p) && /[^\p{L}\p{N}\s]/u.test(p); }
+function isStrongPasswordClient(p){ return typeof p==='string' && p.length>=8 && p.length<=200; }
 let registerAvatarFile = null; // el File elegido en el paso 2 del registro, o null; se sube recién después de crear la cuenta (ver handleRegisterSubmit)
 // Muestra el paso 1 o el paso 2 del formulario de registro (los dos <div> ya existen en el HTML, esto solo cambia cuál está oculto).
 function showRegisterStep(step){
   state.authStep = step;
   document.getElementById('authRegisterStep1').hidden = step!==1;
   document.getElementById('authRegisterStep2').hidden = step!==2;
+  refreshGoogleAuth();
 }
 // Arma los campos de redes sociales del paso 2 (uno por cada red en SOCIAL_KEYS) y resetea el preview de avatar al ícono genérico. Se llama cada vez que se entra a la pestaña de registro.
 function renderRegisterStep2Fields(){
@@ -60,6 +61,30 @@ function setAuthTab(tab){
   document.getElementById('authError').hidden=true;
   document.getElementById('registerStep1Error').hidden=true;
   if(tab==='register') renderRegisterStep2Fields();
+  refreshGoogleAuth();
+}
+// El botón «Continuar con Google» (y su aviso de términos) solo se muestra si el servidor tiene configurado el inicio de sesión con Google (/api/auth/me lo avisa),
+// en las dos pestañas, y solo en el primer paso del registro. Lleva el idioma para los correos que pueda mandar el servidor.
+function refreshGoogleAuth(){
+  const box = document.getElementById('googleAuth');
+  if(!box) return;
+  box.hidden = !state.googleLogin || (state.authTab==='register' && state.authStep!==1) || !document.getElementById('authForgot').hidden;
+  document.getElementById('googleBtn').href = '/api/auth/google/start?next=/&lang=' + (state.lang==='en' ? 'en' : 'es');
+}
+// Al volver de Google con un error, /cuenta?google=error&reason=... : se muestra el motivo en la pestaña de iniciar sesión y se limpia la dirección.
+function showGoogleReturn(){
+  const q = new URLSearchParams(location.search);
+  if(q.get('google')!=='error') return;
+  history.replaceState(null, '', location.pathname);
+  setAuthTab('login');
+  const errEl = document.getElementById('authError');
+  errEl.textContent = t({ denied:'auth_google_denied', expired:'auth_google_expired', unverified_email:'auth_google_unverified', two_factor:'auth_google_two_factor', not_configured:'auth_google_not_configured' }[q.get('reason')] || 'auth_google_failed');
+  errEl.hidden = false;
+}
+// Reenvía el enlace para confirmar el correo (desde el aviso de arriba y desde Ajustes); el servidor deja 3 por hora.
+async function resendVerification(){
+  try{ await apiPost('/auth/verify-email/resend', { lang: state.lang }); toast(t('toast_verify_sent')); }
+  catch(e){ toast(t(e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_user')); }
 }
 // Prepara la vista /cuenta desde cero cada vez que se entra a ella: limpia todos los campos de los 2 formularios, vuelve a la pestaña que estaba activa, y engancha todos los botones/inputs (incluido el preview de la foto elegida en el paso 2).
 function renderAuthForm(){
@@ -71,12 +96,14 @@ function renderAuthForm(){
   document.getElementById('r-email').value='';
   document.getElementById('r-password').value='';
   document.getElementById('r-password2').value='';
+  bindPasswordMeter(document.getElementById('r-password'), document.getElementById('r-pwMeter'), t);
   document.getElementById('r-username').value='';
   document.getElementById('r-bio').value='';
   document.getElementById('r-avatar-file').value='';
   document.getElementById('r-terms').checked=false;
   registerAvatarFile = null;
   setAuthTab(state.authTab||'login');
+  showGoogleReturn();
   document.getElementById('authSubmit').onclick = handleLogin;
   document.getElementById('authForgotLink').onclick = showForgot;
   document.getElementById('forgotSubmit').onclick = handleForgot;
@@ -107,6 +134,7 @@ async function afterAuthSuccess(user){
 function showForgot(){
   document.getElementById('authLoginFields').hidden = true;
   document.getElementById('authForgot').hidden = false;
+  refreshGoogleAuth();
   document.getElementById('forgotError').hidden = true;
   document.getElementById('forgotSent').hidden = true;
   const typed = document.getElementById('a-identifier').value.trim();
@@ -116,6 +144,7 @@ function showForgot(){
 function hideForgot(){
   document.getElementById('authForgot').hidden = true;
   document.getElementById('authLoginFields').hidden = false;
+  refreshGoogleAuth();
 }
 async function handleForgot(){
   const errEl = document.getElementById('forgotError'), sentEl = document.getElementById('forgotSent'), btn = document.getElementById('forgotSubmit');
@@ -186,10 +215,10 @@ async function handleRegisterSubmit(){
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
   if(hasBadSocialLink(socialLinks)){ errEl.textContent=t('err_social_link'); errEl.hidden=false; return; }
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', common_password:'err_common_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
-    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true }));
+    ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true, lang: state.lang }));
   }catch(e){ errEl.textContent = t(ERR_MSG[e.body&&e.body.error] || 'err_bad_login'); errEl.hidden=false; return; }
   if(registerAvatarFile){
     try{

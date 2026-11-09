@@ -127,6 +127,12 @@
     </div>
   </header>
 
+  <div class="verify-banner" id="verifyBanner" role="status" hidden>
+    <span id="verifyBannerText"></span>
+    <button type="button" class="linklike" id="verifyResendBtn" data-i18n="verify_banner_resend">Reenviar enlace</button>
+    <button type="button" class="verify-banner-close" id="verifyBannerClose" aria-label="Cerrar" data-i18n-aria="close_btn">✕</button>
+  </div>
+
   <main class="wrap">
 
     <div id="view-feed" class="viewsec">
@@ -481,6 +487,15 @@
             onclick="setAuthTab('register')" data-i18n="auth_register_tab">Registrarme</button>
         </div>
 
+        <div id="googleAuth" class="google-auth" hidden>
+          <a class="btn-google" id="googleBtn" href="/api/auth/google/start">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            <span data-i18n="auth_google_btn">Continuar con Google</span>
+          </a>
+          <p class="hint" data-i18n-html="auth_google_terms">Al continuar con Google aceptas los <a href="/terminos">Términos y condiciones</a> y la <a href="/privacidad">Política de privacidad</a>.</p>
+          <div class="auth-or"><span data-i18n="auth_or">o con tu correo</span></div>
+        </div>
+
         <div id="authLoginFields">
           <div class="field">
             <label for="a-identifier" data-i18n="auth_identifier_label">Email o usuario</label>
@@ -530,7 +545,8 @@
           <div class="field">
             <label for="r-password" data-i18n="auth_password_label">Contraseña</label>
             <input type="password" id="r-password" name="new-password" autocomplete="new-password" placeholder="••••••••">
-            <p class="hint" data-i18n="auth_password_hint">Mínimo 8 caracteres, con una mayúscula, un número y un carácter especial (como ! o *). Sin emojis.</p>
+            <div class="pw-meter" id="r-pwMeter" hidden></div>
+            <p class="hint" data-i18n="auth_password_hint">Mínimo 8 caracteres, sin emojis. Una más larga, con mayúsculas, números y símbolos, es más segura.</p>
           </div>
           <div class="field">
             <label for="r-password2" data-i18n="auth_password_confirm_label">Confirmar contraseña</label>
@@ -680,6 +696,7 @@
   <script src="/js/08-browse.js"></script>
   <script src="/js/09-shelf-profile.js"></script>
   <script src="/js/10-lists.js"></script>
+  <script src="/js/password-strength.js"></script>
   <script src="/js/11-auth.js"></script>
   <script src="/js/12-settings.js"></script>
   <script src="/js/13-daily-challenge.js"></script>

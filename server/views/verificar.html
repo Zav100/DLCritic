@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7">
+  <!-- La dirección de esta página lleva el token de confirmación: que no viaje a otros sitios ni se indexe. -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Confirmar correo — DLCritic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/legal.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="headbar">
+      <a class="logo" href="/" aria-label="DLCritic"><svg viewBox="6 14 288 288">
+          <rect x="10" y="24" width="280" height="204" rx="76" fill="currentColor" />
+          <path d="M52 206L36 286L132 222Z" fill="currentColor" stroke="currentColor" stroke-width="12"
+            stroke-linejoin="round" />
+          <rect x="50" y="109" width="92" height="34" rx="9" fill="#211E3D" />
+          <rect x="79" y="80" width="34" height="92" rx="9" fill="#211E3D" />
+          <circle cx="200" cy="106" r="21" fill="#211E3D" />
+          <circle cx="242" cy="148" r="21" fill="#F6F3FF" />
+        </svg> <span class="logo-word">DLC<span>ritic</span></span></a>
+      <div class="headright">
+        <button class="lang-toggle" id="langToggle" aria-label="Change language" title="Change language">ES</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Cambiar paleta de color / Switch color theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap legal-doc">
+
+    <article data-lang="es">
+      <h1>Confirmar correo</h1>
+    </article>
+    <article data-lang="en" hidden>
+      <h1>Confirm email</h1>
+    </article>
+
+    <div id="verifyLoading">
+      <p><span data-lang="es">Confirmando tu correo…</span><span data-lang="en" hidden>Confirming your email…</span></p>
+    </div>
+
+    <div id="verifyDone" hidden>
+      <p><span data-lang="es">Listo: tu correo quedó confirmado. Ahora podrás recuperar tu contraseña si algún día la olvidas.</span><span data-lang="en" hidden>Done: your email is confirmed. Now you can recover your password if you ever forget it.</span></p>
+      <p><a class="btn" href="/" style="text-decoration:none; display:inline-block;"><span data-lang="es">Ir a DLCritic</span><span data-lang="en" hidden>Go to DLCritic</span></a></p>
+    </div>
+
+    <div id="verifyInvalid" hidden>
+      <p><span data-lang="es">Este enlace no sirve: venció (vale 24 horas), ya se usó, el correo de la cuenta cambió o está incompleto. Inicia sesión y pide uno nuevo desde el aviso «Confirma tu correo» o desde Ajustes.</span><span data-lang="en" hidden>This link doesn't work: it expired (it's valid for 24 hours), it was already used, the account's email changed, or it is incomplete. Sign in and ask for a new one from the "Confirm your email" notice or from Settings.</span></p>
+      <p><a class="btn" href="/cuenta" style="text-decoration:none; display:inline-block;"><span data-lang="es">Ir a iniciar sesión</span><span data-lang="en" hidden>Go to sign in</span></a></p>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <nav class="footer-links">
+        <a class="footer-link" href="/"><span data-lang="es">Volver al inicio</span><span data-lang="en" hidden>Back to home</span></a>
+      </nav>
+      <div class="footer-bottom">© <span id="footerYear"></span> DLCritic</div>
+    </div>
+  </footer>
+
+  <script src="/js/legal.js"></script>
+  <script src="/js/verify.js"></script>
+</body>
+
+</html>
