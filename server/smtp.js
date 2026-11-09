@@ -51,9 +51,12 @@ const domainOf = s => (addressOf(s).split('@')[1] || 'localhost').toLowerCase();
 // Palabras no ASCII en un encabezado: =?UTF-8?B?...?= (RFC 2047).
 const headerText = s => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buffer.from(s).toString('base64')}?=`);
 
-// El mensaje completo. El cuerpo va en base64, así que ninguna línea puede empezar con "." (no hace falta escapar puntos) ni romper el protocolo.
-function buildMessage({ from, to, replyTo, subject, text }) {
-  const body = Buffer.from(text, 'utf8').toString('base64').match(/.{1,76}/g).join('\r\n');
+// El mensaje completo. Cada cuerpo va en base64, así que ninguna línea puede empezar con "." (no hace falta escapar puntos) ni romper el protocolo.
+// Con html, el mensaje lleva las dos versiones (multipart/alternative): el texto primero y el HTML al final, que es la que los clientes prefieren.
+const base64 = s => Buffer.from(s, 'utf8').toString('base64').match(/.{1,76}/g).join('\r\n');
+const part = (type, content) => [`Content-Type: ${type}; charset=utf-8`, 'Content-Transfer-Encoding: base64', '', base64(content)];
+function buildMessage({ from, to, replyTo, subject, text, html }) {
+  const boundary = `=_dlcritic_${crypto.randomBytes(12).toString('hex')}`;
   return [
     `From: ${from}`,
     `To: ${to}`,
@@ -64,16 +67,15 @@ function buildMessage({ from, to, replyTo, subject, text }) {
     // RFC 3834: es un mensaje automático (no una conversación): así nadie le contesta con un "fuera de la oficina" ni se trata como correo masivo.
     'Auto-Submitted: auto-generated',
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=utf-8',
-    'Content-Transfer-Encoding: base64',
-    '',
-    body,
+    ...(html
+      ? [`Content-Type: multipart/alternative; boundary="${boundary}"`, '', `--${boundary}`, ...part('text/plain', text), `--${boundary}`, ...part('text/html', html), `--${boundary}--`, '']
+      : part('text/plain', text)),
   ].filter(l => l !== null).join('\r\n');
 }
 
 // secure: 'tls' (conexión cifrada desde el principio, puerto 465), 'starttls' (se cifra al empezar, puerto 587) o 'none' (sin cifrar: solo
 // se acepta hacia esta misma máquina, para las pruebas).
-async function send({ host, port, secure, user, pass, from, to, replyTo, subject, text }) {
+async function send({ host, port, secure, user, pass, from, to, replyTo, subject, text, html }) {
   if (secure === 'none' && !['localhost', '127.0.0.1', '::1'].includes(host)) throw new Error('SMTP sin cifrar solo se permite hacia localhost');
   if (/[\r\n<>]/.test(to) || /[\r\n]/.test(from + (replyTo || '') + subject)) throw new Error('dirección o asunto inválidos');
 
@@ -90,7 +92,7 @@ async function send({ host, port, secure, user, pass, from, to, replyTo, subject
     await s.cmd(`MAIL FROM:<${addressOf(from)}>`, [250]);
     await s.cmd(`RCPT TO:<${addressOf(to)}>`, [250, 251]);
     await s.cmd('DATA', [354]);
-    s.socket.write(buildMessage({ from, to, replyTo, subject, text }) + '\r\n.\r\n');
+    s.socket.write(buildMessage({ from, to, replyTo, subject, text, html }) + '\r\n.\r\n');
     await s.cmd(null, [250]);
     s.socket.write('QUIT\r\n');
   } finally {

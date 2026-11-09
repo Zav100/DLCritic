@@ -6,13 +6,17 @@
 //   SMTP_USER, SMTP_PASS, MAIL_FROM (ej. 'DLCritic <dlcriticweb@gmail.com>'; por defecto SMTP_USER), MAIL_REPLY_TO (opcional).
 //   PUBLIC_URL: la dirección pública del sitio (ej. https://dlcritic.vercel.app), que va en los enlaces de los correos.
 const smtp = require('./smtp');
+const { buildEmail, C } = require('./mail-layout');
 
 const outbox = [];
 
-async function sendMail({ to, subject, text }) {
+// Todo correo de DLCritic sale con el mismo formato (oscuro, con logo y recuadro de color: mail-layout.js), en texto y en HTML: por eso html es obligatorio.
+// Los correos se arman con buildEmail (ver los de abajo), que devuelve { subject, text, html }.
+async function sendMail({ to, subject, text, html }) {
+  if (!html) throw new Error('Todo correo de DLCritic lleva el formato HTML (usa buildEmail de mail-layout.js)');
   if (!process.env.SMTP_HOST) {
     if (process.env.NODE_ENV === 'production') throw new Error('Falta SMTP_HOST: no hay cómo mandar correos');
-    outbox.push({ to, subject, text });
+    outbox.push({ to, subject, text, html });
     if (!process.env.MAIL_QUIET) console.log(`\n[correo de desarrollo] Para: ${to}\nAsunto: ${subject}\n\n${text}\n`);
     return;
   }
@@ -25,7 +29,7 @@ async function sendMail({ to, subject, text }) {
     pass: process.env.SMTP_PASS,
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     replyTo: process.env.MAIL_REPLY_TO || undefined,
-    to, subject, text,
+    to, subject, text, html,
   });
 }
 
@@ -38,52 +42,48 @@ function publicUrl() {
   return `http://localhost:${process.env.PORT || 8793}`;
 }
 
-/* ---------------- textos de los correos (español e inglés) ---------------- */
+/* ---------------- los correos (español e inglés) ---------------- */
 
-const TEXTS = {
+// Cada correo se describe con su contenido (ver mail-layout.js) y buildEmail saca de ahí el texto y el HTML. La dirección del sitio es la de PUBLIC_URL (de ahí sale
+// el logo y el pie); si no está, se omiten (no se rompe el correo).
+function siteUrlOrEmpty() { try { return publicUrl(); } catch { return ''; } }
+
+const EMAILS = {
   es: {
-    resetSubject: 'Restablece tu contraseña de DLCritic',
-    reset: (name, link) => `Hola ${name},
-
-Alguien pidió restablecer la contraseña de tu cuenta de DLCritic. Si fuiste tú, abre este enlace para elegir una contraseña nueva (vale 1 hora y se puede usar una sola vez):
-
-${link}
-
-Si no fuiste tú, ignora este mensaje: tu contraseña sigue siendo la misma.
-
-— DLCritic`,
-    changedSubject: 'Cambió la contraseña de tu cuenta de DLCritic',
-    changed: name => `Hola ${name},
-
-La contraseña de tu cuenta de DLCritic se acaba de cambiar y se cerró la sesión en todos tus dispositivos.
-
-Si fuiste tú, no tienes que hacer nada. Si no fuiste tú, responde a este correo cuanto antes.
-
-— DLCritic`,
+    reset: (name, link) => ({
+      subject: 'Restablece tu contraseña de DLCritic',
+      preheader: 'Enlace para elegir una contraseña nueva: vale 1 hora.',
+      title: 'Restablece tu contraseña',
+      paragraphs: ['Alguien pidió restablecer la contraseña de tu cuenta de DLCritic. Si fuiste tú, elige una contraseña nueva con el botón: el enlace vale 1 hora y se puede usar una sola vez.'],
+      box: { label: 'Enlace de un solo uso', button: { text: 'Elegir contraseña nueva', url: link }, fallback: 'Si el botón no funciona, copia y pega este enlace en tu navegador:', note: 'Si no fuiste tú, ignora este mensaje: tu contraseña sigue siendo la misma.' },
+    }),
+    changed: () => ({
+      subject: 'Cambió la contraseña de tu cuenta de DLCritic',
+      preheader: 'La contraseña de tu cuenta se acaba de cambiar.',
+      title: 'Cambió la contraseña de tu cuenta',
+      paragraphs: ['La contraseña de tu cuenta de DLCritic se acaba de cambiar y se cerró la sesión en todos tus dispositivos.', 'Si fuiste tú, no tienes que hacer nada.'],
+      box: { label: 'Si no fuiste tú', note: 'Responde a este correo cuanto antes.', accent: C.pink },
+    }),
   },
   en: {
-    resetSubject: 'Reset your DLCritic password',
-    reset: (name, link) => `Hi ${name},
-
-Someone asked to reset the password of your DLCritic account. If it was you, open this link to choose a new password (it is valid for 1 hour and can be used only once):
-
-${link}
-
-If it wasn't you, ignore this message: your password stays the same.
-
-— DLCritic`,
-    changedSubject: 'The password of your DLCritic account was changed',
-    changed: name => `Hi ${name},
-
-The password of your DLCritic account was just changed and you were signed out on all your devices.
-
-If it was you, there is nothing to do. If it wasn't you, reply to this email right away.
-
-— DLCritic`,
+    reset: (name, link) => ({
+      subject: 'Reset your DLCritic password',
+      preheader: 'Link to choose a new password: valid for 1 hour.',
+      title: 'Reset your password',
+      paragraphs: ['Someone asked to reset the password of your DLCritic account. If it was you, choose a new password with the button: the link is valid for 1 hour and can be used only once.'],
+      box: { label: 'One-time link', button: { text: 'Choose a new password', url: link }, fallback: "If the button doesn't work, copy and paste this link into your browser:", note: "If it wasn't you, ignore this message: your password stays the same." },
+    }),
+    changed: () => ({
+      subject: 'The password of your DLCritic account was changed',
+      preheader: 'The password of your account was just changed.',
+      title: 'Your account password was changed',
+      paragraphs: ['The password of your DLCritic account was just changed and you were signed out on all your devices.', 'If it was you, there is nothing to do.'],
+      box: { label: "If it wasn't you", note: 'Reply to this email right away.', accent: C.pink },
+    }),
   },
 };
 
-const resetEmail = (lang, name, link) => ({ subject: TEXTS[lang].resetSubject, text: TEXTS[lang].reset(name, link) });
-const passwordChangedEmail = (lang, name) => ({ subject: TEXTS[lang].changedSubject, text: TEXTS[lang].changed(name) });
+const resetEmail = (lang, name, link) => buildEmail(lang, name, EMAILS[lang].reset(name, link), siteUrlOrEmpty());
+const passwordChangedEmail = (lang, name) => buildEmail(lang, name, EMAILS[lang].changed(name), siteUrlOrEmpty());
 
 module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, outbox };
