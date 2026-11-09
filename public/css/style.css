@@ -6215,7 +6215,7 @@ a.btn-ghost {
 /* Los juegos de una lista (ventana grande). La zona cabía justo en su alto máximo: al soltar el cursor, la tarjeta de abajo rebotaba unos píxeles con el
    resorte del hover, aparecía la barra de desplazamiento, las tarjetas se estrechaban, la barra desaparecía... y toda la ventana temblaba. Ahora: el espacio
    de la barra se reserva siempre (scrollbar-gutter), hay margen abajo y a los lados (también deja ver la sombra de las tarjetas) y el hover no rebota. */
-.list-detail-grid {
+.list-detail-scroll {
   max-height: 50vh;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -6260,4 +6260,36 @@ a.btn-ghost {
   color: var(--red);
   background: color-mix(in srgb, var(--red) 8%, transparent);
   border-color: color-mix(in srgb, var(--red) 55%, transparent);
+}
+
+/* Todas las tarjetas de una lista, del mismo tamaño y con el botón «Quitar de la lista» en el mismo lugar: las filas miden lo mismo (la más alta manda),
+   la tarjeta es una columna y el botón se pega al fondo; el título se corta a 3 renglones (el completo está en su title) para que una sola tarjeta no estire todas.
+   Las filas solo se igualan si la grilla no tiene un alto máximo propio, por eso el desplazamiento vive en .list-detail-scroll y no en la grilla. */
+.list-detail-grid {
+  grid-auto-rows: 1fr;
+}
+
+.list-detail-grid .gamecard {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-detail-grid .gc-cover {
+  flex-shrink: 0;
+}
+
+.list-detail-grid .gc-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.list-detail-grid .gc-sub {
+  margin-bottom: 10px;
+}
+
+.list-detail-grid .list-remove-btn {
+  margin-top: auto;
 }
