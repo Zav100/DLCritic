@@ -111,12 +111,12 @@ function openListDetailModal(listId){
       <h3>${esc(list.title)}</h3>
       ${editable ? `
       <div class="confirm-actions list-detail-actions">
-        <button class="btn-ghost" id="listAddGamesBtn">${ICONS.plus} ${esc(t('list_add_games_btn'))}</button>
+        <button class="chip" id="listAddGamesBtn">${ICONS.plus} ${esc(t('list_add_games_btn'))}</button>
         <button class="chip" id="listTogglePublic">${list.isPublic? ICONS.globe+' '+esc(t('list_public_label')) : ICONS.lock+' '+esc(t('list_private_label'))}</button>
-        <button class="btn-ghost" id="listRenameBtn">${esc(t('list_rename_btn'))}</button>
-        <button class="btn-ghost" id="listDeleteBtn" style="color:var(--red);">${t('delete_btn')}</button>
+        <button class="chip" id="listRenameBtn">${esc(t('list_rename_btn'))}</button>
+        <button class="chip chip-danger" id="listDeleteBtn">${t('delete_btn')}</button>
       </div>` : ''}
-      <div class="grid" id="listDetailGrid" style="max-height:50vh; overflow-y:auto;"></div>
+      <div class="grid list-detail-grid" id="listDetailGrid"></div>
       <div class="confirm-actions" style="margin-top:16px;">
         <button class="btn-ghost" data-act="cancel">${esc(t('back_generic'))}</button>
       </div>
@@ -135,7 +135,7 @@ function openListDetailModal(listId){
         <div class="gc-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
         <div class="gc-title">${esc(g.title)}</div>
         <div class="gc-sub">${esc(genreLabelList(g))}</div>
-        ${editable ? `<button class="btn-ghost" data-remove="${esc(g.id)}" style="margin-top:6px; font-size:11px;">${esc(t('list_remove_btn'))}</button>` : ''}
+        ${editable ? `<button type="button" class="list-remove-btn" data-remove="${esc(g.id)}">${ICONS.x}<span>${esc(t('list_remove_btn'))}</span></button>` : ''}
       `;
       card.onclick=spa((e)=>{
         if(e.target.closest('[data-remove]')) return;
