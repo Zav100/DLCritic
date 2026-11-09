@@ -198,8 +198,10 @@ function renderGameDetail(){
   renderGameRail(g);
   wireGameCharacters(el);
   renderGauge(document.getElementById('detailGauge'), st.avg||0);
-  loadHeroCover(document.querySelector('.game-hero-bg'), g.coverUrl);
-  makeZoomable(document.querySelector('.game-hero-card .gc-cover'), g.coverUrl, g.title); // la portada de la ficha se abre en grande
+  // Se busca dentro de la ficha (el), no en todo el documento: la ficha de un personaje también usa .game-hero-bg y .game-hero-card, y si antes se había
+  // visitado un personaje, su elemento (oculto) venía primero y la portada del juego se pintaba ahí, dejando vacía la de la ficha hasta recargar.
+  loadHeroCover(el.querySelector('.game-hero-bg'), g.coverUrl);
+  makeZoomable(el.querySelector('.game-hero-card .gc-cover'), g.coverUrl, g.title); // la portada de la ficha se abre en grande
   document.getElementById('wishlistBtn').onclick = ()=> toggleWishlist(g.id);
   const addToListBtn = document.getElementById('addToListBtn');
   if(addToListBtn) addToListBtn.onclick = ()=> openAddToListModal(g.id);
