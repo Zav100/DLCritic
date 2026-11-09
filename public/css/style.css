@@ -6629,3 +6629,25 @@ a.btn-ghost {
     justify-content: center;
   }
 }
+
+/* Selector «Agregar juegos» de una lista: los juegos que ya están en la lista no se tocan, y la pregunta de descartar lo marcado va en la misma ventana. */
+.pickcard.in-list {
+  cursor: default;
+  opacity: .7;
+}
+
+.pickcard.in-list:hover {
+  transform: none;
+  box-shadow: 0 1px 2px var(--shadow-soft), 0 10px 24px var(--shadow-strong);
+}
+
+#listPickDiscard {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#listPickDiscard .hint {
+  flex: 1 1 200px;
+  margin: 0;
+  text-align: left;
+}

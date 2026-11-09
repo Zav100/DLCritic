@@ -906,6 +906,25 @@ app.delete('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Suma varios juegos a una lista de una vez (el selector «Agregar juegos» guarda lo marcado con un solo botón). Ignora los que no existen y los que ya estaban;
+// los nuevos entran en el orden en que llegaron (cada uno con un milisegundo más, porque la lista se ordena por added_at).
+app.post('/api/lists/:id/items', requireAuth, listItemLimiter, async (req, res) => {
+  const list = await findListById.get(req.params.id);
+  if (!list) return res.status(404).json({ error: 'not_found' });
+  if (list.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
+  const ids = req.body && req.body.gameIds;
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 300 || !ids.every(i => typeof i === 'string')) return res.status(400).json({ error: 'invalid_games' });
+  const known = new Set((await listGameIds.all()).map(g => g.id));
+  const have = new Set((await itemsForList.all(list.id)).map(i => i.game_id));
+  const toAdd = [...new Set(ids)].filter(id => known.has(id) && !have.has(id));
+  const base = Date.now();
+  await db.transaction(async tx => {
+    for (const [i, id] of toAdd.entries()) await tx.prepare('INSERT INTO game_list_items (list_id, game_id, added_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING').run(list.id, id, new Date(base + i).toISOString());
+    await tx.prepare('UPDATE game_lists SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), list.id);
+  });
+  res.json({ list: await shapeList(await findListById.get(list.id)) });
+});
+
 app.post('/api/lists/:id/items/toggle', requireAuth, listItemLimiter, async (req, res) => {
   const list = await findListById.get(req.params.id);
   if (!list) return res.status(404).json({ error: 'not_found' });

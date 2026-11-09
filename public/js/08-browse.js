@@ -210,9 +210,11 @@ function renderGameDetail(){
     renderQuickPlatforms(g.id, g, myReview);
     renderReviewBlock(g.id, myReview);
   }
-  const origin = state.gameOrigin || 'browse';
+  // De dónde se llegó decide a dónde y con qué texto vuelve el botón. Desde un personaje: «Volver a <nombre>» (si ese personaje ya no existe, a Explorar).
+  const fromCharacter = state.gameOrigin==='character' ? findCharacter(state.currentCharacter) : null;
+  const origin = state.gameOrigin==='character' ? (fromCharacter? 'character' : 'browse') : (state.gameOrigin || 'browse');
   const backBtn = document.getElementById('gameBackBtn');
-  document.getElementById('gameBackText').textContent = origin==='feed' ? t('back_news') : origin==='daily' ? t('back_daily') : origin==='shelf' ? t('back_shelf') : t('back_explore');
+  document.getElementById('gameBackText').textContent = origin==='character' ? t('back_to_name').replace('{name}', fromCharacter.name) : origin==='feed' ? t('back_news') : origin==='daily' ? t('back_daily') : origin==='shelf' ? t('back_shelf') : t('back_explore');
   backBtn.href = pathForView(origin);
   backBtn.onclick = spa(()=> goView(origin));
   const list=document.getElementById('detailList');
