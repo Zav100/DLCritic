@@ -227,6 +227,24 @@ const today = new Date().toISOString().slice(0, 10);
       const encoded = head.match(/Subject: =\?UTF-8\?B\?(.+?)\?=/)[1];
       assert.equal(Buffer.from(encoded, 'base64').toString('utf8'), subject, 'el asunto con tilde va codificado');
       assert.equal(Buffer.from(rest.join('\r\n\r\n').replace(/\r\n/g, ''), 'base64').toString('utf8'), text, 'el cuerpo (con ñ y un "." solo en una línea) llega intacto');
+      // con html: multipart/alternative con el texto y el HTML, cada uno en base64 e intacto
+      const html = '<p style="color:#fff">Hola ñandú</p>\r\n.\r\n<b>' + 'y'.repeat(200) + '</b>';
+      await smtp.send({ host: '127.0.0.1', port: server.address().port, secure: 'none', user: 'cuenta@ejemplo.com', pass: 'secreta', from: 'DLCritic <dlcritic@ejemplo.com>', to: 'persona@ejemplo.com', subject, text, html });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const multi = log.filter(l => l[0] === 'CUERPO')[1][1];
+      const boundary = multi.match(/Content-Type: multipart\/alternative; boundary="([^"]+)"/)[1];
+      const partes = multi.split('--' + boundary).slice(1, -1).map(p => p.trim().split('\r\n\r\n'));
+      assert.equal(partes.length, 2, 'dos partes: texto y HTML');
+      assert.match(partes[0][0], /Content-Type: text\/plain; charset=utf-8/); assert.match(partes[1][0], /Content-Type: text\/html; charset=utf-8/);
+      const decode = p => Buffer.from(p[1].replace(/\r\n/g, ''), 'base64').toString('utf8');
+      assert.equal(decode(partes[0]), text, 'la parte de texto llega intacta'); assert.equal(decode(partes[1]), html, 'la parte HTML llega intacta');
+      assert.ok(multi.trimEnd().endsWith('--' + boundary + '--'), 'el multipart se cierra');
+      // el formato de los correos escapa lo que no es suyo (el nombre, los enlaces) y lleva logo, recuadro y botón
+      const { buildEmail } = require('../server/mail-layout');
+      const e = buildEmail('es', '<script>"x"&', { subject: 's', preheader: 'p', title: 't', paragraphs: ['a<b'], box: { label: 'l', note: 'n', button: { text: 'Ir', url: 'https://ejemplo.com/?a=1&b="2"' } } }, 'https://ejemplo.com');
+      assert.ok(!e.html.includes('<script>') && e.html.includes('&lt;script&gt;&quot;x&quot;&amp;') && e.html.includes('a&lt;b'), 'el HTML escapa el nombre y los textos');
+      assert.ok(e.html.includes('href="https://ejemplo.com/?a=1&amp;b=&quot;2&quot;"') && e.html.includes('src="https://ejemplo.com/img/icon-192.png"'), 'enlace escapado y logo del sitio');
+      assert.ok(e.text.includes('Hola <script>"x"&,') && e.text.includes('https://ejemplo.com/?a=1&b="2"'), 'el texto plano lleva los datos sin escapar');
     } finally { server.close(); }
     await assert.rejects(smtp.send({ host: 'mail.ejemplo.com', port: 25, secure: 'none', from: 'a@b.com', to: 'c@d.com', subject: 's', text: 't' }), /localhost/);
     await assert.rejects(smtp.send({ host: '127.0.0.1', port: 1, secure: 'none', from: 'a@b.com', to: 'c@d.com\r\nBcc: otro@d.com', subject: 's', text: 't' }), /inválid/);
@@ -259,6 +277,8 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal(m1.to, 'smoketest_r@example.com');
     assert.match(m1.subject, /Reset your DLCritic password/); assert.match(m1.text, /Hi smoketest_r/);
     const token1 = tokenOf(m1);
+    assert.ok(m1.html.startsWith('<!doctype html>') && m1.html.includes('/restablecer?token=' + token1) && m1.html.includes('border:1px solid #7B61FF') && !/<script/i.test(m1.html), 'el HTML lleva el mismo enlace y el recuadro de color');
+    await assert.rejects(mail.sendMail({ to: 'a@b.com', subject: 's', text: 't' }), /formato HTML/, 'sendMail exige el formato HTML');
     assert.ok(!(await db.prepare('SELECT 1 AS x FROM password_resets WHERE token_hash = ?').get(token1)), 'en la base está el hash, no el token');
     // un enlace nuevo anula el anterior
     ok(await forgot('smoketest_r@example.com'));
@@ -278,6 +298,7 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_r', password: nueva }));
     const aviso = mail.outbox.at(-1);
     assert.equal(aviso.to, 'smoketest_r@example.com'); assert.match(aviso.subject, /Cambió la contraseña/);
+    assert.ok(aviso.html.startsWith('<!doctype html>') && aviso.html.includes('Cambió la contraseña de tu cuenta'), 'el aviso también sale con el formato');
     // y el enlace no sirve dos veces
     assert.equal((await reset(token2, 'Otra-Clave98!')).body.error, 'invalid_token');
     // vencido
