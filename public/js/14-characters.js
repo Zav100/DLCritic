@@ -229,7 +229,7 @@ function renderCharacterDetail(){
     loadHeroCover(document.getElementById('charHeroBg'), bannerGame.coverUrl);
   }
   el.querySelectorAll('[data-game-id]').forEach(elGame=>{
-    elGame.onclick = spa(()=>{ state.currentGame=elGame.dataset.gameId; state.gameOrigin='browse'; goView('game'); });
+    elGame.onclick = spa(()=>{ state.currentGame=elGame.dataset.gameId; state.gameOrigin='character'; goView('game'); }); // «Volver» de la ficha del juego regresa a este personaje (state.currentCharacter sigue siendo él)
   });
   if(state.user){
     renderQuickRateChar('cqr', c.id, myReview? myReview.rating : null);

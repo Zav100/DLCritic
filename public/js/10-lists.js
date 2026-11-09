@@ -120,7 +120,6 @@ function openListDetailModal(listId){
   const list = (state.profileLists||[]).find(l=>l.id===listId);
   if(!list) return;
   const editable = state.profileListsEditable;
-  const games = list.gameIds.map(id=>findGame(id)).filter(Boolean);
   const visibilityHTML = ()=> list.isPublic ? ICONS.globe+' '+esc(t('list_public_label')) : ICONS.lock+' '+esc(t('list_private_label'));
   const emptyHTML = ()=> emptyState(ICONS.bookmark, t('list_empty_t'), editable ? '' : t('list_empty_other_s'));
   const overlay = document.createElement('div');
@@ -142,9 +141,10 @@ function openListDetailModal(listId){
     </div>`;
   document.body.appendChild(overlay);
   const grid = document.getElementById('listDetailGrid');
-  if(games.length===0){
-    grid.innerHTML = emptyHTML();
-  } else {
+  // Pinta los juegos de la lista: al abrir la ventana y al volver del selector de «Agregar juegos».
+  function paintGames(){
+    const games = list.gameIds.map(id=>findGame(id)).filter(Boolean);
+    if(games.length===0){ grid.innerHTML = emptyHTML(); return; }
     grid.innerHTML='';
     games.forEach(g=>{
       const card=document.createElement('div');
@@ -178,12 +178,23 @@ function openListDetailModal(listId){
       grid.appendChild(card);
     });
   }
+  paintGames();
   function cleanup(){ overlay.remove(); document.removeEventListener('keydown', onKey); }
   function onKey(e){ if(e.key==='Escape') cleanup(); }
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
   overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
   if(editable){
-    document.getElementById('listAddGamesBtn').onclick = ()=>{ cleanup(); openAddGamesToListModal(list.id); };
+    // La ventana de la lista no se cierra mientras se eligen juegos: solo se esconde (visibility no reinicia su animación de entrada, display:none sí) y, al
+    // cerrar el selector, se vuelve a pintar con los cambios y se muestra. Antes se cerraba y se volvía a abrir, y se veía el parpadeo.
+    document.getElementById('listAddGamesBtn').onclick = ()=>{
+      overlay.style.visibility = 'hidden';
+      document.removeEventListener('keydown', onKey); // si no, Escape también cerraría esta ventana
+      openAddGamesToListModal(list.id, ()=>{
+        paintGames();
+        overlay.style.visibility = '';
+        document.addEventListener('keydown', onKey);
+      });
+    };
     document.getElementById('listTogglePublic').onclick = async ()=>{
       let updated;
       try{ ({ list: updated } = await apiPut('/lists/'+list.id, { isPublic: !list.isPublic })); }
@@ -213,8 +224,9 @@ function openListDetailModal(listId){
   document.addEventListener('keydown', onKey);
 }
 // Modal "Agregar juegos" de una lista tuya: buscador + grilla del catálogo; tocar una card suma o saca el juego de la lista sin cerrar el
-// modal (así se agregan varios seguidos). Al cerrarlo se vuelve a abrir la lista con los cambios.
-function openAddGamesToListModal(listId){
+// modal (así se agregan varios seguidos). Cada cambio pone al día la lista (list.gameIds) y su tarjeta de atrás; al cerrarlo se llama a onClose, que
+// vuelve a mostrar la ventana de la lista (openListDetailModal la dejó escondida, no cerrada).
+function openAddGamesToListModal(listId, onClose){
   const list = (state.profileLists||[]).find(l=>l.id===listId);
   if(!list) return;
   const inList = new Set(list.gameIds);
@@ -257,6 +269,8 @@ function openAddGamesToListModal(listId){
           if(inList.has(g.id)) inList.delete(g.id); else inList.add(g.id);
           card.classList.toggle('featured', inList.has(g.id));
           card.querySelector('.gc-sub').textContent = subText(g.id);
+          list.gameIds = inList.has(g.id) ? [...list.gameIds, g.id] : list.gameIds.filter(id=>id!==g.id); // list es el mismo objeto de state.profileLists
+          syncListCard(list);
         }catch(e){ toastListError(e); }
         delete card.dataset.busy;
       };
@@ -266,11 +280,10 @@ function openAddGamesToListModal(listId){
   paint();
   search.oninput = paint;
   wireSearchClear('listPickSearch');
-  async function close(){
+  function close(){
     overlay.remove();
     document.removeEventListener('keydown', onKey);
-    await renderProfileLists(state.profileListsUsername, true, (state.listsRenderTarget||{}).gridId);
-    openListDetailModal(listId);
+    if(onClose) onClose();
   }
   function onKey(e){ if(e.key==='Escape') close(); }
   overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });

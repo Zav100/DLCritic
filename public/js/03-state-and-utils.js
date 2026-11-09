@@ -66,7 +66,28 @@ function renderSkeletonGrids(){
     if(el) el.innerHTML = skeletonCardHTML().repeat(4);
   });
   document.getElementById('charactersGrid').innerHTML = charSkeletonHTML().repeat(8);
+  renderViewSkeleton();
   document.getElementById('characterDetail').innerHTML = `<div class="card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel skel-avatar" style="margin:0;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div></div>`;
+}
+// Al recargar en una dirección que no es el inicio, el <head> de index.html deja a la vista la sección de esa dirección, todavía sin contenido (ver #bootView y
+// data-boot-view); mientras llegan los datos se le pone el esqueleto de lo que va a aparecer (la vista de Personajes y la del inicio ya tienen los suyos arriba).
+// Cada render real reemplaza el contenido del contenedor, así que el esqueleto desaparece solo.
+const skelRow = `<div class="card skeleton-card" style="margin-bottom:10px;"><div style="display:flex; gap:12px; align-items:center;"><div class="skel skel-avatar" style="width:38px; height:38px; margin:0;"></div><div style="flex:1;"><div class="skel skel-title" style="width:60%;"></div><div class="skel skel-line"></div></div></div></div>`;
+const skelBlock = `<div class="card skeleton-card"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`;
+const VIEW_SKELETONS = {
+  browse: ['browseGrid', ()=> skeletonCardHTML().repeat(8)],
+  news: ['newsViewList', ()=> skeletonCardHTML().repeat(6)],
+  lists: ['listsViewGrid', ()=> skeletonCardHTML().repeat(3)],
+  notifications: ['notificationsList', ()=> skelRow.repeat(4)],
+  settings: ['settingsContent', ()=> skelBlock.repeat(2)],
+  daily: ['guessCard', ()=> `<div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div>`],
+  game: ['gameDetail', ()=> `<div class="layout-rail"><div class="rail-main"><div class="game-hero"><div class="game-hero-bg"></div><div class="card game-hero-card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel" style="width:64px; height:64px; border-radius:14px;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div><div class="skel skel-line" style="width:90%; margin-top:18px;"></div><div class="skel skel-line" style="width:70%; margin-top:10px;"></div></div></div></div></div>`],
+  profile: ['profileContent', ()=> `<div class="profile-card skeleton-card"><div class="skel" style="width:88px; height:88px; border-radius:26px; flex-shrink:0;"></div><div class="profile-card-main"><div class="skel skel-title" style="width:40%; height:22px;"></div><div class="skel skel-line" style="width:28%;"></div><div class="skel skel-line" style="width:65%; margin-top:20px;"></div><div class="skel skel-line" style="width:45%; margin-top:10px;"></div></div></div><div class="statsstrip skeleton-card">${'<div class="statscell"><div class="skel" style="width:38px; height:26px;"></div><div class="skel skel-line" style="width:70%; margin-top:8px;"></div></div>'.repeat(3)}</div>`],
+};
+function renderViewSkeleton(){
+  const entry = VIEW_SKELETONS[document.documentElement.dataset.bootView];
+  const el = entry && document.getElementById(entry[0]);
+  if(el) el.innerHTML = entry[1]();
 }
 /* ---------- portadas (la URL guardada en cada juego, cargada al hacer scroll) ---------- */
 // Cómo se muestra la portada de un juego, en 3 pasos:
