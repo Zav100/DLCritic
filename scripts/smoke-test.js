@@ -207,7 +207,7 @@ const today = new Date().toISOString().slice(0, 10);
           else if (line.startsWith('AUTH PLAIN')) sock.write('235 ok\r\n');
           else if (line.startsWith('MAIL FROM') || line.startsWith('RCPT TO')) sock.write('250 ok\r\n');
           else if (line === 'DATA') { inData = true; sock.write('354 sigue\r\n'); }
-          else if (line === 'QUIT') sock.end('221 chau\r\n');
+          else if (line === 'QUIT') sock.end('221 bye\r\n');
         }
       });
     });

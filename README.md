@@ -15,18 +15,18 @@ node -r ./scripts/local-env.js scripts/seed.js      # carga el catálogo base
 npm run dev:local
 ```
 
-**B) Con Neon.** Creá un proyecto en [neon.tech](https://neon.tech), copiá la URL "Pooled connection" y:
+**B) Con Neon.** Crea un proyecto en [neon.tech](https://neon.tech), copia la URL "Pooled connection" y:
 
 ```bash
-cp .env.example .env.local        # y pegá la URL en DATABASE_URL= (.env.local no se sube a git)
+cp .env.example .env.local        # y pega la URL en DATABASE_URL= (.env.local no se sube a git)
 npm install
 npm run db:migrate && npm run db:seed
 npm run dev
 ```
 
-Abrí `http://localhost:8793`.
+Abre `http://localhost:8793`.
 
-Con el CLI de Neon (`npm i -g neon`, luego `neon login`) el proyecto ya queda enlazado (`neon.ts` + `.neon`) y `neon init` / `neon checkout <rama>` escriben `DATABASE_URL` en `.env.local` por vos. Las ramas de Neon sirven de copias desechables de la base: `neon checkout dev --create` crea la rama `dev` (se borra sola a los 7 días) y `neon checkout production` vuelve a la principal. Mirá siempre `NEON_BRANCH` en `.env.local` para saber contra qué rama estás escribiendo.
+Con el CLI de Neon (`npm i -g neon`, luego `neon login`) el proyecto ya queda enlazado (`neon.ts` + `.neon`) y `neon init` / `neon checkout <rama>` escriben `DATABASE_URL` en `.env.local` por ti. Las ramas de Neon sirven de copias desechables de la base: `neon checkout dev --create` crea la rama `dev` (se borra sola a los 7 días) y `neon checkout production` vuelve a la principal. Mira siempre `NEON_BRANCH` en `.env.local` para saber contra qué rama estás escribiendo.
 
 **Traer los datos de la base SQLite anterior (`data.db`)** — sobre una base recién migrada y **sin** correr el seed (copia usuarios, contraseñas, reseñas, todo; conserva los ids y verifica los conteos):
 
@@ -97,9 +97,9 @@ node -r ./scripts/local-env.js scripts/import-sqlite.js data.db     # contra el 
 - **📰 Noticias** — CRUD de la sección "Noticias del mundo gamer" (título, resumen, fuente, link, color de la insignia; las iniciales se autogeneran de la fuente si las dejas vacías).
 
 **Para habilitar tu cuenta como admin:**
-1. Registrate normalmente en la app (`/` → Iniciar sesión → Registrarme).
-2. Corré `npm run make-admin -- <tu_usuario>` en la terminal del servidor (usa la base de `.env.local`).
-3. Entrá a `/admin` con esa misma cuenta.
+1. Regístrate normalmente en la app (`/` → Iniciar sesión → Registrarme).
+2. Corre `npm run make-admin -- <tu_usuario>` en la terminal del servidor (usa la base de `.env.local`).
+3. Entra a `/admin` con esa misma cuenta.
 
 Las imágenes subidas (portadas, fotos de personajes, avatares; JPG/PNG/WEBP/GIF) se guardan en **Vercel Blob** cuando existe `BLOB_READ_WRITE_TOKEN` en el entorno, y en `public/uploads/` cuando no (desarrollo local, queda fuera de git). El servidor acepta hasta 4 MB por imagen porque Vercel rechaza requests de más de 4,5 MB; como el navegador achica las fotos grandes antes de subirlas, ese tope se nota sobre todo en los GIF, que no se achican (los textos de ayuda dicen eso). En la base se guarda la URL final de cada imagen. Para pasar a Blob las imágenes que ya estaban en `public/uploads/`: `npm run db:migrate-uploads` (primero con `-- --dry-run` para ver qué haría). La tarjeta de compartir dibuja las portadas de Blob a través de `/api/image-proxy`.
 
