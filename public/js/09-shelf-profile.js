@@ -222,7 +222,7 @@ function renderProfileBody(el, username, profile, editable){
     <div class="grid wishlist-grid" id="wishlistGrid" style="margin-bottom:8px;"></div>
     ` : (profile.library && profile.library.some(id=>findGame(id)) ? `
     <div class="sectionhead"><h2>${t('library_title_other')}</h2></div>
-    <div class="grid wishlist-grid" id="publicLibraryGrid" style="margin-bottom:22px;"></div>` : '')}
+    <div id="publicLibrary" style="margin-bottom:22px;"><div class="grid wishlist-grid" id="publicLibraryGrid"></div></div>` : '')}
 
     <div class="shelf-layout">
       <div class="shelf-main">
@@ -268,8 +268,7 @@ function renderProfileBody(el, username, profile, editable){
   if(editable) refreshOwnFollowCounts();
   const bioEl = el.querySelector('.profile-bio');
   if(bioEl) wireProfileBio(bioEl, profile.bio, username);
-  const publicGrid = document.getElementById('publicLibraryGrid');
-  if(publicGrid) profile.library.map(id=>findGame(id)).filter(Boolean).forEach(g=> publicGrid.appendChild(libraryCard(g, profile.libraryHours && profile.libraryHours[g.id])));
+  renderPublicLibrary(profile);
 
   wireFavPanel(profile, favGame, editable, s.reviews);
 
@@ -384,6 +383,29 @@ function openBioModal(username, text){
   overlay.querySelector('[data-act="close"]').onclick = close;
   document.addEventListener('keydown', onKey);
   overlay.querySelector('[data-act="close"]').focus();
+}
+// Biblioteca de otra persona: 8 juegos de entrada y «Ver más» suma 8 más (el mismo paginado de la propia, ver renderWishlistGrid en 10-lists.js). Las tarjetas que
+// ya están no se vuelven a pintar: «Ver más» solo agrega las siguientes.
+function renderPublicLibrary(profile){
+  const grid = document.getElementById('publicLibraryGrid');
+  if(!grid) return;
+  const games = profile.library.map(id=>findGame(id)).filter(Boolean);
+  let shown = 0;
+  const wrap = document.createElement('div');
+  wrap.className = 'load-more-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-ghost load-more-btn';
+  btn.textContent = t('load_more_btn');
+  wrap.appendChild(btn);
+  grid.insertAdjacentElement('afterend', wrap);
+  const showMore = ()=>{
+    games.slice(shown, shown + WISHLIST_PAGE_SIZE).forEach(g=> grid.appendChild(libraryCard(g, profile.libraryHours && profile.libraryHours[g.id])));
+    shown = Math.min(shown + WISHLIST_PAGE_SIZE, games.length);
+    wrap.hidden = shown >= games.length;
+  };
+  btn.onclick = showMore;
+  showMore();
 }
 /* ---------- preview de listas dentro del perfil (el CRUD completo está en 10-lists.js) ---------- */
 // Pinta la grilla de listas de un usuario dentro de un contenedor dado.
