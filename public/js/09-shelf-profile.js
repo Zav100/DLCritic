@@ -167,7 +167,7 @@ function renderProfileBody(el, username, profile, editable){
       <div class="profile-avatar">${avatarHTML}<span class="profile-level-badge" title="${esc(t(lvl.current.nameKey))}">${lvl.current.icon}</span></div>
       <div class="profile-card-main">
         <div class="profile-card-top">
-          <div>
+          <div class="profile-id">
             <div class="profile-name">${esc(username)}</div>
             <div class="profile-since">${t('member_since')} ${fmtDate(profile.joined)}</div>
           </div>

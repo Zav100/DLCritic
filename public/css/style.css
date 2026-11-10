@@ -6514,6 +6514,7 @@ a.btn-ghost {
 }
 
 .statscell .l {
+  overflow-wrap: anywhere;
   margin-top: 2px;
   font-family: 'Space Mono', monospace;
   font-size: 10px;
@@ -6524,8 +6525,9 @@ a.btn-ghost {
 
 .statscell.ring {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 6px 12px;
   padding-top: 12px;
   padding-bottom: 12px;
 }
@@ -6543,6 +6545,8 @@ a.btn-ghost {
 
 .statscell.ring .l {
   margin-top: 0;
+  flex: 1 1 72px;
+  min-width: 0;
 }
 
 .taste-row {
@@ -7126,5 +7130,73 @@ a.btn-ghost {
 @media (max-width: 800px) {
   .shelf-layout {
     row-gap: 36px;
+  }
+}
+
+/* Perfil en celulares: arriba la foto con el nombre al lado; debajo, a todo el ancho de la tarjeta, el nivel con su barra, la descripción, los seguidores y,
+   al final, el botón (Editar perfil o Seguir) ocupando todo el ancho. Así no queda hueco bajo la foto y el botón no deja filas desiguales. */
+@media (max-width: 560px) {
+  .profile-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 14px;
+    align-items: center;
+  }
+
+  .profile-card-main,
+  .profile-card-top {
+    display: contents;
+  }
+
+  .profile-avatar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .profile-id {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .profile-level,
+  .profile-card .profile-bio,
+  .profile-follows,
+  .profile-actions,
+  .profile-card .social-links {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .profile-level {
+    order: 1;
+    margin-top: 16px;
+  }
+
+  .profile-card .profile-bio {
+    order: 2;
+  }
+
+  .profile-follows {
+    order: 3;
+  }
+
+  .profile-actions {
+    order: 4;
+    margin-top: 16px;
+  }
+
+  .profile-actions:empty {
+    display: none;
+  }
+
+  .profile-card .social-links {
+    order: 5;
+  }
+
+  .profile-actions .btn-edit-profile,
+  .profile-actions .wishlist-btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }
