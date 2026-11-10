@@ -7305,3 +7305,64 @@ a.btn-ghost {
     margin-right: auto;
   }
 }
+
+/* Banner de noticias (a mitad del inicio): más aire sobre él (antes quedaba a unos 20 px de la última tarjeta), el borde de arriba se funde con el fondo de la página
+   con un degradé (antes la imagen empezaba de golpe) y la imagen se pide recién cuando está cerca de la pantalla (data-lazy-bg, ver scroll-effects.js) y entra con un fundido.
+   La imagen y los degradés pasan a dos capas propias (::before y ::after) para poder animar la imagen sola. */
+.hero-image.news-hero {
+  margin-top: 56px;
+  isolation: isolate;
+  background-image: none;
+}
+
+.hero-image.news-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: url('/img/news-spiderman-skyline.webp') center 32% / cover no-repeat;
+  opacity: 0;
+  transition: opacity .9s ease;
+}
+
+.hero-image.news-hero.img-loaded::before {
+  opacity: 1;
+}
+
+.hero-image.news-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, var(--bg) 0%, transparent 170px),
+    linear-gradient(180deg, rgba(10, 9, 22, 0.1) 0%, rgba(10, 9, 22, 0.46) 78%, var(--bg) 98%);
+}
+
+/* Aparición suave al hacer scroll (scroll-effects.js): el bloque arranca transparente y un poco más abajo; al llegar a la pantalla se anima y el script
+   le quita estas clases, así vuelven los estilos propios de cada tarjeta. Va al final del archivo para ganarle a .card y compañía. */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .2, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-image.news-hero::before {
+    opacity: 1;
+    transition: none;
+  }
+}
