@@ -4460,7 +4460,7 @@ input[type=search]::-webkit-search-cancel-button {
 .newgamecard {
   display: flex;
   flex-direction: column;
-  padding-bottom: 50px;
+  padding-bottom: 42px;
 }
 
 .newgamecard .news-cover {
@@ -4476,7 +4476,7 @@ input[type=search]::-webkit-search-cancel-button {
   font-family: 'Space Mono', monospace;
   font-size: 10.5px;
   color: var(--ink-soft);
-  margin-bottom: 10px;
+  margin-bottom: 18px; /* el botón de «Calificar este juego» queda un poco más abajo (antes 10 px); el aire de abajo baja 8 px para que la tarjeta mida lo mismo */
 }
 
 .newgamecard .btn {
