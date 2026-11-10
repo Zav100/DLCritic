@@ -672,7 +672,7 @@ function openShareCardModal(rv, game){
   overlay.innerHTML = `
     <div class="confirm-box card-modal">
       <h3>${esc(t('card_modal_title'))}</h3>
-      <canvas id="shareCardCanvas" width="1080" height="1920" style="width:100%;max-width:270px;aspect-ratio:1080/1920;"></canvas>
+      <canvas id="shareCardCanvas" width="1080" height="1920"></canvas>
       <label style="display:block; font-size:12px; color:var(--ink-soft); margin-bottom:8px;">${esc(t('card_choose_bg'))}</label>
       <div class="card-swatches" id="cardSwatches">
         ${CARD_BG_OPTIONS.map(bg=>`<button type="button" class="card-swatch${bg===selectedBg?' active':''}" data-bg="${bg.id}" style="background:${bg.type==='solid'?bg.colors[0]:`linear-gradient(135deg, ${bg.colors[0]}, ${bg.colors[1]})`};"></button>`).join('')}

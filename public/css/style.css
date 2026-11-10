@@ -4010,6 +4010,11 @@ input[type=search]::-webkit-search-cancel-button {
 .card-modal {
   max-width: 340px;
   text-align: center;
+  /* Nunca más alto que la pantalla (menos el margen de la capa): si algo no cabe, se desplaza dentro de la tarjeta en vez de cortarse arriba y abajo. */
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .card-modal h3 {
@@ -4022,6 +4027,13 @@ input[type=search]::-webkit-search-cancel-button {
 .card-modal canvas {
   display: block;
   margin: 0 auto 14px;
+  /* La vista previa se achica en pantallas bajas para que quepan el título, los colores y los botones: 480 px de alto como máximo (270 de ancho, 9:16) y menos si la pantalla es baja. */
+  width: auto;
+  max-width: 100%;
+  height: min(480px, calc(100vh - 320px));
+  height: min(480px, calc(100dvh - 320px));
+  min-height: 160px;
+  aspect-ratio: 1080 / 1920;
   border-radius: 14px;
   box-shadow: 0 8px 24px var(--shadow-strong);
 }
