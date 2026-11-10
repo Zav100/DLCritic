@@ -17,7 +17,7 @@
 // Mismo patrón que el avatar por-defecto del usuario en el header (ver renderUserBadge en 05-navigation.js): un círculo de color estable según el nombre, con la primera letra. Achica la clase extra (p.ej. "char-avatar-lg") para el tamaño grande de la ficha.
 function charAvatarHTML(c, extraClass){
   const cls = 'char-avatar' + (extraClass ? ' '+extraClass : '');
-  if(c.photoUrl) return `<div class="${cls} has-photo"><img src="${esc(c.photoUrl)}" alt=""></div>`;
+  if(c.photoUrl) return `<div class="${cls} has-photo"><img src="${esc(c.photoUrl)}" alt="" loading="lazy" decoding="async"></div>`;
   const color = AVATAR_COLORS[Math.abs(hashStr(c.name))%AVATAR_COLORS.length];
   return `<div class="${cls}" style="background:${color}">${esc((c.name[0]||'?').toUpperCase())}</div>`;
 }

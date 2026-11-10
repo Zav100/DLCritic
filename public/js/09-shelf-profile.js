@@ -290,7 +290,7 @@ function renderProfileBody(el, username, profile, editable){
 }
 // Avatar chico (la foto, o la inicial en un círculo de color) para las listas de personas: el buscador del header y la lista de seguidores.
 function miniAvatarHTML(username, avatarUrl){
-  if(avatarUrl) return `<img class="mini-avatar" src="${esc(avatarUrl)}" alt="" loading="lazy">`;
+  if(avatarUrl) return `<img class="mini-avatar" src="${esc(avatarUrl)}" alt="" loading="lazy" decoding="async">`;
   const color = AVATAR_COLORS[Math.abs(hashStr(username))%AVATAR_COLORS.length];
   return `<span class="mini-avatar" style="background:${color}">${esc(username[0].toUpperCase())}</span>`;
 }
