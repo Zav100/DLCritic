@@ -4130,12 +4130,13 @@ input[type=search]::-webkit-search-cancel-button {
   }
 }
 
-/* ---- bottom nav (mobile) ---- */
+/* ---- bottom nav (celulares y tabletas angostas) ----
+   El menú de arriba (logo + 4 botones + buscar, tema y usuario) necesita unos 815 px; por debajo de 860 px se pasa a la barra de abajo. */
 .bottom-nav {
   display: none;
 }
 
-@media(max-width:680px) {
+@media(max-width:860px) {
   header nav#mainNav {
     display: none;
   }
@@ -7053,7 +7054,7 @@ a.btn-ghost {
 
 /* Barra de abajo en celulares: las etiquetas no se parten en dos líneas, la barra ocupa un poco más de ancho y los botones tienen más aire.
    En pantallas muy angostas la letra baja un punto para que «Personajes» quepa. */
-@media (max-width: 680px) {
+@media (max-width: 860px) {
   /* La regla general «nav { justify-self: center }» (pensada para el menú de arriba) hacía que esta barra, que es fixed, se encogiera al ancho de sus botones y quedara
      centrada y apretada; con stretch ocupa todo el ancho entre left y right y los botones se reparten el espacio. */
   .bottom-nav {
@@ -7272,4 +7273,35 @@ a.btn-ghost {
 .confirm-actions.split > * {
   justify-content: center;
   text-align: center;
+}
+
+/* Header con el menú de arriba oculto (≤860 px): antes la rejilla de tres columnas seguía activa y el grupo de la derecha (buscar, tema y usuario) quedaba en la
+   columna del medio. Con el menú oculto, el header es una fila: logo a la izquierda y el grupo siempre a la derecha. */
+@media (max-width: 860px) {
+  .headbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .headright {
+    justify-self: auto;
+    margin-left: auto;
+    gap: 12px;
+  }
+
+  .userbadge {
+    justify-content: flex-end;
+  }
+}
+
+/* Barra de abajo en tabletas (600-860 px): no se estira de lado a lado (los botones quedarían separadísimos); se queda en 560 px y centrada. */
+@media (min-width: 600px) and (max-width: 860px) {
+  .bottom-nav {
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
