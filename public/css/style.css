@@ -7012,3 +7012,68 @@ a.btn-ghost {
     display: none;
   }
 }
+
+/* Barra de abajo en celulares: las etiquetas no se parten en dos líneas, la barra ocupa un poco más de ancho y los botones tienen más aire.
+   En pantallas muy angostas la letra baja un punto para que «Personajes» quepa. */
+@media (max-width: 680px) {
+  /* La regla general «nav { justify-self: center }» (pensada para el menú de arriba) hacía que esta barra, que es fixed, se encogiera al ancho de sus botones y quedara
+     centrada y apretada; con stretch ocupa todo el ancho entre left y right y los botones se reparten el espacio. */
+  .bottom-nav {
+    justify-self: stretch;
+    left: 8px;
+    right: 8px;
+    padding: 6px 4px;
+    gap: 4px;
+  }
+
+  .bottom-navbtn {
+    min-width: 0;
+    padding: 7px 0 8px;
+  }
+
+  .bottom-navbtn .bn-label {
+    white-space: nowrap;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 350px) {
+  .bottom-navbtn .bn-label {
+    font-size: 10px;
+  }
+}
+
+/* Explorar en vista de lista, en celulares: la portada a la izquierda, el título y los datos a su lado, y las plataformas debajo, en varias líneas si hacen falta.
+   Antes todo iba en una sola fila y las letras del título se apilaban una debajo de otra. */
+@media (max-width: 680px) {
+  .grid.list-mode .gamecard {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-areas: "cover title" "cover sub" "plat plat";
+    column-gap: 14px;
+    row-gap: 2px;
+    align-items: center;
+  }
+
+  .grid.list-mode .gc-cover {
+    grid-area: cover;
+  }
+
+  .grid.list-mode .gc-title {
+    grid-area: title;
+    align-self: end;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .grid.list-mode .gc-sub {
+    grid-area: sub;
+    align-self: start;
+    min-width: 0;
+  }
+
+  .grid.list-mode .platbadges {
+    grid-area: plat;
+    margin: 8px 0 0;
+  }
+}
