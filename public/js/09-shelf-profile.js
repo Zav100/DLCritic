@@ -167,7 +167,7 @@ function renderProfileBody(el, username, profile, editable){
       <div class="profile-avatar">${avatarHTML}<span class="profile-level-badge" title="${esc(t(lvl.current.nameKey))}">${lvl.current.icon}</span></div>
       <div class="profile-card-main">
         <div class="profile-card-top">
-          <div>
+          <div class="profile-id">
             <div class="profile-name">${esc(username)}</div>
             <div class="profile-since">${t('member_since')} ${fmtDate(profile.joined)}</div>
           </div>
@@ -228,7 +228,7 @@ function renderProfileBody(el, username, profile, editable){
       <div class="shelf-main">
         ${editable ? `
         <div class="sectionhead" style="margin-top:0;"><h2>${t('activity_title')}</h2><span class="count">${t('activity_days')}</span></div>
-        <div class="card" style="margin-bottom:22px;">
+        <div class="card" style="margin-bottom:36px;">
           <div id="activityCal"></div>
         </div>` : ''}
         <div class="sectionhead" style="margin-top:0;"><h2>${t(editable? 'your_reviews_title' : 'reviews_section_title')}</h2><span class="count">${mine.length}</span></div>

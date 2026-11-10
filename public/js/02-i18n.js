@@ -19,7 +19,7 @@ const I18N = {
   es: {
     tagline:"Cada opinión es un DLC", tagline_html:"Cada opinión es un <b>DLC</b>",
     nav_feed:"Inicio", nav_browse:"Explorar", nav_shelf:"Mi estantería", nav_daily:"Reto del día", nav_about:"Acerca de", nav_characters:"Personajes",
-    nav_daily_short:"Reto",
+    nav_daily_short:"Reto", nav_shelf_short:"Estantería",
     feed_h1:'Descubre, califica y comparte <span>cada juego que jugaste</span>.',
     feed_p:"DLCritic es un catálogo de videojuegos con calificaciones y reseñas hechas por la comunidad: explora títulos de Steam, Epic Games, PlayStation, Xbox y Nintendo, y deja tu nota.",
     hero_cta_explore:"Explorar catálogo", hero_cta_about:"Cómo funciona DLCritic",
@@ -315,7 +315,7 @@ const I18N = {
   en: {
     tagline:"Every opinion is a DLC", tagline_html:"Every opinion is a <b>DLC</b>",
     nav_feed:"Home", nav_browse:"Browse", nav_shelf:"My Shelf", nav_daily:"Daily Challenge", nav_about:"About", nav_characters:"Characters",
-    nav_daily_short:"Daily",
+    nav_daily_short:"Daily", nav_shelf_short:"Shelf",
     feed_h1:'Discover, rate and share <span>every game you played</span>.',
     feed_p:"DLCritic is a video game catalog with community-made ratings and reviews: browse titles from Steam, Epic Games, PlayStation, Xbox and Nintendo, and leave your score.",
     hero_cta_explore:"Browse the catalog", hero_cta_about:"How DLCritic works",

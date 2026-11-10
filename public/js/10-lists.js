@@ -40,12 +40,12 @@ function promptCreateList(){
         </div>
         <div class="field">
           <label>${esc(t('list_visibility_label'))}</label>
-          <div style="display:flex; gap:8px;">
-            <button type="button" class="chip active" data-vis="public">${ICONS.globe} ${esc(t('list_public_label'))}</button>
-            <button type="button" class="chip" data-vis="private">${ICONS.lock} ${esc(t('list_private_label'))}</button>
+          <div class="vis-options" role="radiogroup" aria-label="${esc(t('list_visibility_label'))}">
+            <button type="button" class="vis-option active" role="radio" aria-checked="true" data-vis="public">${ICONS.globe}<span>${esc(t('list_public_label'))}</span></button>
+            <button type="button" class="vis-option" role="radio" aria-checked="false" data-vis="private">${ICONS.lock}<span>${esc(t('list_private_label'))}</span></button>
           </div>
         </div>
-        <div class="confirm-actions" style="margin-top:16px;">
+        <div class="confirm-actions split" style="margin-top:16px;">
           <button class="btn-ghost" data-act="cancel">${esc(t('cancel_btn'))}</button>
           <button class="btn gold" data-act="create">${esc(t('list_create_btn'))}</button>
         </div>
@@ -56,7 +56,7 @@ function promptCreateList(){
     overlay.querySelectorAll('[data-vis]').forEach(btn=>{
       btn.onclick = ()=>{
         visibility = btn.dataset.vis;
-        overlay.querySelectorAll('[data-vis]').forEach(b=> b.classList.toggle('active', b===btn));
+        overlay.querySelectorAll('[data-vis]').forEach(b=>{ b.classList.toggle('active', b===btn); b.setAttribute('aria-checked', b===btn); });
       };
     });
     function cleanup(val){ overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); }
