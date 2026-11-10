@@ -4852,8 +4852,14 @@ input[type=search]::-webkit-search-cancel-button {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  background: color-mix(in srgb, var(--pink) 14%, var(--paper-alt));
+  color: #B02A73;
+}
+
+/* Tema claro: los recuadros de día van en naranja, como el fondo del panel de noticias (en el oscuro vuelve el rosa de siempre). */
+[data-theme="light"] .date-badge {
   background: color-mix(in srgb, var(--orange) 20%, var(--paper-alt));
-  color: #A9490F; /* naranja oscuro fijo: las tarjetas son claras en los dos temas (como antes con el rosa) */
+  color: #A9490F;
 }
 
 .date-badge b {
@@ -7419,12 +7425,13 @@ a.btn-ghost {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
-/* Panel de noticias (debajo del banner de Spider-Man, que es naranja y rojo): el rosa del fondo pasa a un naranja pastel; el resto del degradé (violeta a la izquierda
-   y celeste abajo) queda igual. El panel de «cómo calificar» de arriba conserva el rosa. */
-.glass-panel.feed-panel {
+/* Panel de noticias (debajo del banner de Spider-Man, que es naranja y rojo), SOLO en el tema claro: el rosa del fondo pasa a un naranja pastel que ocupa un poco más del violeta
+   de la izquierda (sin quitarlo) y es algo más fuerte; el celeste de abajo queda igual. En el tema oscuro el naranja no gustó y vuelve el rosa de siempre (regla general de
+   .glass-panel). El panel de «cómo calificar» de arriba conserva el rosa en los dos temas. */
+[data-theme="light"] .glass-panel.feed-panel {
   background:
-    radial-gradient(circle at 12% 15%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 55%),
-    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--orange) 24%, transparent), transparent 50%),
+    radial-gradient(circle at 12% 15%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 52%),
+    radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--orange) 29%, transparent), transparent 62%),
     radial-gradient(circle at 55% 100%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 55%),
     var(--paper-glass);
 }
