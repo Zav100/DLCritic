@@ -164,6 +164,7 @@ function updateQuickReadout(scope, value, animate, moodFn){
   const clearBtn=document.getElementById(scope+'ClearBtn');
   if(!num) return;
   num.textContent = value==null ? '—' : value;
+  num.classList.toggle('rate-none', value==null); // sin nota, la raya va más chica que un número (ver .rate-num.rate-none)
   num.style.color = value==null ? '' : MOOD_TEXT_COLOR(value);
   mood.textContent = value==null ? t('no_rating_yet') : moodFn(value);
   mood.style.color = value==null ? '' : MOOD_TEXT_COLOR(value);
