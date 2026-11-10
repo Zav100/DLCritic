@@ -119,7 +119,16 @@ function attachCoverImg(el, url){
   img.loading = 'lazy';
   img.decoding = 'async';
   img.alt = '';
-  img.onload = ()=> el.classList.add('has-cover');
+  img.onload = ()=>{
+    // Si la imagen casi tiene la forma del marco (las portadas de Steam de 616x353 son 2 % más angostas que 16:9), se llena el marco recortando un par de píxeles en vez de
+    // dejar franjas desenfocadas de 3-4 px a los lados; las que se parecen poco (cuadradas, verticales, de 460x215) siguen enteras sobre el fondo desenfocado.
+    const fw = el.clientWidth, fh = el.clientHeight;
+    if(fw && fh && img.naturalWidth && img.naturalHeight){
+      const rel = (img.naturalWidth/img.naturalHeight) / (fw/fh);
+      if(rel>=0.93 && rel<=1.07) el.classList.add('cover-fill');
+    }
+    el.classList.add('has-cover');
+  };
   el.style.setProperty('--cover-url', `url("${encodeURI(url).replace(/"/g, '%22')}")`); // la copia desenfocada que rellena el marco (CSS: ::before)
   img.src = url;
   el.appendChild(img);

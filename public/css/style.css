@@ -1715,6 +1715,11 @@ main {
   opacity: 1;
 }
 
+/* La portada casi tiene la forma del marco (entre 0,93 y 1,07 veces): se llena el marco, recortando como mucho un 3,5 % por lado, y no se ven franjas (attachCoverImg). */
+.cover-fill .cover-img {
+  object-fit: cover;
+}
+
 .gc-cover.has-cover,
 .news-cover.has-cover {
   color: transparent;
