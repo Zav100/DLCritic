@@ -7112,3 +7112,19 @@ a.btn-ghost {
     font-size: 14px;
   }
 }
+
+/* Espacio entre el final de una tarjeta (o bloque) y el título de la siguiente sección: como mínimo 36 px, lo mismo que lleva .sectionhead por sí solo.
+   Estos tres títulos van con margin-top:0 (porque en escritorio empiezan una columna) y quedaban a 8-22 px de lo que tenían arriba. */
+.home-showcase {
+  margin-top: 36px;
+}
+
+.shelf-layout {
+  margin-top: 36px;
+}
+
+@media (max-width: 800px) {
+  .shelf-layout {
+    row-gap: 36px;
+  }
+}

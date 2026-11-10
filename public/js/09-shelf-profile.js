@@ -228,7 +228,7 @@ function renderProfileBody(el, username, profile, editable){
       <div class="shelf-main">
         ${editable ? `
         <div class="sectionhead" style="margin-top:0;"><h2>${t('activity_title')}</h2><span class="count">${t('activity_days')}</span></div>
-        <div class="card" style="margin-bottom:22px;">
+        <div class="card" style="margin-bottom:36px;">
           <div id="activityCal"></div>
         </div>` : ''}
         <div class="sectionhead" style="margin-top:0;"><h2>${t(editable? 'your_reviews_title' : 'reviews_section_title')}</h2><span class="count">${mine.length}</span></div>
