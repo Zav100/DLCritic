@@ -45,6 +45,8 @@
   --red-dim: #A63F3F;
   --pink: #F0A8D0;
   --pink-dim: #B85A96;
+  --orange: #F5B27A;
+  --orange-dim: #B3591B;
   --success: #4CC38A;
   --success-dim: #2E8A5F;
   --success-tint: rgba(76, 195, 138, 0.18);
@@ -78,6 +80,8 @@
   --red-dim: #96233D;
   --pink: #E85FA6;
   --pink-dim: #A8306B;
+  --orange: #F5944A;
+  --orange-dim: #A9490F;
   --success: #279653;
   --success-dim: #1D6E3D;
   --success-tint: rgba(39, 150, 83, 0.14);
@@ -4848,8 +4852,8 @@ input[type=search]::-webkit-search-cancel-button {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  background: color-mix(in srgb, var(--pink) 14%, var(--paper-alt));
-  color: #B02A73;
+  background: color-mix(in srgb, var(--orange) 20%, var(--paper-alt));
+  color: #A9490F; /* naranja oscuro fijo: las tarjetas son claras en los dos temas (como antes con el rosa) */
 }
 
 .date-badge b {
@@ -7379,4 +7383,45 @@ a.btn-ghost {
     opacity: 1;
     transition: none;
   }
+}
+
+/* Hero principal del inicio (God of War): el borde de ABAJO se funde con la página por transparencia (máscara), igual que el de arriba del banner de noticias, en vez de
+   taparlo con un color. La imagen y su oscurecimiento van en ::before (solo ellos se desvanecen; el texto y los pasos quedan intactos). El de arriba no se toca: pega con el header. */
+.hero.hero-image:not(.news-hero) {
+  --fade: 120px;
+  isolation: isolate;
+  background-image: none;
+}
+
+.hero.hero-image:not(.news-hero)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(10, 9, 22, 0.14) 0%, rgba(10, 9, 22, 0.4) 60%, rgba(10, 9, 22, 0.4) 100%),
+    url('/img/hero-god-of-war.webp') center 38% / cover no-repeat;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - var(--fade)), rgba(0, 0, 0, 0.92) calc(100% - var(--fade) * 0.84), rgba(0, 0, 0, 0.72) calc(100% - var(--fade) * 0.65), rgba(0, 0, 0, 0.45) calc(100% - var(--fade) * 0.46), rgba(0, 0, 0, 0.2) calc(100% - var(--fade) * 0.3), rgba(0, 0, 0, 0.06) calc(100% - var(--fade) * 0.15), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - var(--fade)), rgba(0, 0, 0, 0.92) calc(100% - var(--fade) * 0.84), rgba(0, 0, 0, 0.72) calc(100% - var(--fade) * 0.65), rgba(0, 0, 0, 0.45) calc(100% - var(--fade) * 0.46), rgba(0, 0, 0, 0.2) calc(100% - var(--fade) * 0.3), rgba(0, 0, 0, 0.06) calc(100% - var(--fade) * 0.15), transparent 100%);
+}
+
+@media (max-width: 560px) {
+  .hero.hero-image:not(.news-hero) {
+    --fade: 90px;
+  }
+}
+
+/* los pasos «01 · Explorar…» quedan sobre la parte que se desvanece: una sombra suave los mantiene legibles también con el tema claro */
+.flow-label {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* Panel de noticias (debajo del banner de Spider-Man, que es naranja y rojo): el rosa del fondo pasa a un naranja pastel; el resto del degradé (violeta a la izquierda
+   y celeste abajo) queda igual. El panel de «cómo calificar» de arriba conserva el rosa. */
+.glass-panel.feed-panel {
+  background:
+    radial-gradient(circle at 12% 15%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 55%),
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--orange) 24%, transparent), transparent 50%),
+    radial-gradient(circle at 55% 100%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 55%),
+    var(--paper-glass);
 }
