@@ -7315,9 +7315,20 @@ a.btn-ghost {
    con un degradé (antes la imagen empezaba de golpe) y la imagen se pide recién cuando está cerca de la pantalla (data-lazy-bg, ver scroll-effects.js) y entra con un fundido.
    La imagen y los degradés pasan a dos capas propias (::before y ::after) para poder animar la imagen sola. */
 .hero-image.news-hero {
+  --fade: 96px; /* alto del fundido de arriba */
   margin-top: 56px;
   isolation: isolate;
   background-image: none;
+  /* El borde de arriba se funde con la página por TRANSPARENCIA (una máscara), no tapándolo con un color: así se une con el fondo del tema claro u oscuro, y con sus brillos,
+     sin que se note la unión y gastando solo unos 96 px de la imagen. La curva es suave (sin saltos) para que no se vea ninguna línea. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, rgba(0, 0, 0, 0.06) calc(var(--fade) * 0.15), rgba(0, 0, 0, 0.2) calc(var(--fade) * 0.3), rgba(0, 0, 0, 0.45) calc(var(--fade) * 0.46), rgba(0, 0, 0, 0.72) calc(var(--fade) * 0.65), rgba(0, 0, 0, 0.92) calc(var(--fade) * 0.84), #000 var(--fade));
+  mask-image: linear-gradient(180deg, transparent 0, rgba(0, 0, 0, 0.06) calc(var(--fade) * 0.15), rgba(0, 0, 0, 0.2) calc(var(--fade) * 0.3), rgba(0, 0, 0, 0.45) calc(var(--fade) * 0.46), rgba(0, 0, 0, 0.72) calc(var(--fade) * 0.65), rgba(0, 0, 0, 0.92) calc(var(--fade) * 0.84), #000 var(--fade));
+}
+
+@media (max-width: 560px) {
+  .hero-image.news-hero {
+    --fade: 72px;
+  }
 }
 
 .hero-image.news-hero::before {
@@ -7340,9 +7351,7 @@ a.btn-ghost {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(180deg, var(--bg) 0%, transparent 170px),
-    linear-gradient(180deg, rgba(10, 9, 22, 0.1) 0%, rgba(10, 9, 22, 0.46) 78%, var(--bg) 98%);
+  background: linear-gradient(180deg, rgba(10, 9, 22, 0.1) 0%, rgba(10, 9, 22, 0.46) 78%, var(--bg) 98%);
 }
 
 /* Aparición suave al hacer scroll (scroll-effects.js): el bloque arranca transparente y un poco más abajo; al llegar a la pantalla se anima y el script
