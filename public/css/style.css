@@ -1322,6 +1322,8 @@ main {
 .rc-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .icon-btn {
@@ -1358,8 +1360,14 @@ main {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px dashed var(--line-dark);
-  flex-wrap: wrap;
+  /* Una sola fila siempre: la nota a la izquierda y los botones a la derecha, sin importar si la nota es 9/10 o 10/10 ni si la reseña lleva la medalla de «Primera reseña».
+     Si falta ancho, es la barra la que se acorta (ver .gauge-track), no los botones los que bajan de línea. */
+  flex-wrap: nowrap;
   gap: 10px;
+}
+
+.cardfoot > :first-child {
+  min-width: 0;
 }
 
 .platbadges {
@@ -1411,11 +1419,14 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .gauge-track {
   position: relative;
   width: 88px;
+  flex-shrink: 1;
+  min-width: 32px;
   height: 9px;
   border-radius: 5px;
   background: var(--paper-alt);
@@ -1440,7 +1451,10 @@ main {
   font-weight: 700;
   font-size: 13px;
   color: var(--gold-dim);
-  min-width: 34px;
+  /* ancho fijo para «10/10» (5 caracteres): así la barra y los botones quedan en el mismo lugar con cualquier nota */
+  min-width: 5ch;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .no-rating-tag {
