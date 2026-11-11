@@ -80,26 +80,63 @@ function paintBrowseSort(){
 // Lista desplegable con el estilo del sitio (reemplaza al <select> nativo, que se ve distinto en cada navegador y no se puede diseñar).
 // cfg: label() html del botón · options() [{ value, html, selected }] · onPick(value) · ariaLabel() · title() opcional · active() resalta el botón (hay algo elegido) ·
 // multi: se pueden marcar varias y la lista sigue abierta · closeOnPick: se cierra al elegir. Teclado: flechas para moverse, Enter o espacio para elegir, Escape para cerrar.
+// Mientras una lista está abierta se cuelga del <body> y se posiciona con position:fixed: así no la recorta nada (ni el scroll de una ventana, ni una tarjeta) y puede abrirse hacia
+// arriba si abajo no hay lugar. Al cerrarse vuelve a su lugar. openDropdowns lleva la cuenta de las abiertas (aunque su contenedor ya no esté en la página, p. ej. si se cerró la ventana).
+const openDropdowns = new Set();
 let dropdownsWired = false;
 function closeDropdownEl(d){
   d.classList.remove('open');
-  const l = d.querySelector('.dd-list'), b = d.querySelector('.dd-btn');
-  if(l) l.hidden = true;
+  openDropdowns.delete(d);
+  const l = d._ddList, b = d.querySelector('.dd-btn');
+  if(l){
+    l.hidden = true;
+    l.classList.remove('dd-portal');
+    l.style.cssText = '';
+    if(l.parentNode!==d) d.appendChild(l);
+  }
   if(b) b.setAttribute('aria-expanded', 'false');
+  if(d._ddOff){ d._ddOff(); d._ddOff = null; }
 }
 function buildDropdown(wrap, cfg){
   if(!dropdownsWired){
     dropdownsWired = true;
     // composedPath y no contains(e.target): al elegir un renglón la lista se vuelve a pintar y el renglón clicado ya no está en el árbol cuando el evento llega aquí.
-    document.addEventListener('click', e=>{ const path = e.composedPath(); document.querySelectorAll('.dd.open').forEach(d=>{ if(!path.includes(d)) closeDropdownEl(d); }); });
+    document.addEventListener('click', e=>{ const path = e.composedPath(); [...openDropdowns].forEach(d=>{ if(!path.includes(d) && !path.includes(d._ddList)) closeDropdownEl(d); }); });
   }
   wrap.classList.add('dd');
   wrap.innerHTML = `<button type="button" class="chip dd-btn" aria-haspopup="listbox" aria-expanded="false"><span class="dd-label"></span>${ICONS.chevronDown}</button><ul class="ac-list dd-list" role="listbox" hidden></ul>`;
   const btn = wrap.querySelector('.dd-btn'), list = wrap.querySelector('.dd-list');
+  wrap._ddList = list;
   if(cfg.multi) list.setAttribute('aria-multiselectable', 'true');
   const rows = ()=> [...list.querySelectorAll('li')];
   const isOpen = ()=> wrap.classList.contains('open');
-  const open = ()=>{ document.querySelectorAll('.dd.open').forEach(d=>{ if(d!==wrap) closeDropdownEl(d); }); wrap.classList.add('open'); list.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+  // Debajo del botón si cabe (o si hay más lugar abajo que arriba) y, si no, arriba; nunca más ancha ni más baja que la pantalla.
+  const place = ()=>{
+    const r = btn.getBoundingClientRect(), vw = innerWidth, vh = innerHeight, room = 272;
+    const below = vh - r.bottom - 10, above = r.top - 10;
+    Object.assign(list.style, { position:'fixed', right:'auto', left:r.left+'px', minWidth:Math.max(r.width, 210)+'px' });
+    if(below >= Math.min(room, 200) || below >= above) Object.assign(list.style, { top:(r.bottom+6)+'px', bottom:'auto', maxHeight:Math.min(room, below)+'px' });
+    else Object.assign(list.style, { top:'auto', bottom:(vh-r.top+6)+'px', maxHeight:Math.min(room, above)+'px' });
+    const w = list.getBoundingClientRect().width;
+    if(r.left + w > vw - 8) list.style.left = Math.max(8, vw - 8 - w) + 'px';
+  };
+  const open = ()=>{
+    [...openDropdowns].forEach(d=>{ if(d!==wrap) closeDropdownEl(d); });
+    wrap.classList.add('open');
+    openDropdowns.add(wrap);
+    list.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    document.body.appendChild(list);
+    list.classList.add('dd-portal');
+    place();
+    // la lista no sigue a la página: si algo se desplaza (menos la propia lista) o cambia el tamaño de la ventana, se cierra
+    const onScroll = e=>{ if(!list.contains(e.target)) closeDropdownEl(wrap); };
+    const w0 = innerWidth;
+    const onResize = ()=>{ if(innerWidth!==w0) closeDropdownEl(wrap); else place(); }; // en el celular, la barra del navegador que sube o baja cambia solo el alto: se reacomoda, no se cierra
+    addEventListener('scroll', onScroll, true);
+    addEventListener('resize', onResize);
+    wrap._ddOff = ()=>{ removeEventListener('scroll', onScroll, true); removeEventListener('resize', onResize); };
+  };
   const paint = ()=>{
     btn.querySelector('.dd-label').innerHTML = cfg.label();
     btn.setAttribute('aria-label', cfg.ariaLabel());
@@ -117,9 +154,9 @@ function buildDropdown(wrap, cfg){
     });
   };
   btn.onclick = ()=>{ isOpen() ? closeDropdownEl(wrap) : open(); };
-  wrap.onkeydown = e=>{
+  const onKey = e=>{
     const r = rows(), cur = r.indexOf(document.activeElement);
-    if(e.key==='Escape' && isOpen()){ e.preventDefault(); closeDropdownEl(wrap); btn.focus(); }
+    if(e.key==='Escape' && isOpen()){ e.preventDefault(); e.stopPropagation(); closeDropdownEl(wrap); btn.focus(); } // stopPropagation: dentro de una ventana, Escape cierra primero la lista y no la ventana
     else if(e.key==='ArrowDown' || e.key==='ArrowUp'){
       e.preventDefault();
       if(!isOpen()) open();
@@ -127,8 +164,23 @@ function buildDropdown(wrap, cfg){
       r[e.key==='ArrowDown' ? (cur<0? 0 : (cur+1)%n) : (cur<0? n-1 : (cur-1+n)%n)].focus();
     } else if((e.key==='Enter' || e.key===' ') && cur>=0){ e.preventDefault(); r[cur].click(); }
   };
+  wrap.onkeydown = onKey;
+  list.onkeydown = onKey; // abierta, la lista vive en el <body>: sus teclas ya no pasan por el contenedor
   paint();
   return { paint };
+}
+// Un <select> con el estilo del sitio, armado con buildDropdown: el botón muestra la opción elegida y elegir una cierra la lista.
+// cfg: options (lista [{ value, label }] o función que la devuelve) · get() valor actual · set(valor) al elegir · ariaLabel() nombre del campo.
+function buildSelectDropdown(wrap, cfg){
+  const opts = ()=> typeof cfg.options==='function' ? cfg.options() : cfg.options;
+  const current = ()=> opts().find(o=>o.value===cfg.get()) || opts()[0] || { value:'', label:'' };
+  return buildDropdown(wrap, {
+    ariaLabel: ()=> cfg.ariaLabel()+': '+current().label,
+    label: ()=> esc(current().label),
+    options: ()=> opts().map(o=>({ value:o.value, selected:o.value===current().value, html:`<span class="ac-title">${esc(o.label)}</span>` })),
+    onPick: v=> cfg.set(v),
+    closeOnPick: true,
+  });
 }
 // "1 reseña" / "3 reseñas" (o su equivalente en inglés) con el plural correcto.
 function reviewsCountText(count){

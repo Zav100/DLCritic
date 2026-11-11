@@ -659,8 +659,8 @@ main {
 }
 
 /* el selector nativo mide 2px más que el campo de texto: los dos con la misma altura */
-.suggest-modal .field-row select,
-.suggest-modal .field-row input {
+.suggest-modal .field-row input,
+.suggest-modal .field-row .dd-btn {
   height: 40px;
 }
 
@@ -1493,21 +1493,6 @@ main {
   flex-wrap: wrap;
 }
 
-.sort-select {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line-dark);
-  background: var(--paper-alt);
-  color: var(--ink);
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-  width: auto;
-}
-
 .view-toggle {
   display: flex;
   gap: 2px;
@@ -1964,9 +1949,13 @@ main {
     white-space: nowrap;
   }
 
-  .chars-controls .sort-select {
+  .chars-controls .dd {
     flex: 1 1 45%;
     min-width: 0;
+  }
+
+  .chars-controls .dd .dd-btn {
+    width: 100%;
   }
 
   .chars-controls #charactersVersusBtn,
@@ -2039,7 +2028,8 @@ main {
   margin-bottom: 16px;
 }
 
-.versus-pickers select {
+.versus-pickers .dd,
+.versus-pickers .dd-btn {
   width: 100%;
   min-width: 0;
 }
@@ -3479,11 +3469,8 @@ input[type=search]::-webkit-search-cancel-button {
   margin-bottom: 14px;
 }
 
-.roulette-scope select {
-  width: auto;
-  padding: 7px 12px;
-  font-size: 12px;
-  border-radius: 20px;
+.roulette-scope .dd {
+  display: inline-block;
 }
 
 .reel svg {
@@ -7843,9 +7830,14 @@ a.btn-ghost {
   transform: rotate(180deg);
 }
 
-.dd .ac-list {
+/* la lista abierta cuelga del <body> (ver buildDropdown), por eso sus reglas no cuelgan de .dd; la posición y el ancho mínimo los pone el JS */
+.ac-list.dd-list {
   right: auto;
-  min-width: max(100%, 210px);
+  min-width: 210px;
+}
+
+.dd-portal {
+  z-index: 600;
 }
 
 .dd-list li {
@@ -8029,4 +8021,25 @@ a.btn-ghost {
   .profile-tab {
     font-size: 16px;
   }
+}
+
+/* Listas desplegables de los formularios y de las ventanas (Versus, Sugerir un juego, ruleta, filtros de Personajes): el botón ocupa todo el ancho de su campo y la lista
+   se ajusta a lo que dicen sus opciones (títulos largos en una línea, hasta 360 px). Los filtros del lateral llenan su tarjeta desde 1400 px (regla de .side-filters más arriba). */
+.ac-list.dd-list {
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.dd-list li .ac-title {
+  overflow-wrap: anywhere;
+}
+
+.suggest-modal .dd,
+.suggest-modal .dd .dd-btn {
+  width: 100%;
+}
+
+.suggest-modal .dd .dd-btn {
+  border-radius: 12px;
+  padding: 0 14px;
 }

@@ -91,17 +91,23 @@ function renderCharactersBrowse(){
     paintCharactersGrid(true);
   });
   const gameIds = new Set(allCharacters().flatMap(c=>characterGames(c).map(g=>g.id)));
-  const gameSel = document.getElementById('charactersGameSelect');
   if(!gameIds.has(charView.game)) charView.game = '';
-  gameSel.innerHTML = `<option value="">${esc(t('chars_all_games'))}</option>` + allGames().filter(g=>gameIds.has(g.id)).sort((a,b)=>a.title.localeCompare(b.title)).map(g=>`<option value="${esc(g.id)}" ${g.id===charView.game?'selected':''}>${esc(g.title)}</option>`).join('');
-  gameSel.onchange = ()=>{ charView.game = gameSel.value; paintCharactersGrid(true); };
-  const sortSel = document.getElementById('charactersSortSelect');
-  sortSel.innerHTML = CHAR_SORT_KEYS.map(k=>`<option value="${k}" ${k===charView.sort?'selected':''}>${esc(t('char_sort_'+k))}</option>`).join('');
-  sortSel.onchange = ()=>{
-    charView.sort = sortSel.value;
-    try{ localStorage.setItem('charSortMode', charView.sort); }catch(e){}
-    paintCharactersGrid(true);
-  };
+  buildSelectDropdown(document.getElementById('charactersGameDD'), {
+    ariaLabel: ()=> t('characters_game_filter_aria'),
+    options: ()=> [{ value:'', label:t('chars_all_games') }, ...allGames().filter(g=>gameIds.has(g.id)).sort((a,b)=>a.title.localeCompare(b.title)).map(g=>({ value:g.id, label:g.title }))],
+    get: ()=> charView.game,
+    set: v=>{ charView.game = v; paintCharactersGrid(true); },
+  });
+  buildSelectDropdown(document.getElementById('charactersSortDD'), {
+    ariaLabel: ()=> t('characters_sort_aria'),
+    options: ()=> CHAR_SORT_KEYS.map(k=>({ value:k, label:t('char_sort_'+k) })),
+    get: ()=> charView.sort,
+    set: v=>{
+      charView.sort = v;
+      try{ localStorage.setItem('charSortMode', charView.sort); }catch(e){}
+      paintCharactersGrid(true);
+    },
+  });
   document.getElementById('charactersVersusBtn').onclick = ()=> openVersusModal();
   document.getElementById('charactersSuggestBtn').onclick = ()=> openSuggestCharacterModal();
   paintCharactersGrid(true);
@@ -302,22 +308,24 @@ function openVersusModal(presetId){
   if(chars.length<2){ toast(t('versus_need_two'), 'bad'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
-  const options = selected => `<option value="">${esc(t('versus_pick_ph'))}</option>` + chars.map(c=>`<option value="${esc(c.id)}" ${c.id===selected?'selected':''}>${esc(c.name)}</option>`).join('');
   overlay.innerHTML = `
     <div class="confirm-box suggest-modal versus-modal">
       <h3>${esc(t('versus_title'))}</h3>
       <div class="versus-pickers">
-        <select id="vsA">${options(presetId)}</select>
+        <div id="vsA"></div>
         <span class="versus-vs">VS</span>
-        <select id="vsB">${options('')}</select>
+        <div id="vsB"></div>
       </div>
       <div id="vsResult"></div>
       <div class="confirm-actions"><button class="btn-ghost" data-act="close">${esc(t('versus_close_btn'))}</button></div>
     </div>`;
   document.body.appendChild(overlay);
-  const selA = overlay.querySelector('#vsA'), selB = overlay.querySelector('#vsB'), out = overlay.querySelector('#vsResult');
-  const paint = ()=>{ out.innerHTML = versusResultHTML(findCharacter(selA.value), findCharacter(selB.value)); };
-  selA.onchange = selB.onchange = paint;
+  const out = overlay.querySelector('#vsResult');
+  let idA = presetId || '', idB = '';
+  const paint = ()=>{ out.innerHTML = versusResultHTML(findCharacter(idA), findCharacter(idB)); };
+  const pickerOptions = ()=> [{ value:'', label:t('versus_pick_ph') }, ...chars.map(c=>({ value:c.id, label:c.name }))];
+  buildSelectDropdown(overlay.querySelector('#vsA'), { ariaLabel: ()=> t('versus_title'), options: pickerOptions, get: ()=> idA, set: v=>{ idA = v; paint(); } });
+  buildSelectDropdown(overlay.querySelector('#vsB'), { ariaLabel: ()=> t('versus_title'), options: pickerOptions, get: ()=> idB, set: v=>{ idB = v; paint(); } });
   paint();
   function onKey(e){ if(e.key==='Escape') cleanup(); }
   function cleanup(){ overlay.remove(); document.removeEventListener('keydown', onKey); }
