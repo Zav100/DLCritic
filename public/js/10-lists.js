@@ -19,10 +19,10 @@ function openCreateListModal(){
     if(!result || !result.title.trim()) return;
     try{
       await apiPost('/lists', { title: result.title.trim(), isPublic: result.isPublic });
-      toast(t('toast_list_created'));
+      toast(t('toast_list_created'), 'good');
       const rt = state.listsRenderTarget || {};
       renderProfileLists(state.user.username, true, rt.gridId);
-    }catch(e){ toast(t('err_save_user')); }
+    }catch(e){ toast(t('err_save_user'), 'bad'); }
   });
 }
 // Modal chico para pedir el título + visibilidad (pública/privada) de una lista nueva. Es una Promise: resuelve {title, isPublic} si confirma, o null si cancela.
@@ -97,7 +97,7 @@ function confirmTextPrompt(label, initial, confirmLabel){
 // Aviso cuando falla guardar algo de una lista: si fue el límite de intentos lo dice (con su espera), y si no, un error propio de listas.
 function toastListError(e){
   const tooMany = e && e.body && e.body.error==='too_many_requests';
-  toast(t(tooMany ? 'err_too_many' : 'err_save_list'));
+  toast(t(tooMany ? 'err_too_many' : 'err_save_list'), 'bad');
 }
 // Pone al día, en su lugar, las tarjetas de esa lista que hay detrás de la ventana (título, ícono de visibilidad y cantidad de juegos). Así, al quitar un
 // juego, hacerla pública/privada o renombrarla no hace falta repintar la grilla ni volver a abrir la ventana, que era lo que hacía parpadear la pantalla.
@@ -312,7 +312,7 @@ function openAddGamesToListModal(listId, onClose){
       list.gameIds = updated.gameIds; // list es el mismo objeto de state.profileLists: queda al día
       syncListCard(list);
     }catch(e){ delete addBtn.dataset.busy; addBtn.disabled = false; toastListError(e); return; }
-    toast(t('list_pick_added'));
+    toast(t('list_pick_added'), 'good');
     close();
   };
   document.addEventListener('keydown', onKey);
@@ -371,24 +371,28 @@ function removeShelfLoadMore(){
   const existing = document.getElementById('shelfLoadMoreWrap');
   if(existing) existing.remove();
 }
-// Pinta las reseñas del perfil que se está viendo (state.shelfReviews, ya
-// filtradas/ordenadas por renderProfileBody en 09-shelf-profile.js), con
-// paginado "Ver más". El mensaje de "vacío" cambia según sea tu perfil o
-// el de otro usuario (state.shelfReviewsEditable).
+// Pinta la pestaña abierta del perfil que se está viendo, con paginado "Ver más": las reseñas (state.shelfReviews: las que tienen texto, en tarjetas) o las calificaciones
+// (state.shelfRatings: todas las notas, en filas con portada y barra); las dos ya vienen filtradas y ordenadas por renderProfileBody en 09-shelf-profile.js.
+// El mensaje de "vacío" cambia según sea tu perfil o el de otro usuario (state.shelfReviewsEditable).
 function renderShelfReviewsList(keepPage){
   if(!keepPage) state.shelfReviewsVisibleCount = SHELF_REVIEWS_PAGE_SIZE;
-  const mine = state.shelfReviews || [];
+  const ratings = state.profileTab==='ratings';
+  const mine = (ratings ? state.shelfRatings : state.shelfReviews) || [];
   const list=document.getElementById('shelfList');
   removeShelfLoadMore();
   if(mine.length===0){
-    list.innerHTML = state.shelfReviewsEditable
-      ? emptyState(ICONS.gamepad, t('empty_shelf_t'), t('empty_shelf_s'))
-      : emptyState(ICONS.gamepad, t('empty_shelf_other_t'), t('empty_shelf_other_s'));
+    const own = state.shelfReviewsEditable;
+    list.innerHTML = ratings
+      ? emptyState(ICONS.star, t(own? 'empty_ratings_t' : 'empty_ratings_other_t'), t(own? 'empty_ratings_s' : 'empty_ratings_other_s'))
+      : own
+        ? emptyState(ICONS.gamepad, t('empty_shelf_t'), t('empty_shelf_s'))
+        : emptyState(ICONS.gamepad, t('empty_shelf_other_t'), t('empty_shelf_other_s'));
     return;
   }
   const visible = mine.slice(0, state.shelfReviewsVisibleCount);
   list.innerHTML='';
-  visible.forEach(rv=> list.appendChild(reviewCard(rv)));
+  if(ratings) list.appendChild(ratingRowsCard(visible));
+  else visible.forEach(rv=> list.appendChild(reviewCard(rv)));
   if(mine.length > state.shelfReviewsVisibleCount){
     const wrap = document.createElement('div');
     wrap.id = 'shelfLoadMoreWrap';
@@ -400,6 +404,26 @@ function renderShelfReviewsList(keepPage){
     wrap.appendChild(btn);
     list.insertAdjacentElement('afterend', wrap);
   }
+}
+// Una tarjeta con una fila por calificación: portada, juego, hace cuánto, barra y nota. Cada fila lleva a la ficha del juego.
+function ratingRowsCard(rvs){
+  const card = document.createElement('div');
+  card.className = 'card rating-list';
+  card.innerHTML = rvs.map(rv=>{
+    const g = findGame(rv.gameId);
+    if(!g) return '';
+    return `<a class="rating-row" href="${gameHref(g.id)}" data-game-id="${esc(g.id)}">
+      <span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</span>
+      <span class="rr-main"><span class="rr-title">${esc(g.title)}</span><span class="rr-sub">${esc(timeAgo(rv.date))}<span class="rr-genres"> · ${esc(genreLabelList(g))}</span></span></span>
+      <span class="rr-bar" aria-hidden="true"><span style="width:${rv.rating*10}%; background:${MOOD_COLOR(rv.rating)};"></span></span>
+      <span class="rr-score">${rv.rating}</span>
+    </a>`;
+  }).join('');
+  card.querySelectorAll('.rating-row').forEach(a=>{
+    a.onclick = spa(()=>{ state.currentGame = a.dataset.gameId; state.gameOrigin = state.shelfReviewsEditable ? 'shelf' : 'browse'; goView('game'); });
+  });
+  enhanceCovers();
+  return card;
 }
 /* ---------- selector de "juego favorito" del perfil ---------- */
 // Grilla buscable de TODO el catálogo para elegir tu juego favorito (el que se muestra destacado en tu perfil); resalta el que ya está elegido.
@@ -452,8 +476,8 @@ async function selectFavoriteGame(gameId){
   try{
     const r = await apiPut('/profile/favorite', { gameId });
     state.user.favoritePlatinum = r.favoritePlatinum; state.user.favoriteSteam = r.favoriteSteam; // el servidor dice si el nuevo favorito está en su Steam (y trae sus logros)
-  }catch(e){ toast(t('err_save_user')); }
-  toast(t('toast_fav_updated'));
+  }catch(e){ toast(t('err_save_user'), 'bad'); }
+  toast(t('toast_fav_updated'), 'good');
   renderShelf();
   celebrateFavorite(document.getElementById('favPanel'));
 }
@@ -477,8 +501,8 @@ async function toggleWishlist(gameId){
   try{
     const { wishlist } = await apiPost('/profile/wishlist/toggle', { gameId });
     state.user.wishlist = wishlist;
-  }catch(e){ toast(t('err_save_user')); return; }
-  toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'));
+  }catch(e){ toast(t('err_save_user'), 'bad'); return; }
+  toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'), adding? 'good' : undefined);
   goView(state.view);
 }
 function removeWishlistLoadMore(){
@@ -630,8 +654,8 @@ function openAddToWishlistModal(){
             changed = true;
             card.classList.toggle('featured', isWishlisted(g.id));
             card.querySelector('.gc-sub').textContent = subText(g.id);
-            toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'));
-          }catch(e){ toast(t('err_save_user')); }
+            toast(adding? t('toast_wishlist_added') : t('toast_wishlist_removed'), adding? 'good' : undefined);
+          }catch(e){ toast(t('err_save_user'), 'bad'); }
           delete card.dataset.busy;
         };
         grid.appendChild(card);
@@ -670,7 +694,7 @@ function openAddToWishlistModal(){
     if(!rows.length){ show(`<p class="hint">${esc(t('steam_import_empty'))}</p>`); return; }
     morphContent(box, ()=>{
       box.innerHTML = `
-        <p class="hint" style="margin-top:0;">${esc(t('steam_import_intro'))}</p>
+        <p class="hint hint-tip" style="margin-top:0;">${esc(t('steam_import_intro'))}</p>
         <div class="steam-import-tools"><button type="button" class="btn-ghost" data-all>${esc(t('steam_import_all'))}</button><button type="button" class="btn-ghost" data-none>${esc(t('steam_import_none'))}</button></div>
         <div class="steam-import-list">${rows.map(r=>{ const have = inLibrary.has(r.g.id); return `
           <label class="steam-import-row${have?' in-library':''}">
@@ -690,8 +714,8 @@ function openAddToWishlistModal(){
       addBtn.onclick = async ()=>{
         addBtn.disabled = true;
         try{ state.user.wishlist = (await apiPost('/profile/wishlist/add', { gameIds: boxes().filter(b=>b.checked).map(b=>b.value) })).wishlist; }
-        catch(e){ toast(t('err_save_user')); addBtn.disabled = false; return; }
-        toast(t('toast_steam_imported'));
+        catch(e){ toast(t('err_save_user'), 'bad'); addBtn.disabled = false; return; }
+        toast(t('toast_steam_imported'), 'good');
         close();
       };
       refresh();

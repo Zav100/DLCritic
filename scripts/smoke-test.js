@@ -346,7 +346,13 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await a('PUT', `/api/reviews/${gameId}`, { rating: 9 })); // editar solo la nota conserva el texto
     assert.equal((await anon('GET', '/api/reviews')).body.reviews.find(x => x.id === reviewId).text, 'Muy bueno');
     assert.equal((await a('PUT', `/api/reviews/${gameId}`, { rating: 11 })).body.error, 'invalid_rating');
-    assert.equal((await a('PUT', `/api/reviews/${gameId}`, { text: 'x'.repeat(601) })).body.error, 'invalid_text');
+    for (const mala of [0, 0.3, 7.25, 10.5, '8']) assert.equal((await a('PUT', `/api/reviews/${gameId}`, { rating: mala })).body.error, 'invalid_rating', 'nota inválida: ' + mala);
+    for (const buena of [0.5, 7.5, 9.5]) { // medios puntos: se guardan y se leen como número
+      ok(await a('PUT', `/api/reviews/${gameId}`, { rating: buena }));
+      assert.equal((await a('GET', '/api/reviews')).body.reviews.find(r => r.gameId === gameId && r.username === 'smoketest_a').rating, buena);
+    }
+    ok(await a('PUT', `/api/reviews/${gameId}`, { rating: 9 })); // vuelve a la nota de antes (el resto de la prueba cuenta con ella)
+    assert.equal((await a('PUT', `/api/reviews/${gameId}`, { text: 'x'.repeat(20001) })).body.error, 'invalid_text');
     assert.equal((await a('PUT', `/api/reviews/${gameId}`, { platforms: ['atari'] })).body.error, 'invalid_platforms');
     ok(await a('PUT', '/api/reviews/no-existe', { rating: 5 }), 404);
   });
@@ -785,14 +791,20 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await a('POST', '/api/suggestions', { kind: 'character', title: 'smoketest personaje', relatedGame: 'Hades', categories: ['villain', 'inventada'] }));
     assert.equal((await anon('POST', '/api/suggestions', { title: 'x' })).body.error, 'title_too_short');
   });
-  await step('páginas con meta Open Graph (juego, personaje, usuario) y rutas del SPA', async () => {
+  await step('páginas con meta Open Graph (juego, personaje, usuario, reseña) y rutas del SPA', async () => {
     const title = (await anon('GET', '/api/games')).body.games.find(g => g.id === gameId).title;
     const g = await anon('GET', `/juego/${gameId}`); ok(g);
     const html = x => x.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); // el servidor escribe el título escapado (ej. "Baldur's" -> "Baldur&#39;s")
     assert.ok(g.text.includes(`<title>${html(title)} — DLCritic</title>`), 'título del juego en <title>');
     const c = await anon('GET', `/personaje/${charId}`); ok(c); assert.ok(/<title>.+ — DLCritic<\/title>/.test(c.text));
     const u = await anon('GET', '/usuario/smoketest_a'); ok(u); assert.ok(u.text.includes('smoketest_a — DLCritic'));
-    for (const route of ['/explorar', '/personajes', '/reto-del-dia', '/juego/no-existe']) ok(await anon('GET', route));
+    // una reseña con texto tiene su propia página (la que se comparte), con el texto en la descripción
+    ok(await a('PUT', `/api/reviews/${gameId}`, { rating: 8, text: 'Reseña con su propia página.\n\nCon un salto de línea.' }));
+    const conTexto = (await anon('GET', '/api/reviews')).body.reviews.find(r => r.gameId === gameId && r.text && r.text.trim());
+    assert.ok(conTexto, 'hay una reseña con texto del juego de prueba');
+    const rv = await anon('GET', `/resena/${conTexto.id}`); ok(rv);
+    assert.ok(rv.text.includes(`<title>Reseña de ${conTexto.username} sobre ${html(title)} — DLCritic</title>`), 'título de la reseña en <title>');
+    for (const route of ['/explorar', '/personajes', '/reto-del-dia', '/juego/no-existe', '/resena/no-existe']) ok(await anon('GET', route));
     ok(await anon('GET', '/api/no-existe'), 404);
     ok(await anon('GET', '/api/cover?title=x'), 404); // ya no se busca la portada en Steam: cada juego trae la suya guardada
   });

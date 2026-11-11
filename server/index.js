@@ -28,7 +28,7 @@ app.use((req, res, next) => {
   });
   next();
 });
-app.use(express.json());
+app.use(express.json({ limit: '256kb' })); // el tope por defecto (100 kb) se quedaba corto para una reseña de 20 000 caracteres con emojis
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
 
@@ -142,7 +142,10 @@ function uid() {
 
 /* ---------------- validación compartida de entradas ---------------- */
 
-const MAX_REVIEW_TEXT = 600; // mismo tope que el maxlength del textarea del cliente
+// Largo máximo de una reseña y de una descripción de perfil (en caracteres). Son topes de seguridad muy generosos, no de estilo: 20 000 caracteres son unas 3 500 palabras.
+// Mismos valores que los maxlength del cliente (reseñas en 04-api-theme-rating.js y 14-characters.js; descripción en 12-settings.js, index.html).
+const MAX_REVIEW_TEXT = 20000;
+const MAX_BIO = 5000;
 const KNOWN_PLATFORMS = new Set(['steam', 'epic', 'riot', 'psn', 'xbox', 'switch']);
 // Fecha YYYY-MM-DD válida y a ≤3 días de hoy (margen para husos horarios). Sin este tope, un usuario podía
 // crear filas / entradas de historial ilimitadas mandando fechas inventadas.
@@ -152,7 +155,8 @@ function isPlausibleDate(s) {
 // Devuelve el código de error de una reseña inválida (juego o personaje), o null si está bien.
 // platforms es undefined en las reseñas de personaje (no tienen plataformas).
 function validateReview(rating, text, platforms) {
-  if (rating != null && !(Number.isInteger(rating) && rating >= 1 && rating <= 10)) return 'invalid_rating';
+  // de 0.5 a 10, de medio en medio punto (7 y 7.5 sí; 7.3, 0 y 11 no)
+  if (rating != null && !(typeof rating === 'number' && rating >= 0.5 && rating <= 10 && Number.isInteger(rating * 2))) return 'invalid_rating';
   if (typeof text !== 'string' || text.length > MAX_REVIEW_TEXT) return 'invalid_text';
   if (platforms !== undefined && !(Array.isArray(platforms) && platforms.every(p => KNOWN_PLATFORMS.has(p)))) return 'invalid_platforms';
   return null;
@@ -223,7 +227,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   const email = String(b.email || '').trim().toLowerCase();
   const password = String(b.password || '');
   const username = String(b.username || '').trim();
-  const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, 500) : null;
+  const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, MAX_BIO) : null;
 
   // La casilla de los Términos y la Política de privacidad (y de tener 13 años o más) es obligatoria también para quien llame a la API directo.
   if (b.acceptTerms !== true) return res.status(400).json({ error: 'terms_required' });
@@ -655,6 +659,7 @@ const listCharacterReviews = db.prepare(`
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
   ORDER BY cr.updated_at DESC, cr.id ASC
 `);
+const findCharacterReviewById = db.prepare('SELECT * FROM character_reviews WHERE id = ?');
 const findCharReviewByCharAndUser = db.prepare('SELECT * FROM character_reviews WHERE character_id = ? AND user_id = ?');
 const insertCharReview = db.prepare('INSERT INTO character_reviews (id, character_id, user_id, rating, text, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
 const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, text = ?, updated_at = ? WHERE id = ?');
@@ -914,7 +919,7 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
       email = newEmail;
     }
   }
-  const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, 500) : (req.user.bio || null);
+  const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, MAX_BIO) : (req.user.bio || null);
   const socialLinks = (b.socialLinks && typeof b.socialLinks === 'object')
     ? sanitizeSocialLinks(b.socialLinks)
     : JSON.parse(req.user.social_links || '{}');
@@ -1224,9 +1229,9 @@ async function findAnyCharacter(id) {
 function renderIndexWithMeta({ title, description, image, url }) {
   let html = getIndexTemplate();
   html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`);
-  html = html.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeHtml(description)}">`);
+  html = html.replace(/<meta name="description"\s+content="[^"]*">/, `<meta name="description" content="${escapeHtml(description)}">`);
   html = html.replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${escapeHtml(title)}">`);
-  html = html.replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${escapeHtml(description)}">`);
+  html = html.replace(/<meta property="og:description"\s+content="[^"]*">/, `<meta property="og:description" content="${escapeHtml(description)}">`);
   let extra = `<meta property="og:url" content="${escapeHtml(url)}">`;
   if (image) extra += `\n<meta property="og:image" content="${escapeHtml(image)}">\n<meta name="twitter:card" content="summary_large_image">`;
   html = html.replace('<meta property="og:type" content="website">', `<meta property="og:type" content="website">\n${extra}`);
@@ -1263,6 +1268,28 @@ app.get('/personaje/:id', async (req, res) => {
   const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
   res.type('html').send(renderIndexWithMeta({ title: `${character.name} — DLCritic`, description, image: character.bannerUrl || character.photoUrl, url }));
+});
+
+// Una reseña con su propia dirección (la que se comparte). Busca en reseñas de juegos y, si no, de personajes; si no existe, sirve la página normal (la app manda al inicio).
+app.get('/resena/:id', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const rv = await findReviewById.get(req.params.id);
+  const crv = rv ? null : await findCharacterReviewById.get(req.params.id);
+  const row = rv || crv;
+  if (!row) return res.type('html').send(getIndexTemplate());
+
+  const user = await findUserById.get(row.user_id);
+  const target = rv ? await findAnyGame(rv.game_id) : await findAnyCharacter(crv.character_id);
+  if (!user || !target) return res.type('html').send(getIndexTemplate());
+  const name = rv ? target.title : target.name;
+  const text = (row.text || '').trim().replace(/\s+/g, ' ');
+  const description = text
+    ? (row.rating != null ? `${row.rating}/10 — ` : '') + (text.length > 180 ? text.slice(0, 180) + '…' : text)
+    : (row.rating != null ? `${user.username} calificó ${name} con ${row.rating}/10 en DLCritic.` : `Reseña de ${user.username} en DLCritic.`);
+  const image = rv ? target.coverUrl : (target.bannerUrl || target.photoUrl);
+  const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+  res.type('html').send(renderIndexWithMeta({ title: `Reseña de ${user.username} sobre ${name} — DLCritic`, description, image: image || null, url }));
 });
 
 app.get('/usuario/:username', async (req, res) => {

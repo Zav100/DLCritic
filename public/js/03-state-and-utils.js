@@ -22,8 +22,6 @@ const BROWSE_PAGE_SIZE = 28;
 const WISHLIST_PAGE_SIZE = 8;
 const SHELF_REVIEWS_PAGE_SIZE = 10;
 const NEWS_FEED_LIMIT = 9;
-const NO_VALUE_SORT_LAST = '￿'; // valor "más alto posible" para que los juegos sin dato queden al final al ordenar
-const isSoloMode = g=> g.gameMode==='Un jugador';
 
 /* ---------- opciones de orden para "Explorar catálogo" ---------- */
 const BROWSE_SORTS = {
@@ -33,11 +31,14 @@ const BROWSE_SORTS = {
   za: (a,b)=> b.title.localeCompare(a.title),
   release_date_desc: (a,b)=> (b.releaseYear||0) - (a.releaseYear||0),
   release_date_asc: (a,b)=> (a.releaseYear||Infinity) - (b.releaseYear||Infinity),
-  developer: (a,b)=> (a.developer||NO_VALUE_SORT_LAST).localeCompare(b.developer||NO_VALUE_SORT_LAST) || a.title.localeCompare(b.title),
-  game_mode_solo: (a,b)=> (isSoloMode(b)?1:0)-(isSoloMode(a)?1:0) || (a.gameMode||NO_VALUE_SORT_LAST).localeCompare(b.gameMode||NO_VALUE_SORT_LAST) || a.title.localeCompare(b.title),
-  game_mode_other: (a,b)=> (isSoloMode(a)?1:0)-(isSoloMode(b)?1:0) || (a.gameMode||NO_VALUE_SORT_LAST).localeCompare(b.gameMode||NO_VALUE_SORT_LAST) || a.title.localeCompare(b.title),
 };
-const BROWSE_SORT_KEYS = ['rating_desc','rating_asc','az','za','release_date_desc','release_date_asc','developer','game_mode_solo','game_mode_other'];
+const BROWSE_SORT_KEYS = ['rating_desc','rating_asc','az','za','release_date_desc','release_date_asc'];
+// Un botón por criterio: el primer toque lo activa y cada toque siguiente alterna entre sus dos direcciones (first / second).
+const BROWSE_SORT_GROUPS = [
+  { key:'rating', first:'rating_desc', second:'rating_asc' },
+  { key:'name', first:'az', second:'za' },
+  { key:'date', first:'release_date_desc', second:'release_date_asc' },
+];
 // EL estado global de la app. No es reactivo (no hay framework): cuando algo
 // cambia aquí, quien lo cambió es responsable de volver a pintar lo que
 // corresponda (llamando a la función render... que haga falta).
@@ -55,13 +56,55 @@ function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(state.
 // Avisa algo con una tarjeta en el centro de la pantalla y un botón «Entendido» (ver noticeDialog en 07-stats-share-modals.js); antes era un mensajito que se iba solo abajo.
 // Si llegan varios seguidos se muestran de a uno, y un texto igual a uno que ya está esperando no se repite.
 const noticeQueue = [];
-function toast(msg){
-  if(noticeQueue.includes(msg)) return;
-  noticeQueue.push(msg);
+// tone: 'good' (algo salió bien: tarjeta verde), 'bad' (algo salió mal o no se puede: tarjeta roja) o nada (neutral, como estaba).
+function toast(msg, tone){
+  if(noticeQueue.some(q=>q.msg===msg)) return;
+  noticeQueue.push({ msg, tone });
   if(noticeQueue.length===1) showNextNotice();
 }
 function showNextNotice(){
-  noticeDialog('', noticeQueue[0]).then(()=>{ noticeQueue.shift(); if(noticeQueue.length) showNextNotice(); });
+  const { msg, tone } = noticeQueue[0];
+  noticeDialog('', msg, '', tone).then(()=>{ noticeQueue.shift(); if(noticeQueue.length) showNextNotice(); });
+}
+// Lista desplegable para escribir y elegir un juego; reemplaza al <datalist> nativo, que se ve distinto en cada navegador y no se puede diseñar.
+// Sale al escribir (primero los títulos que empiezan igual, después los que lo contienen), se recorre con las flechas, Enter elige el resaltado y Escape la cierra.
+// getGames() devuelve los juegos entre los que buscar; onPick(título) se llama al elegir uno. Debe engancharse ANTES que otros listeners de keydown del input (para frenar el Enter).
+function attachGameAutocomplete(input, getGames, onPick){
+  const wrap = document.createElement('div');
+  wrap.className = 'ac-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const list = document.createElement('ul');
+  list.className = 'ac-list'; list.setAttribute('role', 'listbox'); list.hidden = true;
+  wrap.appendChild(list);
+  input.setAttribute('role', 'combobox'); input.setAttribute('aria-autocomplete', 'list'); input.setAttribute('aria-expanded', 'false'); input.setAttribute('autocomplete', 'off');
+  let active = -1;
+  const rows = ()=> [...list.querySelectorAll('li[data-title]')];
+  const close = ()=>{ list.hidden = true; list.innerHTML = ''; active = -1; input.setAttribute('aria-expanded', 'false'); };
+  const mark = i=>{ active = i; rows().forEach((li, n)=> li.classList.toggle('active', n===i)); if(rows()[i]) rows()[i].scrollIntoView({ block:'nearest' }); };
+  const pick = title=>{ input.value = title; close(); if(onPick) onPick(title); };
+  const show = ()=>{
+    const q = foldText(input.value).trim();
+    if(!q){ close(); return; }
+    const starts = [], has = [];
+    getGames().forEach(g=>{ const f = foldText(g.title); if(f.startsWith(q)) starts.push(g); else if(f.includes(q)) has.push(g); });
+    const res = [...starts, ...has].slice(0, 8);
+    list.innerHTML = res.length
+      ? res.map(g=> `<li role="option" data-title="${esc(g.title)}"><span class="ac-title">${esc(g.title)}</span>${g.releaseYear? `<span class="ac-year">${g.releaseYear}</span>` : ''}</li>`).join('')
+      : `<li class="ac-empty">${esc(t('ac_no_results'))}</li>`;
+    list.hidden = false; active = -1; input.setAttribute('aria-expanded', 'true');
+    rows().forEach(li=>{ li.onmousedown = e=>{ e.preventDefault(); pick(li.dataset.title); }; });
+  };
+  input.addEventListener('input', show);
+  input.addEventListener('focus', ()=>{ if(input.value.trim()) show(); });
+  input.addEventListener('blur', ()=> setTimeout(close, 120));
+  input.addEventListener('keydown', e=>{
+    const n = rows().length;
+    if(e.key==='ArrowDown' && n){ e.preventDefault(); mark(active<0? 0 : (active+1)%n); }
+    else if(e.key==='ArrowUp' && n){ e.preventDefault(); mark(active<0? n-1 : (active-1+n)%n); }
+    else if(e.key==='Enter' && active>=0){ e.preventDefault(); e.stopImmediatePropagation(); pick(rows()[active].dataset.title); }
+    else if(e.key==='Escape' && !list.hidden){ e.stopPropagation(); close(); }
+  });
 }
 // HTML de una card "esqueleto" (gris, animada) que se muestra mientras todavía no cargaron los datos reales.
 function skeletonCardHTML(){

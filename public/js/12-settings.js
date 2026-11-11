@@ -34,7 +34,7 @@ function steamSectionHTML(u, guideOpen){
       <p class="hint" style="margin:0 0 12px;">${s.syncedAt? esc(t('steam_last_sync'))+' '+esc(fmtDate(s.syncedAt)) : esc(t('steam_never_synced'))}</p>
       <div class="steam-actions"><button type="button" class="btn small" id="stSteamSync">${esc(t('steam_sync_btn'))}</button><button type="button" class="btn-ghost" id="stSteamUnlink">${esc(t('steam_unlink_btn'))}</button></div>`
     : `
-      <p class="hint" style="margin-top:0;">${esc(t('steam_intro'))}</p>
+      <p class="hint hint-tip" style="margin-top:0;">${esc(t('steam_intro'))}</p>
       <a class="btn" id="stSteamLink" href="/api/steam/link">${esc(t('steam_link_btn'))}</a>`;
   return `
     <section class="settings-section" id="steamCard">
@@ -63,8 +63,8 @@ function wireSteamCard(){
       const r = await apiPut('/profile/privacy', { [field]: input.checked });
       u.libraryPublic = r.libraryPublic;
       if(u.steam) u.steam.hoursPublic = r.steamHoursPublic;
-      toast(t('toast_privacy_saved'));
-    }catch(e){ input.checked = !input.checked; toast(t('err_save_user')); }
+      toast(t('toast_privacy_saved'), 'good');
+    }catch(e){ input.checked = !input.checked; toast(t('err_save_user'), 'bad'); }
   };
   const lib = document.getElementById('st-library-public');
   if(lib) lib.onchange = ()=> savePrivacy('libraryPublic', lib);
@@ -75,7 +75,7 @@ function wireSteamCard(){
     sync.disabled = true; errEl.hidden = true;
     try{
       applySteamSync(await apiPost('/steam/sync'));
-      toast(t('toast_steam_synced'));
+      toast(t('toast_steam_synced'), 'good');
       refreshSteamSection();
     }catch(e){ errEl.textContent = steamErrorText(e); errEl.hidden = false; sync.disabled = false; }
   };
@@ -87,13 +87,13 @@ function wireSteamCard(){
       u.steam = null; u.favoriteSteam = null; u.favoritePlatinum = r.favoritePlatinum; state.steamHours = {}; state.steamHoursFor = u.username;
       toast(t('toast_steam_unlinked'));
       refreshSteamSection();
-    }catch(e){ toast(t('err_save_user')); }
+    }catch(e){ toast(t('err_save_user'), 'bad'); }
   };
   const params = new URLSearchParams(location.search), result = params.get('steam');
   if(result){
     history.replaceState(null, '', '/ajustes');
-    if(result==='linked') noticeDialog(t('steam_linked_title'), t({ ok:'steam_linked_ok', private:'steam_linked_private' }[params.get('sync')] || 'steam_linked_none'), ICONS.checkCircle);
-    else noticeDialog(t('steam_failed_title'), t(result==='taken'? 'toast_steam_taken' : 'toast_steam_error'));
+    if(result==='linked') noticeDialog(t('steam_linked_title'), t({ ok:'steam_linked_ok', private:'steam_linked_private' }[params.get('sync')] || 'steam_linked_none'), ICONS.checkCircle, 'good');
+    else noticeDialog(t('steam_failed_title'), t(result==='taken'? 'toast_steam_taken' : 'toast_steam_error'), '', 'bad');
   }
 }
 // Los enlaces del perfil (SOCIAL_META, 01-icons-and-catalog-meta.js) se muestran en dos grupos: redes sociales y plataformas de juego.
@@ -162,17 +162,18 @@ function renderSettingsView(){
             <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
             <div style="min-width:0; flex:1 1 200px;">
               <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
-              <p class="hint" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
+              <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
             </div>
           </div>
         </div>
         <div class="field">
           <label for="st-username">${esc(t('profile_username_label'))}</label>
           <input type="text" id="st-username" maxlength="20" value="${esc(u.username)}">
+          <p class="hint hint-tip">${esc(t('username_hint'))}</p>
         </div>
         <div class="field">
           <label for="st-bio">${esc(t('profile_bio_label'))}</label>
-          <textarea id="st-bio" maxlength="500" style="min-height:70px;">${esc(u.bio||'')}</textarea>
+          <textarea id="st-bio" maxlength="5000" style="min-height:70px;">${esc(u.bio||'')}</textarea>
         </div>
         <div class="error" id="stProfileError" hidden></div>
         <button class="btn gold" id="stProfileSave">${esc(t('save_changes_btn'))}</button>`)}
@@ -188,7 +189,7 @@ function renderSettingsView(){
           <div class="field">
             <label for="st-email-password">${esc(t('settings_current_password_label'))}</label>
             <input type="password" id="st-email-password" autocomplete="current-password">
-            <p class="hint">${esc(t('settings_email_password_hint'))}</p>
+            <p class="hint hint-tip">${esc(t('settings_email_password_hint'))}</p>
           </div>
           <div class="error" id="stAccountError" hidden></div>
           <button class="btn gold" id="stAccountSave">${esc(t('save_changes_btn'))}</button>
@@ -207,7 +208,7 @@ function renderSettingsView(){
             <label for="st-new-password">${esc(t('settings_new_password_label'))}</label>
             <input type="password" id="st-new-password" autocomplete="new-password">
             <div class="pw-meter" id="st-pwMeter" hidden></div>
-            <p class="hint">${esc(t('auth_password_hint'))}</p>
+            <p class="hint hint-tip">${esc(t('auth_password_hint'))}</p>
           </div>
           <div class="field">
             <label for="st-new-password2">${esc(t('settings_new_password_confirm_label'))}</label>
@@ -215,9 +216,9 @@ function renderSettingsView(){
           </div>
           <div class="error" id="stPasswordError" hidden></div>
           <button class="btn gold" id="stPasswordSave">${esc(t('settings_change_password_btn'))}</button>
-          <p class="hint">${esc(t('settings_password_signout_hint'))}</p>`}
+          <p class="hint hint-tip">${esc(t('settings_password_signout_hint'))}</p>`}
           <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
-            <p class="hint" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
+            <p class="hint hint-tip" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
             <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
           </div>
         </section>`)}
@@ -230,7 +231,7 @@ function renderSettingsView(){
           </div>
           <div class="settings-group">
             <h3>${esc(t('settings_game_platforms'))}</h3>
-            <p class="hint" style="margin:0 0 10px;">${esc(t('settings_game_platforms_hint'))}</p>
+            <p class="hint hint-tip" style="margin:0 0 10px;">${esc(t('settings_game_platforms_hint'))}</p>
             ${socialFieldsHTML(SOCIAL_KEYS.filter(k=>!SOCIAL_NETWORK_KEYS.includes(k)), u.socialLinks)}
           </div>
           <div class="error" id="stSocialError" hidden></div>
@@ -275,7 +276,7 @@ function renderSettingsView(){
       }
       state.user = user;
       renderUserBadge();
-      toast(t('toast_profile_saved'));
+      toast(t('toast_profile_saved'), 'good');
     }catch(e){
       errEl.textContent = (e.body && e.body.error==='username_taken') ? t('err_username_taken_settings')
         : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : t('err_save_user');
@@ -293,7 +294,7 @@ function renderSettingsView(){
     try{
       const { user } = await apiPut('/profile', { socialLinks });
       state.user = user;
-      toast(t('toast_profile_saved'));
+      toast(t('toast_profile_saved'), 'good');
     }catch(e){ errEl.textContent = t('err_save_user'); errEl.hidden = false; }
   };
 
@@ -311,7 +312,7 @@ function renderSettingsView(){
       state.user = user;
       document.getElementById('st-email-password').value = '';
       renderVerifyBanner();
-      toast(t('toast_profile_saved'));
+      toast(t('toast_profile_saved'), 'good');
     }catch(e){
       const code = e.body && e.body.error;
       errEl.textContent = code==='email_taken' ? t('err_email_taken') : code==='invalid_email' ? t('err_invalid_email')
@@ -334,7 +335,7 @@ function renderSettingsView(){
     if(newPassword!==newPassword2){ errEl.textContent=t('err_password_mismatch'); errEl.hidden=false; return; }
     try{
       await apiPost('/account/password', { currentPassword, newPassword });
-      toast(t('toast_password_changed'));
+      toast(t('toast_password_changed'), 'good');
       document.getElementById('st-current-password').value='';
       document.getElementById('st-new-password').value='';
       document.getElementById('st-new-password').oninput();
@@ -349,7 +350,7 @@ function renderSettingsView(){
 
   // Cerrar sesión en todos los dispositivos (también este): sirve si se perdió un aparato o se sospecha que alguien entró.
   document.getElementById('stLogoutAll').onclick = async ()=>{
-    try{ await apiPost('/auth/logout-all'); }catch(e){ toast(t('err_logout_all')); return; }
+    try{ await apiPost('/auth/logout-all'); }catch(e){ toast(t('err_logout_all'), 'bad'); return; }
     await finishLogout('toast_logged_out_all');
   };
 }

@@ -84,8 +84,8 @@ function showGoogleReturn(){
 }
 // Reenvía el enlace para confirmar el correo (desde el aviso de arriba y desde Ajustes); el servidor deja 3 por hora.
 async function resendVerification(){
-  try{ await apiPost('/auth/verify-email/resend', { lang: state.lang }); toast(t('toast_verify_sent')); }
-  catch(e){ toast(t(e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_user')); }
+  try{ await apiPost('/auth/verify-email/resend', { lang: state.lang }); toast(t('toast_verify_sent'), 'good'); }
+  catch(e){ toast(t(e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_user'), 'bad'); }
 }
 // Prepara la vista /cuenta desde cero cada vez que se entra a ella: limpia todos los campos de los 2 formularios, vuelve a la pestaña que estaba activa, y engancha todos los botones/inputs (incluido el preview de la foto elegida en el paso 2).
 function renderAuthForm(){
@@ -229,7 +229,7 @@ async function handleRegisterSubmit(){
       user = r.user;
     }catch(e){ /* avatar upload failing shouldn't block account creation */ }
   }
-  toast(t('toast_account_created')+' '+username);
+  toast(t('toast_account_created')+' '+username, 'good');
   await afterAuthSuccess(user);
 }
 

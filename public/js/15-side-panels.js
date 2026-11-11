@@ -36,6 +36,7 @@ function wireRail(root){
   // Cada fila y cada botón de la columna pasa a ser un enlace de verdad (clic derecho -> abrir en pestaña nueva); un clic normal navega sin recargar.
   root.querySelectorAll('[data-go-game]').forEach(b=>{ const a = asLink(b, gameHref(b.dataset.goGame)); a.onclick = spa(()=> goToGame(a.dataset.goGame)); });
   root.querySelectorAll('[data-go-char]').forEach(b=>{ const a = asLink(b, characterHref(b.dataset.goChar)); a.onclick = spa(()=> goToCharacter(a.dataset.goChar)); });
+  root.querySelectorAll('[data-go-review]').forEach(b=>{ const a = asLink(b, reviewHref(b.dataset.goReview)); a.onclick = spa(()=> openReview(a.dataset.goReview)); });
   root.querySelectorAll('[data-go-view]').forEach(b=>{ const a = asLink(b, pathForView(b.dataset.goView)); a.onclick = spa(()=> goView(a.dataset.goView)); });
 }
 // Una fila clicable de una columna: lead (portada/avatar/fecha, ya en HTML), título y subtítulo (texto ya escapado), y un puntaje opcional.
@@ -77,7 +78,7 @@ function histogramCardHTML(ratings){
   const total = ratings.length;
   if(!total) return railCardHTML(t('rail_hist_title'), `<p class="hint">${esc(t('rail_hist_empty'))}</p>`);
   const counts = Array(11).fill(0);
-  ratings.forEach(r=>{ if(r>=1 && r<=10) counts[r]++; });
+  ratings.forEach(r=>{ if(r>=0.5 && r<=10) counts[Math.ceil(r)]++; }); // la fila 8 junta los 8 y los 7.5
   const max = Math.max(...counts.slice(1));
   const avg = ratings.reduce((s,r)=>s+r,0) / total;
   const rows = [];
@@ -95,14 +96,14 @@ function recentActivity({ limit=5, kind=null, exclude=null }={}){
     state.reviews.forEach(r=>{
       if(!hasReviewContent(r) || (exclude && exclude.kind==='game' && exclude.id===r.gameId)) return;
       const g = findGame(r.gameId);
-      if(g) items.push({ kind:'game', id:g.id, title:g.title, user:r.username, rating:r.rating, text:r.text, date:r.date });
+      if(g) items.push({ kind:'game', id:g.id, reviewId:r.id, title:g.title, user:r.username, rating:r.rating, text:r.text, date:r.date });
     });
   }
   if(kind!=='game'){
     state.characterReviews.forEach(r=>{
       if(!hasReviewContent(r) || (exclude && exclude.kind==='character' && exclude.id===r.characterId)) return;
       const c = findCharacter(r.characterId);
-      if(c) items.push({ kind:'character', id:c.id, title:c.name, user:r.username, rating:r.rating, text:r.text, date:r.date });
+      if(c) items.push({ kind:'character', id:c.id, reviewId:r.id, title:c.name, user:r.username, rating:r.rating, text:r.text, date:r.date });
     });
   }
   return items.sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0, limit);
@@ -110,7 +111,7 @@ function recentActivity({ limit=5, kind=null, exclude=null }={}){
 // Fila de una reseña/nota de la comunidad: "usuario <verbo> título", hace cuánto y la nota. subExtra: HTML ya escapado que va después de la fecha.
 function activityRowHTML(it, verbKey, subExtra=''){
   return railItemHTML({
-    attrs: it.kind==='game' ? `data-go-game="${esc(it.id)}"` : `data-go-char="${esc(it.id)}"`,
+    attrs: `data-go-review="${esc(it.reviewId)}"`, // la fila lleva a la reseña, en su propia página
     lead: userAvatarHTML(it.user),
     title: `${esc(it.user)} <span class="ri-verb">${esc(t(verbKey))}</span> ${esc(it.title)}`,
     sub: `${esc(timeAgo(it.date))}${subExtra}`,
@@ -373,7 +374,7 @@ function alignTipsRail(rail){
 }
 // Llena la columna de tips de la vista que se acaba de mostrar (applyView, 05-navigation.js).
 // Vistas que no llevan la columna de tips (Acerca de, Mi estantería y el inicio de sesión / registro). 'shelf' y 'profile' comparten #view-profile, por eso se decide en cada visita: la clase no-rail le saca a la vista el hueco de la derecha (ver style.css).
-const NO_TIPS_VIEWS = ['about', 'shelf', 'auth'];
+const NO_TIPS_VIEWS = ['about', 'shelf', 'auth', 'review'];
 function fillTipsRail(view){
   const sec = document.getElementById(view==='shelf' ? 'view-profile' : 'view-'+view);
   const el = sec && sec.querySelector('[data-tips-rail]');

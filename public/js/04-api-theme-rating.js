@@ -145,14 +145,38 @@ function renderGauge(container, value, max=10){ // max: la escala (10 para las n
 }
 
 /* ---------- calificación rápida (independiente de la reseña) ---------- */
-// Pinta los 10 botones del 1 al 10 según qué valor está "encendido" (hover o valor guardado); `value` puede ser el número bajo el mouse o la nota actual.
+// Pinta los 10 botones según qué valor está "encendido" (el de la mitad bajo el cursor, al pasar el mouse, o la nota guardada): un botón se llena entero si value
+// llega a su número, y solo su mitad izquierda si value es medio punto menos (7.5 llena del 1 al 7 y la mitad izquierda del 8). El color es el del "mood" de ese valor.
 function paintQuickRate(wrap, value){
-  wrap.querySelectorAll('.rate-btn').forEach((b,idx)=>{
-    const i=idx+1;
-    const lit = value!=null && i<=value;
-    b.classList.toggle('lit', lit);
-    b.style.background = lit ? MOOD_COLOR(value) : '';
-    b.style.borderColor = lit ? MOOD_COLOR(value) : '';
+  wrap.style.setProperty('--rc', value==null ? '' : MOOD_COLOR(value));
+  wrap.querySelectorAll('.rbtn').forEach(b=>{
+    const n = +b.dataset.n;
+    b.classList.toggle('full', value!=null && value>=n);
+    b.classList.toggle('half', value!=null && value===n-0.5);
+  });
+}
+// Arma los 10 botones de nota. Cada uno está partido en dos mitades que se tocan por separado: la izquierda vale N-0.5 y la derecha vale N. Las mitades son áreas
+// completas (cada una cubre media cara del botón y se estira hasta la mitad del hueco con el vecino), así no hay que apuntar a ningún borde.
+// getCurrent() devuelve la nota actual y onPick(valor) se llama al tocar una mitad. Lo usan la ficha de un juego y la de un personaje.
+function buildRateButtons(wrap, getCurrent, onPick){
+  wrap.innerHTML = '';
+  for(let n=1; n<=10; n++){
+    const box = document.createElement('div');
+    box.className = 'rbtn';
+    box.dataset.n = n;
+    box.innerHTML = `<span class="rb-face"><span class="rb-num">${n}</span><span class="rb-lit" aria-hidden="true"><span class="rb-num">${n}</span></span></span>`
+      + [n-0.5, n].map((v, i)=> `<button type="button" class="rb-half ${i? 'r' : 'l'}" data-v="${v}" aria-label="${v} ${esc(t('rate_out_of_ten'))}"></button>`).join('');
+    wrap.appendChild(box);
+  }
+  wrap.querySelectorAll('.rb-half').forEach(h=>{
+    const v = parseFloat(h.dataset.v);
+    h.addEventListener('mouseenter', ()=> paintQuickRate(wrap, v));
+    h.addEventListener('mouseleave', ()=> paintQuickRate(wrap, getCurrent()));
+    h.addEventListener('click', ()=>{
+      const face = h.parentElement.querySelector('.rb-face');
+      face.classList.remove('pop'); void face.offsetWidth; face.classList.add('pop');
+      onPick(v);
+    });
   });
 }
 // Actualiza el número grande + la palabra de "mood" + el brillito (nota >=9) + el botón de borrar, para el widget de calificación identificado por `scope` (prefijo de los ids: scope+'Num', scope+'Mood', etc.). `moodFn` es la función que traduce nota -> palabra; por defecto MOOD (para juegos), pero 14-characters.js le pasa MOOD_CHARACTER para que el mismo widget diga otra cosa al calificar un personaje.
@@ -172,30 +196,21 @@ function updateQuickReadout(scope, value, animate, moodFn){
   if(clearBtn) clearBtn.hidden = value==null;
   if(animate){ num.classList.remove('bump'); void num.offsetWidth; num.classList.add('bump'); }
 }
-// Arma y engancha los 10 botones de calificación rápida para un juego. `scope` es un prefijo (p.ej. "qr") que identifica ESTE widget en particular, por si hay más de uno en pantalla (raro, pero el sistema lo permite).
+// Arma y engancha los botones de calificación rápida para un juego. `scope` es un prefijo (p.ej. "qr") que identifica ESTE widget en particular, por si hay más de uno en pantalla (raro, pero el sistema lo permite).
 function renderQuickRate(scope, gameId, currentValue){
   const wrap = document.getElementById(scope+'Buttons');
   if(!wrap) return;
   let current = currentValue;
-  wrap.innerHTML='';
-  for(let i=1;i<=10;i++){
-    const b=document.createElement('button');
-    b.type='button'; b.className='rate-btn'; b.textContent=i; b.setAttribute('aria-label', i+' '+t('rate_out_of_ten'));
-    b.addEventListener('mouseenter', ()=> paintQuickRate(wrap, i));
-    b.addEventListener('mouseleave', ()=> paintQuickRate(wrap, current));
-    b.addEventListener('click', async ()=>{
-      current=i;
-      paintQuickRate(wrap, i);
-      updateQuickReadout(scope, i, true);
-      b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
-      if(await saveRating(gameId, i)){
-        if(i>=9) celebrateFavorite(wrap);
-        toast(t('toast_rating_saved'));
-      }
-      renderGameDetail();
-    });
-    wrap.appendChild(b);
-  }
+  buildRateButtons(wrap, ()=>current, async v=>{
+    current = v;
+    paintQuickRate(wrap, v);
+    updateQuickReadout(scope, v, true);
+    if(await saveRating(gameId, v)){
+      if(v>=9) celebrateFavorite(wrap);
+      toast(t('toast_rating_saved'), 'good');
+    }
+    renderGameDetail();
+  });
   paintQuickRate(wrap, current);
   updateQuickReadout(scope, current, false);
   const clearBtn = document.getElementById(scope+'ClearBtn');
@@ -207,7 +222,7 @@ function renderQuickRate(scope, gameId, currentValue){
 async function persistOrResync(request){
   try{ await request(); return true; }
   catch(e){
-    toast(t(e && e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_review'));
+    toast(t(e && e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_save_review'), 'bad');
     try{
       const [rv, crv] = await Promise.all([apiGet('/reviews'), apiGet('/character-reviews')]);
       state.reviews = rv.reviews; state.characterReviews = crv.characterReviews;
@@ -301,7 +316,7 @@ function renderReviewBlock(gameId, myReview){
     }
   } else {
     wrap.innerHTML = `
-      <textarea id="reviewTextInput" maxlength="600" placeholder="${esc(t('add_review_ph'))}" style="margin-top:8px;">${esc(hasText?myReview.text:'')}</textarea>
+      <textarea id="reviewTextInput" maxlength="20000" placeholder="${esc(t('add_review_ph'))}" style="margin-top:8px;">${esc(hasText?myReview.text:'')}</textarea>
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
         <button class="btn gold small" id="saveReviewBtn">${t('save_review_btn')}</button>
         <button class="linklike" id="cancelReviewBtn">${t('cancel_btn')}</button>
@@ -311,10 +326,10 @@ function renderReviewBlock(gameId, myReview){
       const input=document.getElementById('reviewTextInput');
       const errEl=document.getElementById('reviewError');
       const text=input.value.trim();
-      if(text.length<10){ errEl.textContent=t('toast_write_more'); errEl.hidden=false; return; }
+      if(!text){ errEl.textContent=t('review_empty_error'); errEl.hidden=false; return; }
       if(!await saveReviewText(gameId, text)){ errEl.textContent=t('err_save_review'); errEl.hidden=false; return; } // el texto escrito queda en el cuadro para reintentar
       state.reviewEditing=false;
-      toast(t('toast_review_published'));
+      toast(t('toast_review_published'), 'good');
       renderGameDetail();
     };
     document.getElementById('cancelReviewBtn').onclick = ()=>{ state.reviewEditing=false; renderReviewBlock(gameId, myReview); };

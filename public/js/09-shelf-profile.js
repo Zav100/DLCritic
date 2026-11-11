@@ -115,8 +115,8 @@ function wireFavPanel(profile, favGame, editable, reviews){
     const next = !state.user.favoritePlatinum;
     state.user.favoritePlatinum = next;
     try{ await apiPut('/profile/favorite/platinum', { platinum: next }); }
-    catch(e){ state.user.favoritePlatinum = !next; toast(t('err_save_user')); renderShelf(); return; }
-    toast(t(next? 'toast_platinum_on' : 'toast_platinum_off'));
+    catch(e){ state.user.favoritePlatinum = !next; toast(t('err_save_user'), 'bad'); renderShelf(); return; }
+    toast(t(next? 'toast_platinum_on' : 'toast_platinum_off'), next? 'good' : undefined);
     renderShelf();
     if(next) celebrateFavorite(document.querySelector('.platinum-badge'));
   };
@@ -131,8 +131,11 @@ function renderProfileBody(el, username, profile, editable){
   const s = userStats(username);
   s.hasAvatar = !!profile.avatarUrl;
   s.hasBio = !!(profile.bio && profile.bio.trim());
-  const mine = s.reviews.filter(hasReviewContent).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const avg = mine.length? Math.round((mine.reduce((sum,r)=>sum+r.rating,0)/mine.length)*10)/10 : 0;
+  const byDate = (a,b)=> new Date(b.date)-new Date(a.date);
+  const mine = s.reviews.filter(hasReviewContent).sort(byDate); // pestaña «Reseñas»: las que tienen texto
+  const rated = s.reviews.filter(r=>r.rating!=null).sort(byDate); // pestaña «Calificaciones»: todas las notas, con o sin reseña
+  const avg = rated.length? Math.round((rated.reduce((sum,r)=>sum+r.rating,0)/rated.length)*10)/10 : 0;
+  if(state.profileTabUser!==username){ state.profileTabUser = username; state.profileTab = 'reviews'; } // al cambiar de perfil se vuelve a la primera pestaña
   const color = AVATAR_COLORS[Math.abs(hashStr(username))%AVATAR_COLORS.length];
   const lvl = computeLevel(s.count);
   const toNext = lvl.next ? (lvl.next.min - s.count) : 0;
@@ -185,7 +188,8 @@ function renderProfileBody(el, username, profile, editable){
     </div>
 
     <div class="statsstrip">
-      <div class="statscell"><div class="n">${s.count}</div><div class="l">${t('reviews_label')}</div></div>
+      <div class="statscell"><div class="n">${mine.length}</div><div class="l">${t('reviews_label')}</div></div>
+      <div class="statscell"><div class="n">${rated.length}</div><div class="l">${t('ratings_label')}</div></div>
       <div class="statscell"><div class="n">${avg||'—'}</div><div class="l">${t('avg_label')}</div></div>
       <div class="statscell"><div class="n">${ICONS.flame} ${s.streak}</div><div class="l">${t('streak_label')}</div></div>
       ${editable ? `<div class="statscell ring">${renderProgressRing(wishlistPlayedStats().percent)}<div class="l">${t('wishlist_progress_label')}</div></div>` : ''}
@@ -231,8 +235,11 @@ function renderProfileBody(el, username, profile, editable){
         <div class="card" style="margin-bottom:36px;">
           <div id="activityCal"></div>
         </div>` : ''}
-        <div class="sectionhead" style="margin-top:0;"><h2>${t(editable? 'your_reviews_title' : 'reviews_section_title')}</h2><span class="count">${mine.length}</span></div>
-        <div id="shelfList"></div>
+        <div class="profile-tabs" role="tablist">
+          <button type="button" role="tab" class="profile-tab" data-ptab="reviews" aria-selected="${state.profileTab!=='ratings'}">${t('tab_reviews')} <span class="count">${mine.length}</span></button>
+          <button type="button" role="tab" class="profile-tab" data-ptab="ratings" aria-selected="${state.profileTab==='ratings'}">${t('tab_ratings')} <span class="count">${rated.length}</span></button>
+        </div>
+        <div id="shelfList" role="tabpanel"></div>
       </div>
       <aside class="shelf-side">
         <div class="sectionhead" style="margin-top:0;"><h2>${t('achievements_title')}</h2><span class="count">${ACHIEVEMENTS.filter(a=>a.check(s)).length}/${ACHIEVEMENTS.length}</span></div>
@@ -285,7 +292,15 @@ function renderProfileBody(el, username, profile, editable){
   renderProfileLists(username, editable);
 
   state.shelfReviews = mine;
+  state.shelfRatings = rated;
   state.shelfReviewsEditable = editable;
+  el.querySelectorAll('[data-ptab]').forEach(b=>{
+    b.onclick = ()=>{
+      state.profileTab = b.dataset.ptab;
+      el.querySelectorAll('[data-ptab]').forEach(x=> x.setAttribute('aria-selected', String(x===b)));
+      renderShelfReviewsList();
+    };
+  });
   renderShelfReviewsList();
 }
 // Avatar chico (la foto, o la inicial en un círculo de color) para las listas de personas: el buscador del header y la lista de seguidores.
@@ -338,7 +353,7 @@ async function openFollowListModal(username, kind, isSelf){
   }catch(e){ body.innerHTML = `<p class="error">${esc(t('follow_list_error'))}</p>`; }
 }
 /* ---------- descripción del perfil: 3 renglones y "… Ver más" ---------- */
-// La descripción (hasta 500 caracteres) ocupa 3 renglones como máximo. Si el texto es más largo se corta y el tercer renglón termina en
+// La descripción (de cualquier largo, hasta 5 000 caracteres) ocupa 3 renglones como máximo. Si el texto es más largo se corta y el tercer renglón termina en
 // "… Ver más"; al tocarlo se abre la descripción completa en una tarjeta. Se mide con el texto ya pintado (se busca por bisección el trozo
 // más largo que cabe junto con el "… Ver más") y se vuelve a calcular si cambia el ancho (girar el móvil, redimensionar) o carga la fuente.
 function wireProfileBio(p, text, username){
@@ -504,13 +519,13 @@ function paintNotifications(){
   const markAll = document.getElementById('notifMarkAll');
   markAll.disabled = !list.some(n=>!n.read);
   markAll.onclick = async ()=>{
-    try{ await apiPost('/notifications/read'); }catch(e){ toast(t('err_save_user')); return; }
+    try{ await apiPost('/notifications/read'); }catch(e){ toast(t('err_save_user'), 'bad'); return; }
     list.forEach(n=>{ n.read = true; });
     paintNotifications(); renderUserBadge();
   };
   document.getElementById('notifDeleteAll').onclick = async ()=>{
     if(!(await confirmDialog(t('notif_delete_all_confirm')))) return;
-    try{ await apiDelete('/notifications'); }catch(e){ toast(t('err_save_user')); return; }
+    try{ await apiDelete('/notifications'); }catch(e){ toast(t('err_save_user'), 'bad'); return; }
     state.notifications = [];
     paintNotifications(); renderUserBadge();
   };
@@ -527,7 +542,9 @@ function paintNotifications(){
     const text = n.type==='follow'
       ? (state.lang==='en' ? `${actor} started following you` : `${actor} empezó a seguirte`)
       : (state.lang==='en' ? `${actor} liked your review of ${gameTitle}` : `A ${actor} le gustó tu reseña de ${gameTitle}`);
-    const href = n.type==='follow' ? profileHref(n.actorUsername) : (game ? gameHref(game.id) : null);
+    // «Le gustó tu reseña»: lleva a esa reseña (la tuya sobre ese juego), en su propia página; si ya no está, a la ficha del juego.
+    const likedReview = n.type!=='follow' && game && state.user ? state.reviews.find(r=>r.gameId===game.id && r.username===state.user.username) : null;
+    const href = n.type==='follow' ? profileHref(n.actorUsername) : (likedReview ? reviewHref(likedReview.id) : (game ? gameHref(game.id) : null));
     const row = document.createElement('div');
     row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
     row.innerHTML = `
@@ -548,6 +565,7 @@ function paintNotifications(){
     row.onclick = spa(()=>{
       opened();
       if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }
+      else if(likedReview) openReview(likedReview.id);
       else if(game){ state.currentGame = game.id; state.gameOrigin='feed'; goView('game'); }
     });
     const readBtn = row.querySelector('[data-notif-read]');
@@ -557,7 +575,7 @@ function paintNotifications(){
     };
     row.querySelector('[data-notif-del]').onclick = async e=>{
       e.stopPropagation();
-      try{ await apiDelete('/notifications/'+encodeURIComponent(n.id)); }catch(err){ toast(t('err_save_user')); return; }
+      try{ await apiDelete('/notifications/'+encodeURIComponent(n.id)); }catch(err){ toast(t('err_save_user'), 'bad'); return; }
       state.notifications = state.notifications.filter(x=>x!==n);
       paintNotifications(); renderUserBadge();
     };
@@ -588,5 +606,5 @@ async function toggleFollow(username){
         badge.remove();
       }
     }
-  }catch(e){ toast(t('err_save_user')); }
+  }catch(e){ toast(t('err_save_user'), 'bad'); }
 }
