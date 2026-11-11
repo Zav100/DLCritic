@@ -1072,7 +1072,7 @@ main {
 /* ---------- página "Acerca de" ---------- */
 .about-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin: 12px 0 26px;
 }
@@ -1122,6 +1122,23 @@ main {
   font-size: 13px;
   line-height: 1.5;
   color: var(--ink-soft);
+}
+
+/* La lista de lo que se puede hacer es larga: su tarjeta ocupa todo el ancho, debajo de las otras dos, y los puntos van en dos columnas (en una sola en celulares). */
+.about-card:has(ul) {
+  grid-column: 1 / -1;
+}
+
+.about-card ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 32px;
+}
+
+@media(max-width:760px) {
+  .about-card ul {
+    grid-template-columns: 1fr;
+  }
 }
 
 .sectionhead {
@@ -2982,17 +2999,28 @@ input[type=search]::-webkit-search-cancel-button {
   height: 52px;
 }
 
+/* El color llega hasta el borde exterior (la cara no tiene borde propio) y el contorno se dibuja encima, con ::after: así no puede quedar ninguna línea clara entre el borde y el relleno. */
 .rb-face {
   position: absolute;
   inset: 0;
   border-radius: 12px;
-  border: 2px solid var(--line-dark);
   background: var(--paper-alt);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform .15s cubic-bezier(.3, 1.4, .5, 1), border-color .15s, box-shadow .15s;
+  transition: transform .15s cubic-bezier(.3, 1.4, .5, 1), box-shadow .15s;
+}
+
+.rb-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 2px solid var(--line-dark);
+  border-radius: inherit;
+  pointer-events: none;
+  transition: border-color .15s;
 }
 
 .rb-num {
@@ -3006,7 +3034,7 @@ input[type=search]::-webkit-search-cancel-button {
 /* La capa de color lleva el mismo número en blanco y se recorta: entera si la nota llega al botón, solo la mitad izquierda si es medio punto menos. */
 .rb-lit {
   position: absolute;
-  inset: -1px; /* 1 px de más por cada lado: sin esto queda una línea fina entre la capa y el borde */
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3027,13 +3055,19 @@ input[type=search]::-webkit-search-cancel-button {
   clip-path: inset(0 50% 0 0);
 }
 
-.rbtn.full .rb-face,
-.rbtn.half .rb-face {
-  border-color: var(--rc);
+/* Además de la capa con el número blanco, el fondo de la cara ya va del color (entero o la mitad izquierda): así el borde redondeado no deja un halo claro. */
+.rbtn.full .rb-face {
+  background: var(--rc);
+  box-shadow: 0 4px 10px var(--shadow-strong);
 }
 
-.rbtn.full .rb-face {
-  box-shadow: 0 4px 10px var(--shadow-strong);
+.rbtn.half .rb-face {
+  background: linear-gradient(90deg, var(--rc) 50%, var(--paper-alt) 50%);
+}
+
+.rbtn.full .rb-face::after,
+.rbtn.half .rb-face::after {
+  border-color: var(--rc);
 }
 
 .rbtn:hover .rb-face {
@@ -6229,7 +6263,7 @@ a.btn-ghost {
     top: auto;
     right: auto;
     z-index: auto;
-    width: 176px;
+    width: clamp(220px, 18vw, 340px); /* crece con la pantalla: 252 px a 1400, 340 px (el tope) desde unos 1900 */
     padding: 0;
     background: none;
     -webkit-backdrop-filter: none;
@@ -6251,7 +6285,7 @@ a.btn-ghost {
     top: calc(100% + 10px);
     right: 0;
     z-index: 70;
-    width: 280px;
+    width: max(100%, 320px);
     margin: 0;
     padding: 6px;
     background: var(--paper);
@@ -7779,12 +7813,6 @@ a.btn-ghost {
   font-size: 10px;
   font-weight: 400;
   color: var(--ink-soft);
-}
-
-@media (min-width: 1400px) {
-  .user-search-results {
-    width: 320px;
-  }
 }
 
 /* La descripción completa del perfil conserva los saltos de línea y los espacios tal como se escribieron. */
