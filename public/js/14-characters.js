@@ -26,7 +26,7 @@ function characterStats(characterId){
   const rvs = state.characterReviews.filter(r=>r.characterId===characterId);
   const rated = rvs.filter(r=>r.rating!=null);
   const avg = rated.length? (rated.reduce((s,r)=>s+r.rating,0)/rated.length) : 0;
-  return { count: rvs.length, avg: Math.round(avg*10)/10, ratedCount: rated.length };
+  return { count: rvs.length, avg: Math.round(avg*10)/10, ratedCount: rated.length, reviewCount: rvs.filter(hasReviewContent).length };
 }
 // Todos los juegos a los que pertenece un personaje (game_ids), como objetos de juego reales (se filtran los que ya no existen).
 function characterGames(c){
@@ -56,7 +56,7 @@ function gameReleaseTime(g){
 function characterReleaseTime(c){ return Math.max(0, ...characterGames(c).map(gameReleaseTime)); }
 const CHAR_SORTS = {
   rating_desc: (a,b)=> characterStats(b.id).avg - characterStats(a.id).avg || a.name.localeCompare(b.name),
-  reviews: (a,b)=> characterStats(b.id).count - characterStats(a.id).count || a.name.localeCompare(b.name),
+  reviews: (a,b)=> characterStats(b.id).reviewCount - characterStats(a.id).reviewCount || a.name.localeCompare(b.name),
   recent: (a,b)=> characterReleaseTime(b) - characterReleaseTime(a) || a.name.localeCompare(b.name),
   az: (a,b)=> a.name.localeCompare(b.name),
 };
@@ -149,7 +149,7 @@ function paintCharactersGrid(animate){
       </div>
       <div class="gc-title">${esc(c.name)}</div>
       ${charCategoryTagHTML(c)}
-      <div class="gc-sub">${gameNames? esc(gameNames)+' · ' : ''}${reviewsCountText(st.count)} · ${st.count? st.avg+'/10':(state.lang==='en'?'no rating':'sin nota')}</div>
+      <div class="gc-sub">${gameNames? esc(gameNames)+' · ' : ''}${reviewsCountText(st.reviewCount)} · ${st.ratedCount? st.avg+'/10':(state.lang==='en'?'no rating':'sin nota')}</div>
     `;
     card.onclick = spa(()=>{ state.currentCharacter=c.id; goView('character'); });
     grid.appendChild(card);
@@ -189,7 +189,7 @@ function renderCharacterDetail(){
           ${charAvatarHTML(c, 'char-avatar-lg')}
           <div style="flex:1; min-width:180px;">
             <div class="rc-game" style="font-size:22px;">${esc(c.name)}</div>
-            <div class="rc-meta">${gamesMetaHTML}${reviewsCountText(st.count)}</div>
+            <div class="rc-meta">${gamesMetaHTML}${reviewsCountText(st.reviewCount)}</div>
             ${charCategoryTagHTML(c)}
           </div>
           <button class="wishlist-btn" id="charVersusBtn">${t('versus_btn')}</button>
@@ -266,7 +266,8 @@ function characterWrittenCount(characterId){
   return state.characterReviews.filter(r=>r.characterId===characterId && hasReviewContent(r)).length;
 }
 function versusSideHTML(c, win){
-  const games = characterGames(c).map(g=>g.title).join(', ');
+  const all = characterGames(c).map(g=>g.title), MAX_GAMES = 3;
+  const games = all.slice(0, MAX_GAMES).join(', ') + (all.length>MAX_GAMES ? ' ' + t('versus_more_games').replace('{n}', all.length-MAX_GAMES) : '');
   return `<div class="versus-side ${win?'winner':''}">
     ${win? `<span class="versus-crown">${ICONS.crown}</span>` : ''}
     ${charAvatarHTML(c, 'char-avatar-lg')}
@@ -298,7 +299,7 @@ function versusResultHTML(a, b){
 // Modal de Versus. presetId (opcional) deja el primer personaje ya elegido — se usa desde la ficha de un personaje.
 function openVersusModal(presetId){
   const chars = allCharacters().slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(chars.length<2){ toast(t('versus_need_two')); return; }
+  if(chars.length<2){ toast(t('versus_need_two'), 'bad'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   const options = selected => `<option value="">${esc(t('versus_pick_ph'))}</option>` + chars.map(c=>`<option value="${esc(c.id)}" ${c.id===selected?'selected':''}>${esc(c.name)}</option>`).join('');
@@ -339,8 +340,7 @@ function openSuggestCharacterModal(){
       </div>
       <div class="field">
         <label for="sc-game">${esc(t('suggest_character_game_label'))}</label>
-        <input type="text" id="sc-game" maxlength="80" list="scGameList" placeholder="${esc(t('suggest_character_game_ph'))}">
-        <datalist id="scGameList">${allGames().map(g=>`<option value="${esc(g.title)}">`).join('')}</datalist>
+        <input type="text" id="sc-game" maxlength="80" placeholder="${esc(t('suggest_character_game_ph'))}">
       </div>
       <div class="field">
         <label>${esc(t('suggest_character_category_label'))}</label>
@@ -358,6 +358,7 @@ function openSuggestCharacterModal(){
     </div>`;
   document.body.appendChild(overlay);
   overlay.querySelectorAll('#scCategories .chip').forEach(b=> b.onclick = ()=> b.classList.toggle('active'));
+  attachGameAutocomplete(overlay.querySelector('#sc-game'), allGames);
   function onKey(e){ if(e.key==='Escape') cleanup(); }
   function cleanup(){ overlay.remove(); document.removeEventListener('keydown', onKey); }
   document.addEventListener('keydown', onKey);
@@ -375,7 +376,7 @@ function openSuggestCharacterModal(){
         categories: [...overlay.querySelectorAll('#scCategories .chip.active')].map(b=>b.dataset.cat),
         note: overlay.querySelector('#sc-note').value.trim() || undefined,
       });
-      toast(t('toast_suggestion_sent'));
+      toast(t('toast_suggestion_sent'), 'good');
       cleanup();
     }catch(e){ errEl.textContent = t('err_send_suggestion'); errEl.hidden = false; }
   };
@@ -387,25 +388,16 @@ function renderQuickRateChar(scope, characterId, currentValue){
   const wrap = document.getElementById(scope+'Buttons');
   if(!wrap) return;
   let current = currentValue;
-  wrap.innerHTML='';
-  for(let i=1;i<=10;i++){
-    const b=document.createElement('button');
-    b.type='button'; b.className='rate-btn'; b.textContent=i; b.setAttribute('aria-label', i+' '+t('rate_out_of_ten'));
-    b.addEventListener('mouseenter', ()=> paintQuickRate(wrap, i));
-    b.addEventListener('mouseleave', ()=> paintQuickRate(wrap, current));
-    b.addEventListener('click', async ()=>{
-      current=i;
-      paintQuickRate(wrap, i);
-      updateQuickReadout(scope, i, true, MOOD_CHARACTER);
-      b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
-      if(await saveCharRating(characterId, i)){
-        if(i>=9) celebrateFavorite(wrap);
-        toast(t('toast_rating_saved'));
-      }
-      renderCharacterDetail();
-    });
-    wrap.appendChild(b);
-  }
+  buildRateButtons(wrap, ()=>current, async v=>{
+    current = v;
+    paintQuickRate(wrap, v);
+    updateQuickReadout(scope, v, true, MOOD_CHARACTER);
+    if(await saveCharRating(characterId, v)){
+      if(v>=9) celebrateFavorite(wrap);
+      toast(t('toast_rating_saved'), 'good');
+    }
+    renderCharacterDetail();
+  });
   paintQuickRate(wrap, current);
   updateQuickReadout(scope, current, false, MOOD_CHARACTER);
   const clearBtn = document.getElementById(scope+'ClearBtn');
@@ -470,7 +462,7 @@ function renderCharReviewBlock(characterId, myReview){
     }
   } else {
     wrap.innerHTML = `
-      <textarea id="charReviewTextInput" maxlength="600" placeholder="${esc(t('add_review_ph'))}" style="margin-top:8px;">${esc(hasText?myReview.text:'')}</textarea>
+      <textarea id="charReviewTextInput" maxlength="20000" placeholder="${esc(t('add_review_ph'))}" style="margin-top:8px;">${esc(hasText?myReview.text:'')}</textarea>
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
         <button class="btn gold small" id="saveCharReviewBtn">${t('save_review_btn')}</button>
         <button class="linklike" id="cancelCharReviewBtn">${t('cancel_btn')}</button>
@@ -480,17 +472,17 @@ function renderCharReviewBlock(characterId, myReview){
       const input=document.getElementById('charReviewTextInput');
       const errEl=document.getElementById('charReviewError');
       const text=input.value.trim();
-      if(text.length<10){ errEl.textContent=t('toast_write_more'); errEl.hidden=false; return; }
+      if(!text){ errEl.textContent=t('review_empty_error'); errEl.hidden=false; return; }
       if(!await saveCharReviewText(characterId, text)){ errEl.textContent=t('err_save_review'); errEl.hidden=false; return; } // el texto escrito queda en el cuadro para reintentar
       state.charReviewEditing=false;
-      toast(t('toast_review_published'));
+      toast(t('toast_review_published'), 'good');
       renderCharacterDetail();
     };
     document.getElementById('cancelCharReviewBtn').onclick = ()=>{ state.charReviewEditing=false; renderCharReviewBlock(characterId, myReview); };
   }
 }
 // Card de una reseña de personaje — versión simple de reviewCard (08-browse.js): sin plataformas, sin voto de "te sirvió", sin compartir. Solo autor+fecha, texto, nota, y borrar si es tuya.
-function characterReviewCard(rv){
+function characterReviewCard(rv, opts){
   const c = findCharacter(rv.characterId) || {name:'(personaje eliminado)'};
   const div=document.createElement('div');
   div.className='card reviewcard';
@@ -500,7 +492,7 @@ function characterReviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(c.name)}</div>
-        <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
       </div>
     </div>
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
@@ -511,6 +503,8 @@ function characterReviewCard(rv){
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#char-gauge-${rv.id}`), rv.rating);
   div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
+  if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
   return div;
 }

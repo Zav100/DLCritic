@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   id TEXT PRIMARY KEY,
   game_id TEXT NOT NULL,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  rating INTEGER,
+  rating NUMERIC(3,1),
   text TEXT NOT NULL DEFAULT '',
   platforms TEXT NOT NULL DEFAULT '[]',
   updated_at TEXT NOT NULL,
@@ -227,13 +227,24 @@ CREATE TABLE IF NOT EXISTS character_reviews (
   id TEXT PRIMARY KEY,
   character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  rating INTEGER,
+  rating NUMERIC(3,1),
   text TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL,
   UNIQUE(character_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_character_reviews_character ON character_reviews(character_id);
 CREATE INDEX IF NOT EXISTS idx_character_reviews_user ON character_reviews(user_id);
+
+-- Notas con medio punto (7.5): en una base que ya existía las columnas eran INTEGER y aquí pasan a NUMERIC(3,1) (las notas enteras quedan igual: 8 -> 8.0).
+-- En una base nueva ya nacen así y esto no hace nada. El servidor las lee como número (parseNumeric en server/db.js).
+DO $$ BEGIN
+  IF (SELECT data_type FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'reviews' AND column_name = 'rating') = 'integer' THEN
+    ALTER TABLE reviews ALTER COLUMN rating TYPE NUMERIC(3,1);
+  END IF;
+  IF (SELECT data_type FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'character_reviews' AND column_name = 'rating') = 'integer' THEN
+    ALTER TABLE character_reviews ALTER COLUMN rating TYPE NUMERIC(3,1);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS game_suggestions (
   id TEXT PRIMARY KEY,

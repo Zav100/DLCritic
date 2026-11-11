@@ -192,8 +192,9 @@ function renderActivityCalendar(container, username){
 }
 
 // Una reseña "cuenta" para mostrarse en listados si tiene nota y/o texto (una que solo tiene plataformas marcadas, sin nota ni texto, no se considera contenido real).
+// Una reseña es lo que tiene texto: una nota sola (sin reseña) no entra en los listados de reseñas; esas notas se ven en el perfil de quien las puso.
 function hasReviewContent(rv){
-  return rv.rating!=null || !!(rv.text && rv.text.trim());
+  return !!(rv.text && rv.text.trim());
 }
 // True si esta reseña fue la PRIMERA que se publicó para ese juego (le da la medallita "Primera reseña").
 function isFirstReview(rv){
@@ -225,7 +226,7 @@ async function castVote(reviewId, value){
   try{
     const res = await apiPost('/reviews/id/'+encodeURIComponent(reviewId)+'/helpful', { value });
     rv.helpfulBy = res.helpfulBy; rv.dislikedBy = res.dislikedBy || [];
-  }catch(e){ toast(t('err_save_review')); return; }
+  }catch(e){ toast(t('err_save_review'), 'bad'); return; }
   document.querySelectorAll(`.helpful-row[data-review="${CSS.escape(reviewId)}"]`).forEach(row=> paintVoteRow(row, rv));
 }
 /* ---------- confirm dialog (glass, replaces native confirm()) ---------- */
@@ -257,12 +258,15 @@ function confirmDialog(message){
 
 // Aviso en una tarjeta en el centro de la pantalla: no se cierra al tocar afuera, hay que apretar «Entendido» (o Escape). Es una Promise que se resuelve al cerrarlo.
 // title puede ir vacío (así lo usa toast()); icon: ICONS.checkCircle para una buena noticia; sin icon, solo el texto.
-function noticeDialog(title, message, icon){
+// tone: 'good' (verde, con ✓) o 'bad' (rojo, con ✕); sin tone queda neutral. Con tone y sin icon se pone el ícono del tono.
+const NOTICE_TONE_ICON = { good: ()=>ICONS.checkCircle, bad: ()=>`<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/></svg>` };
+function noticeDialog(title, message, icon, tone){
+  if(!icon && NOTICE_TONE_ICON[tone]) icon = NOTICE_TONE_ICON[tone]();
   return new Promise(resolve=>{
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML = `
-      <div class="confirm-box notice-box" role="alertdialog" aria-modal="true"${title? ' aria-labelledby="noticeTitle"' : ''} aria-describedby="noticeText">
+      <div class="confirm-box notice-box${NOTICE_TONE_ICON[tone]? ' tone-'+tone : ''}" role="alertdialog" aria-modal="true"${title? ' aria-labelledby="noticeTitle"' : ''} aria-describedby="noticeText">
         ${icon? `<div class="notice-icon">${icon}</div>` : ''}
         ${title? `<h3 id="noticeTitle">${esc(title)}</h3>` : ''}
         <p id="noticeText">${esc(message)}</p>
@@ -340,7 +344,7 @@ function openSuggestModal(){
         releaseYear: yearRaw ? Number(yearRaw) : undefined,
         note: note || undefined,
       });
-      toast(t('toast_suggestion_sent'));
+      toast(t('toast_suggestion_sent'), 'good');
       cleanup();
     }catch(e){ errEl.textContent = t('err_send_suggestion'); errEl.hidden=false; }
   };
@@ -348,7 +352,8 @@ function openSuggestModal(){
 }
 
 /* ---------- compartir reseña/calificación ---------- */
-function shareUrlForGame(gameId){ return location.origin + '/juego/' + encodeURIComponent(gameId); }
+// Lo que se comparte es la reseña en su propia página (no la ficha del juego, donde con muchas reseñas sería difícil encontrarla).
+function shareUrlForReview(rv){ return location.origin + reviewHref(rv.id); }
 // Arma el texto para compartir por WhatsApp/X/copiar: "usuario calificó X con N/10" (o "reseñó X" si no puso nota), + un fragmento del texto de la reseña si tiene (recortado a 140 caracteres).
 function buildShareText(rv, game){
   let text = rv.rating!=null
@@ -373,7 +378,7 @@ function shareMenuOutsideClick(e){ if(currentShareMenu && !currentShareMenu.cont
 function openShareMenu(anchorEl, rv, game){
   closeShareMenu();
   closeUserMenu();
-  const url = shareUrlForGame(game.id);
+  const url = shareUrlForReview(rv);
   const text = buildShareText(rv, game);
   const menu = document.createElement('div');
   menu.className = 'share-menu';
@@ -402,8 +407,8 @@ function openShareMenu(anchorEl, rv, game){
   };
   menu.querySelector('[data-act="copy"]').onclick = async ()=>{
     closeShareMenu();
-    try{ await navigator.clipboard.writeText(text+' '+url); toast(t('share_copied')); }
-    catch(e){ toast(t('share_copy_failed')); }
+    try{ await navigator.clipboard.writeText(text+' '+url); toast(t('share_copied'), 'good'); }
+    catch(e){ toast(t('share_copy_failed'), 'bad'); }
   };
   menu.querySelector('[data-act="whatsapp"]').onclick = ()=>{
     closeShareMenu();
@@ -797,7 +802,17 @@ function makeZoomable(el, url, title){
 // reseñas), y en cualquier otro listado de reseñas de la app. Arma botón
 // "te sirvió" (si no es tuya), botón compartir, botón borrar (si es tuya),
 // medallita de "primera reseña", chips de plataforma, y el gauge de nota.
-function reviewCard(rv){
+// Texto de una reseña o descripción: respeta saltos de línea y espacios (white-space: pre-wrap en .rc-text) y, si es largo, se recorta con un «Leer más».
+// Se decide por la altura real (con un ResizeObserver, porque la tarjeta todavía puede no estar a la vista al crearse).
+function clampLongText(p){
+  p.classList.add('clamp');
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'linklike rc-more'; btn.hidden = true; btn.textContent = t('rc_more');
+  p.after(btn);
+  new ResizeObserver(()=>{ if(p.classList.contains('clamp')) btn.hidden = !(p.scrollHeight > p.clientHeight + 1); }).observe(p);
+  btn.onclick = ()=>{ btn.textContent = t(p.classList.toggle('clamp') ? 'rc_more' : 'rc_less'); };
+}
+function reviewCard(rv, opts){
   const game = findGame(rv.gameId) || {title:'(juego eliminado)', genre:'Otro', platforms:[]};
   const div=document.createElement('div');
   div.className='card reviewcard';
@@ -808,7 +823,7 @@ function reviewCard(rv){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${authorLevel.icon} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · ${fmtDate(rv.date)}</div>
+        <div class="rc-meta">${authorLevel.icon} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
@@ -826,6 +841,8 @@ function reviewCard(rv){
   if(rv.rating!=null) renderGauge(div.querySelector(`#gauge-${rv.id}`), rv.rating);
   div.querySelector('[data-share]').onclick=(e)=> openShareMenu(e.currentTarget, rv, game);
   div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
+  if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
   else paintVoteRow(div.querySelector('.helpful-row'), rv);
   return div;

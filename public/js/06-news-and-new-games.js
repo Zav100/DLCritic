@@ -105,7 +105,7 @@ function renderFeed(){
       ${featured? `<div class="star-badge" title="Aclamado por la comunidad">${ICONS.star}</div>` : ''}
       <div class="news-cover ${genreTint(primaryGenre(game))}" data-cover-title="${esc(game.title)}" data-cover-url="${esc(game.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
       <div class="news-title">${esc(game.title)}</div>
-      <div class="ngc-year">${esc(genreLabelList(game))} · ${reviewsCountText(st.count)} · ${st.avg}/10</div>
+      <div class="ngc-year">${esc(genreLabelList(game))} · ${reviewsCountText(st.reviewCount)} · ${st.avg}/10</div>
       <button class="btn small ngc-rate">${esc(t('rate_this_game'))}</button>
     `;
     card.onclick=spa(()=>{ state.currentGame=game.id; state.gameOrigin='feed'; goView('game'); });

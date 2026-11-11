@@ -19,6 +19,9 @@
 const gameHref = id => '/juego/' + encodeURIComponent(id);
 const characterHref = id => '/personaje/' + encodeURIComponent(id);
 const profileHref = name => '/usuario/' + encodeURIComponent(name);
+const reviewHref = id => '/resena/' + encodeURIComponent(id);
+// Abre una reseña (de juego o de personaje) en su propia página.
+function openReview(id){ state.currentReview = id; goView('review'); }
 function isPlainClick(e){ return !e || (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey); }
 function spa(fn){ return function(e){ if(!isPlainClick(e)) return; if(e) e.preventDefault(); return fn.call(this, e); }; }
 // El enlace que cubre toda una tarjeta (la tarjeta sigue siendo un <div> con sus botones adentro; ver .card-link en style.css).
@@ -40,6 +43,7 @@ function pathForView(v){
   if(v==='game' && state.currentGame) return '/juego/'+encodeURIComponent(state.currentGame);
   if(v==='character' && state.currentCharacter) return '/personaje/'+encodeURIComponent(state.currentCharacter);
   if(v==='profile' && state.profileUsername) return '/usuario/'+encodeURIComponent(state.profileUsername);
+  if(v==='review' && state.currentReview) return reviewHref(state.currentReview);
   if(v==='browse') return '/explorar';
   if(v==='characters') return '/personajes';
   if(v==='shelf') return '/mi-estanteria';
@@ -78,6 +82,12 @@ function routeFromLocation(){
   }
   const pm = path.match(/^\/usuario\/([^/]+)$/);
   if(pm){ state.profileUsername = decodeURIComponent(pm[1]); return 'profile'; }
+  const rm = path.match(/^\/resena\/([^/]+)$/);
+  if(rm){
+    const id = decodeURIComponent(rm[1]);
+    if(findReviewAny(id)){ state.currentReview = id; return 'review'; }
+    return 'feed';
+  }
   if(path==='/explorar') return 'browse';
   if(path==='/personajes') return 'characters';
   if(path==='/mi-estanteria') return 'shelf';
@@ -112,6 +122,7 @@ function titleForView(v){
   if(v==='game' && state.currentGame){ const g=findGame(state.currentGame); if(g) return g.title+' — DLCritic'; }
   if(v==='character' && state.currentCharacter){ const c=findCharacter(state.currentCharacter); if(c) return c.name+' — DLCritic'; }
   if(v==='profile' && state.profileUsername) return state.profileUsername+' — DLCritic';
+  if(v==='review'){ const f = findReviewAny(state.currentReview); if(f) return f.rv.username+' — '+reviewTargetName(f)+' — DLCritic'; }
   if(v==='auth') return t(state.authTab==='register' ? 'auth_register_tab' : 'auth_login_tab')+' — DLCritic';
   if(VIEW_TITLE_KEYS[v]) return t(VIEW_TITLE_KEYS[v])+' — DLCritic';
   return DEFAULT_TITLE;
@@ -134,6 +145,7 @@ function applyView(v){
   if(target==='game') renderGameDetail();
   if(target==='characters') renderCharactersBrowse();
   if(target==='character') renderCharacterDetail();
+  if(target==='review') renderReviewPage();
   if(target==='shelf') renderShelf();
   if(target==='profile') renderProfile(state.profileUsername);
   if(target==='lists') renderListsView();
@@ -217,8 +229,9 @@ function renderUserBadge(){
     document.getElementById('loginBtn').onclick = spa(()=> goView('auth'));
   }
 }
-/* ---------- buscador de perfiles (header) ---------- */
-// Un cuadro de texto que, a partir de 2 letras, le pide a /api/user-search los perfiles cuyo nombre contiene lo escrito y los muestra en una lista; elegir uno abre su perfil.
+/* ---------- buscador del header: juegos y personas ---------- */
+// Un cuadro de texto que, a partir de 2 letras, muestra en una lista los juegos del catálogo cuyo título contiene lo escrito (se buscan aquí, en el navegador) y, a pedido de
+// /api/user-search, los perfiles cuyo nombre lo contiene. Elegir un juego abre su ficha; elegir una persona, su perfil.
 // En pantallas anchas el cuadro está a la vista; en las demás hay una lupa que lo abre como una tarjeta bajo el header (ver .user-search en style.css).
 // Teclado: flechas para moverse por los resultados, Enter para abrir (sin elegir, abre el primero) y Escape para cerrar. Se llama una vez desde 16-init.js.
 function initUserSearch(){
@@ -226,6 +239,7 @@ function initUserSearch(){
   const toggle = document.getElementById('userSearchToggle');
   const input = document.getElementById('userSearchInput');
   const list = document.getElementById('userSearchResults');
+  const MAX_GAMES = 5;
   let timer = null, seq = 0, active = -1; // seq: cada búsqueda lleva un número, y una respuesta atrasada (de un texto que ya cambió) se descarta
   const options = ()=> [...list.querySelectorAll('a')];
   const setActive = i=>{
@@ -239,21 +253,39 @@ function initUserSearch(){
   const move = step=>{ const n = options().length; if(n) setActive(active<0 ? (step>0? 0 : n-1) : (active+step+n)%n); };
   const hideList = ()=>{ list.hidden = true; list.innerHTML = ''; active = -1; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); };
   const closeAll = ()=>{ clearTimeout(timer); seq++; hideList(); box.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); };
-  const choose = name=>{ closeAll(); input.value = ''; openProfileOf(name); };
-  const showMessage = text=>{ list.innerHTML = `<li class="user-search-note" role="presentation">${esc(text)}</li>`; list.hidden = false; active = -1; input.setAttribute('aria-expanded', 'false'); };
-  const showUsers = users=>{
-    if(!users.length){ showMessage(t('user_search_empty')); return; }
-    list.innerHTML = users.map((u, i)=>`<li role="presentation"><a role="option" id="userSearchOpt${i}" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span>${esc(u.username)}</span></a></li>`).join('');
-    list.hidden = false; active = -1; input.setAttribute('aria-expanded', 'true');
-    options().forEach(a=>{ a.onclick = spa(()=> choose(a.dataset.user)); });
+  const choose = a=>{
+    closeAll(); input.value = '';
+    if(a.dataset.game){ state.currentGame = a.dataset.game; state.gameOrigin = 'browse'; goView('game'); }
+    else openProfileOf(a.dataset.user);
+  };
+  const note = text=>`<li class="user-search-note" role="presentation">${esc(text)}</li>`;
+  const head = key=>`<li class="user-search-head" role="presentation">${esc(t(key))}</li>`;
+  // games: juegos que coinciden; users: perfiles que coinciden, o null si la búsqueda de perfiles falló.
+  const showResults = (games, users)=>{
+    let html = '', n = 0;
+    if(games.length){
+      html += head('search_games_head') + games.map(g=>`<li role="presentation"><a role="option" id="userSearchOpt${n++}" href="${gameHref(g.id)}" data-game="${esc(g.id)}"><span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}"></span><span class="us-main"><span class="us-name">${esc(g.title)}</span><span class="us-sub">${esc(genreLabelList(g))}${g.releaseYear? ' · '+g.releaseYear : ''}</span></span></a></li>`).join('');
+    }
+    if(users && users.length){
+      html += head('search_people_head') + users.map(u=>`<li role="presentation"><a role="option" id="userSearchOpt${n++}" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span class="us-main"><span class="us-name">${esc(u.username)}</span></span></a></li>`).join('');
+    }
+    if(!users) html += note(t('user_search_error'));
+    else if(!games.length && !users.length) html += note(t('search_empty'));
+    list.innerHTML = html; list.hidden = false; active = -1;
+    input.setAttribute('aria-expanded', n ? 'true' : 'false');
+    options().forEach(a=>{ a.onclick = spa(()=> choose(a)); });
+    enhanceCovers();
   };
   const search = async ()=>{
     const q = input.value.trim(), mine = ++seq;
     if(q.length<2){ hideList(); return; }
-    try{
-      const { users } = await apiGet('/user-search?q='+encodeURIComponent(q));
-      if(mine===seq) showUsers(users);
-    }catch(e){ if(mine===seq) showMessage(t('user_search_error')); }
+    const folded = foldText(q);
+    const starts = [], has = [];
+    allGames().forEach(g=>{ const f = foldText(g.title); if(f.startsWith(folded)) starts.push(g); else if(f.includes(folded)) has.push(g); });
+    const games = [...starts, ...has].slice(0, MAX_GAMES);
+    let users = null;
+    try{ users = (await apiGet('/user-search?q='+encodeURIComponent(q.slice(0, 20)))).users; }catch(e){}
+    if(mine===seq) showResults(games, users);
   };
   input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(search, 250); });
   input.addEventListener('keydown', e=>{
@@ -262,7 +294,7 @@ function initUserSearch(){
     else if(e.key==='Enter'){
       e.preventDefault();
       const pick = options()[active>=0? active : 0];
-      if(pick) choose(pick.dataset.user);
+      if(pick) choose(pick);
       else if(input.value.trim().length>=2){ clearTimeout(timer); search(); } // Enter antes de que salgan los resultados: se busca ya
     } else if(e.key==='Escape'){
       if(!list.hidden) hideList();

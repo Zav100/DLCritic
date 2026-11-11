@@ -160,7 +160,6 @@ a {
   touch-action: manipulation;
 }
 
-.rate-btn:focus-visible,
 .theme-toggle:focus-visible,
 .lang-toggle:focus-visible {
   outline-offset: 3px;
@@ -2968,41 +2967,108 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .rate-buttons {
-  display: flex;
+  --rc: var(--gold);
+  --ext: 3px;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 46px));
   justify-content: center;
   gap: 6px;
-  flex-wrap: wrap;
   padding: 6px 0;
 }
 
-.rate-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+/* Cada nota es un botón partido en dos mitades (ver buildRateButtons en 04-api-theme-rating.js): .rb-face es lo que se ve y las dos .rb-half son las zonas que se tocan. */
+.rbtn {
+  position: relative;
+  height: 52px;
+}
+
+.rb-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
   border: 2px solid var(--line-dark);
   background: var(--paper-alt);
-  color: var(--ink-soft);
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  font-size: 13px;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: transform .15s cubic-bezier(.3, 1.4, .5, 1), background .15s, border-color .15s, color .15s, box-shadow .15s;
+  transition: transform .15s cubic-bezier(.3, 1.4, .5, 1), border-color .15s, box-shadow .15s;
 }
 
-.rate-btn:hover {
-  transform: translateY(-3px) scale(1.08);
+.rb-num {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-soft);
 }
 
-.rate-btn.lit {
+/* La capa de color lleva el mismo número en blanco y se recorta: entera si la nota llega al botón, solo la mitad izquierda si es medio punto menos. */
+.rb-lit {
+  position: absolute;
+  inset: -1px; /* 1 px de más por cada lado: sin esto queda una línea fina entre la capa y el borde */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rc);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path .15s ease;
+}
+
+.rb-lit .rb-num {
   color: #fff;
-  border-color: transparent;
+}
+
+.rbtn.full .rb-lit {
+  clip-path: inset(0);
+}
+
+.rbtn.half .rb-lit {
+  clip-path: inset(0 50% 0 0);
+}
+
+.rbtn.full .rb-face,
+.rbtn.half .rb-face {
+  border-color: var(--rc);
+}
+
+.rbtn.full .rb-face {
   box-shadow: 0 4px 10px var(--shadow-strong);
 }
 
-.rate-btn.pop {
+.rbtn:hover .rb-face {
+  transform: translateY(-2px);
+}
+
+.rb-half {
+  position: absolute;
+  top: calc(-1 * var(--ext));
+  bottom: calc(-1 * var(--ext));
+  width: calc(50% + var(--ext));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.rb-half.l {
+  left: calc(-1 * var(--ext));
+}
+
+.rb-half.r {
+  right: calc(-1 * var(--ext));
+}
+
+.rb-half:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.rb-face.pop {
   animation: rbpop .3s cubic-bezier(.3, 1.6, .5, 1);
 }
 
@@ -3012,11 +3078,28 @@ input[type=search]::-webkit-search-cancel-button {
   }
 
   40% {
-    transform: scale(1.35) translateY(-4px);
+    transform: scale(1.18) translateY(-4px);
   }
 
   100% {
     transform: scale(1);
+  }
+}
+
+/* Celulares: dos filas de 5 botones más altos y anchos (cada mitad mide unos 25-30 px de ancho y 58 de alto); en pantallas muy angostas los botones se achican solos. */
+@media (max-width: 640px) {
+  .rate-buttons {
+    --ext: 4px;
+    grid-template-columns: repeat(5, minmax(0, 64px));
+    gap: 8px;
+  }
+
+  .rbtn {
+    height: 58px;
+  }
+
+  .rb-num {
+    font-size: 16px;
   }
 }
 
@@ -3581,7 +3664,7 @@ input[type=search]::-webkit-search-cancel-button {
 /* ---- actividad y logros ---- */
 .shelf-layout {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 22px;
   align-items: start;
 }
@@ -3807,7 +3890,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 @media(max-width:800px) {
   .shelf-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .shelf-side {
@@ -3833,12 +3916,6 @@ input[type=search]::-webkit-search-cancel-button {
 
   .userbadge {
     justify-content: flex-end;
-  }
-
-  .rate-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 12px;
   }
 }
 
@@ -4587,39 +4664,35 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .browse-controls #platformChips {
-  flex: 1;
-}
-
-.browse-controls #genreChips {
-  order: 3;
   flex: 1 1 100%;
 }
 
 @media(max-width:640px) {
-  .browse-controls #platformChips {
-    flex: 1 1 100%;
+  /* celular: Géneros y Ordenar comparten la primera fila; Limpiar filtros y el selector de vista, la segunda */
+  .browse-controls #genreDD {
+    order: 1;
   }
 
-  .browse-controls .sort-select {
-    flex: 1 1 0;
+  .browse-controls #browseSortDD {
+    order: 2;
+  }
+
+  .browse-controls .dd {
+    flex: 1 1 calc(50% - 5px);
     min-width: 0;
   }
 
-  .browse-controls #genreChips {
-    order: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
+  .browse-controls .dd .dd-btn {
+    width: 100%;
   }
 
-  .browse-controls #genreChips::-webkit-scrollbar {
-    display: none;
+  .browse-controls .browse-clear {
+    order: 3;
   }
 
-  .browse-controls #genreChips .chip {
-    flex-shrink: 0;
-    white-space: nowrap;
+  .browse-controls #browseViewToggle {
+    order: 4;
+    margin-left: auto;
   }
 }
 
@@ -4979,8 +5052,14 @@ input[type=search]::-webkit-search-cancel-button {
     width: 100%;
   }
 
-  .side-filters .sort-select {
+  .side-filters .dd,
+  .side-filters .dd .dd-btn,
+  .side-filters .browse-clear {
     width: 100%;
+  }
+
+  .side-filters .browse-clear {
+    margin-top: 8px;
   }
 
   .side-actions {
@@ -5124,13 +5203,21 @@ input[type=search]::-webkit-search-cancel-button {
 
 /* ---- pantalla de bienvenida (public/js/splash.js) ----
    Se ve solo si el <head> pone la clase splash-on en <html>. El logo del centro es una copia del del header: ícono y nombre se dibujan
-   con las animaciones de abajo (arrancan con la clase "go") y después splash.js lo hace viajar al header con la API de animaciones. */
+   con las animaciones de abajo (arrancan con la clase "go") y después splash.js abre un iris de videojuego (un círculo que crece desde el centro,
+   .splash-bg) que se lleva el logo y deja ver el inicio. El logo no viaja al header: el del header aparece con el inicio (clase splash-reveal). */
 #splash {
   display: none;
 }
 
 html.splash-on {
   overflow: hidden;
+  background-color: #211E3D; /* pinta también la franja de la barra de desplazamiento (scrollbar-gutter), que un elemento fijo no alcanza a tapar */
+}
+
+/* al abrirse el iris esa franja vuelve al color de la página poco a poco, al ritmo del círculo */
+html.splash-reveal {
+  background-color: var(--bg);
+  transition: background-color 1s ease;
 }
 
 html.splash-on #splash {
@@ -5140,15 +5227,23 @@ html.splash-on #splash {
   z-index: 10000;
 }
 
-/* mientras dura la pantalla, el logo real del header espera escondido: el de la animación aterriza justo encima */
-html.splash-on #headerLogo {
+/* mientras se dibuja el logo, el real del header espera escondido; al abrirse el iris (splash-reveal) se deja ver y aparece donde el círculo llegue */
+html.splash-on:not(.splash-reveal) #headerLogo {
   visibility: hidden;
 }
 
+/* El fondo de la pantalla es el iris: un círculo transparente (el agujero) del centro, cuya sombra sólida sin desenfoque y enorme pinta de violeta todo lo demás.
+   Al empezar mide 0 y la sombra cubre toda la pantalla; splash.js le anima el ancho y el alto hasta pasar las esquinas y el agujero deja ver el inicio. */
 .splash-bg {
   position: fixed;
-  inset: 0;
-  background: #211E3D;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 150vmax #211E3D;
+  pointer-events: none;
 }
 
 #splash .splash-logo {
@@ -5164,7 +5259,6 @@ html.splash-on #headerLogo {
   visibility: visible;
 }
 
-/* el eslogan aparece recién al llegar al header (splash.js) */
 /* el cuerpo del control: primero se dibuja el contorno y después se rellena */
 #splash .sp-body {
   fill-opacity: 0;
@@ -7132,22 +7226,6 @@ a.btn-ghost {
   }
 }
 
-/* Calificación del 1 al 10 en celulares: dos filas parejas de 5 (antes quedaban 7 arriba y 3 abajo) y botones de 40 px, más cómodos de tocar. */
-@media (max-width: 560px) {
-  .rate-buttons {
-    display: grid;
-    grid-template-columns: repeat(5, 40px);
-    justify-content: center;
-    gap: 10px;
-  }
-
-  .rate-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
-  }
-}
-
 /* Espacio entre el final de una tarjeta (o bloque) y el título de la siguiente sección: como mínimo 36 px, lo mismo que lleva .sectionhead por sí solo.
    Estos tres títulos van con margin-top:0 (porque en escritorio empiezan una columna) y quedaban a 8-22 px de lo que tenían arriba. */
 .home-showcase {
@@ -7434,4 +7512,493 @@ a.btn-ghost {
     radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--orange) 29%, transparent), transparent 62%),
     radial-gradient(circle at 55% 100%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 55%),
     var(--paper-glass);
+}
+
+/* ===== Correcciones varias (11/11) ===== */
+
+/* Chips (géneros, plataformas, categorías de personajes...) en el tema claro: más claros que antes, para que el gris no pelee con el fondo de la página,
+   pero con un contorno lila fino y una sombra mínima para que se distingan igual. */
+[data-theme="light"] .chip:not(.active),
+[data-theme="light"] .plat-chip:not(.active) {
+  background: color-mix(in srgb, var(--gold) 4%, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 24%, transparent), 0 1px 2px var(--shadow-soft);
+}
+
+[data-theme="light"] .chip:not(.active):hover {
+  background: color-mix(in srgb, var(--gold) 11%, #fff);
+}
+
+/* Avisos con «Entendido»: verde si es una buena noticia, rojo si es mala; el neutral queda como estaba. Franja de color arriba, ícono y botón del mismo color. */
+.confirm-box.notice-box.tone-good,
+.confirm-box.notice-box.tone-bad {
+  --tone: var(--success);
+  --tone-dim: var(--success-dim);
+  --tone-tint: var(--success-tint);
+  border-top: 5px solid var(--tone);
+  background-image: linear-gradient(180deg, var(--tone-tint), transparent 120px);
+}
+
+.confirm-box.notice-box.tone-bad {
+  --tone: var(--red);
+  --tone-dim: var(--red-dim);
+  --tone-tint: color-mix(in srgb, var(--red) 16%, transparent);
+}
+
+.notice-box.tone-good .notice-icon,
+.notice-box.tone-bad .notice-icon {
+  width: 52px;
+  height: 52px;
+  color: var(--tone);
+}
+
+.notice-box.tone-good .btn.gold,
+.notice-box.tone-bad .btn.gold {
+  background: var(--tone);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tone) 38%, transparent);
+}
+
+.notice-box.tone-good .btn.gold:hover,
+.notice-box.tone-bad .btn.gold:hover {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--tone) 46%, transparent);
+}
+
+/* Lista desplegable de juegos (reto diario y sugerir personaje): mismo estilo que los resultados del buscador del header. */
+.ac-wrap {
+  position: relative;
+}
+
+.ac-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  max-height: 272px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--paper);
+  border: 1px solid var(--line-dark);
+  border-radius: 14px;
+  box-shadow: 0 14px 30px var(--shadow-strong);
+  color: var(--ink);
+}
+
+.ac-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ac-list li.active,
+.ac-list li[data-title]:hover {
+  background: var(--hover-tint);
+  color: var(--gold-dim);
+}
+
+.ac-list li.ac-empty {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 13px;
+  cursor: default;
+}
+
+.ac-year {
+  flex: none;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+/* Textos de reseñas y descripciones: respetan los saltos de línea y los espacios que escribió la persona; los largos se recortan con «Leer más». */
+.rc-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rc-text.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  overflow: hidden;
+}
+
+.rc-more {
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gold-dim);
+}
+
+/* La fecha de una reseña es un enlace a la reseña sola. */
+.rc-permalink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.rc-permalink:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+#reviewContext {
+  margin-top: 22px;
+}
+
+/* Indicaciones cortas (.hint-tip): el mismo símbolo (!) que .tip, puesto con CSS delante del texto. */
+.hint-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.hint-tip::before {
+  content: '!';
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  color: var(--gold-dim);
+  font: 700 12px/1 'Space Grotesk', sans-serif;
+}
+
+[data-theme="dark"] .hint-tip::before,
+:root:not([data-theme]) .hint-tip::before {
+  color: var(--gold);
+}
+
+/* Portadas con las esquinas redondeadas también en Safari (iPhone y Mac): ahí una capa con filtro (el fondo desenfocado) o con un fundido (la imagen) se escapa del
+   recorte redondeado de overflow:hidden y la portada se ve con las esquinas cuadradas. isolation y la máscara fuerzan el recorte; la imagen lleva además su propio radio. */
+.gc-cover,
+.news-cover {
+  isolation: isolate;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+.cover-img {
+  border-radius: inherit;
+}
+
+/* Ventanas (avisos, Versus, sugerencias...): el fondo oscuro se extiende más allá de los bordes de la pantalla, así en el iPhone no queda una franja sin tapar
+   debajo (la zona de la barra de Safari) ni arriba; y la ventana nunca es más alta que lo que se ve (dvh descuenta las barras del navegador). */
+.confirm-overlay {
+  background: none;
+}
+
+.confirm-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -300px 0;
+  z-index: -1;
+  background: rgba(8, 6, 20, 0.4);
+}
+
+.suggest-modal {
+  max-height: calc(100dvh - 40px);
+}
+
+/* Versus: más aire arriba (título) y abajo (botón de cerrar); en celular el botón ocupa todo el ancho. */
+.confirm-box.versus-modal {
+  padding: 30px 24px 24px;
+}
+
+.versus-modal h3 {
+  margin-bottom: 22px;
+}
+
+.versus-modal .confirm-actions {
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .confirm-box.versus-modal {
+    padding: 28px 18px 20px;
+  }
+
+  .versus-modal .confirm-actions .btn-ghost {
+    width: 100%;
+    padding: 13px 16px;
+  }
+}
+
+/* Buscador del header: resultados en dos grupos (Juegos y Personas), con portada o avatar a la izquierda y el título (y el género y el año) al lado. */
+.user-search-head {
+  padding: 8px 10px 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.user-search-head:first-child {
+  padding-top: 2px;
+}
+
+.user-search-results .ri-cover {
+  flex: none;
+  width: 52px;
+  height: auto;
+  margin: 0;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+}
+
+.us-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.us-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.us-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+@media (min-width: 1400px) {
+  .user-search-results {
+    width: 320px;
+  }
+}
+
+/* La descripción completa del perfil conserva los saltos de línea y los espacios tal como se escribieron. */
+.bio-modal-text {
+  white-space: pre-wrap;
+}
+
+/* Listas desplegables de los filtros (Géneros y Ordenar): el botón es un chip y la lista, la misma tarjeta del buscador (.ac-list). */
+.dd {
+  position: relative;
+}
+
+.dd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dd-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  transition: transform .15s ease;
+}
+
+.dd.open .dd-btn svg {
+  transform: rotate(180deg);
+}
+
+.dd .ac-list {
+  right: auto;
+  min-width: max(100%, 210px);
+}
+
+.dd-list li {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.dd-list li .sort-arrow {
+  margin-left: auto;
+  color: var(--gold-dim);
+}
+
+.dd-list li.on {
+  color: var(--gold-dim);
+}
+
+.dd-list li:hover {
+  background: var(--hover-tint);
+  color: var(--gold-dim);
+}
+
+.dd-list li:focus {
+  outline: none;
+  background: var(--hover-tint);
+}
+
+.sort-arrow {
+  margin-left: 6px;
+  font-weight: 800;
+}
+
+.dd-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 30%, transparent);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1;
+  color: transparent;
+}
+
+.dd-list li.on .dd-check {
+  background: var(--gold);
+  box-shadow: none;
+  color: #fff;
+}
+
+.browse-clear {
+  white-space: nowrap;
+}
+
+.dd-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Perfil: pestañas Reseñas y Calificaciones. Van sobre el fondo de la página, con el mismo tipo de letra que los títulos de sección. */
+.profile-tabs {
+  display: flex;
+  gap: 22px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 -1px;
+  padding: 0 2px 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--fg-soft);
+  font-family: 'Bungee', sans-serif;
+  font-size: 18px;
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+
+.profile-tab:hover {
+  color: var(--fg);
+}
+
+.profile-tab[aria-selected="true"] {
+  color: var(--fg);
+  border-bottom-color: var(--gold);
+}
+
+.profile-tab .count {
+  font-variant-numeric: tabular-nums;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: var(--paper);
+  padding: 3px 9px;
+  border-radius: 10px;
+}
+
+/* Calificaciones del perfil: una tarjeta con una fila por juego. */
+.rating-list {
+  padding: 4px 16px;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-dark);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.rating-row:first-child {
+  border-top: 0;
+}
+
+.rating-row:hover .rr-title {
+  color: var(--gold-dim);
+}
+
+.rr-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rr-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rr-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Space Mono', monospace;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+
+.rr-bar {
+  flex: 0 0 90px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--paper-alt);
+  overflow: hidden;
+}
+
+.rr-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.rr-score {
+  min-width: 36px;
+  text-align: right;
+  font-family: 'Bungee', sans-serif;
+  font-size: 16px;
+}
+
+@media (max-width: 480px) {
+  .rr-genres {
+    display: none;
+  }
+
+  .rr-bar {
+    flex-basis: 52px;
+  }
+
+  .profile-tab {
+    font-size: 16px;
+  }
 }

@@ -115,8 +115,7 @@ function renderGuessCard(){
   } else {
     bodyHTML = `
       <div class="field" style="margin-top:2px; margin-bottom:10px;">
-        <input type="text" id="dailyGuessInput" list="dailyGuessList" placeholder="${esc(t('guess_input_ph'))}" autocomplete="off">
-        <datalist id="dailyGuessList">${CATALOG.map(c=>`<option value="${esc(c.title)}">`).join('')}</datalist>
+        <input type="text" id="dailyGuessInput" placeholder="${esc(t('guess_input_ph'))}" autocomplete="off">
       </div>
       <button class="btn small" id="dailyGuessBtn">${t('guess_btn')}</button>`;
   }
@@ -125,7 +124,9 @@ function renderGuessCard(){
 
   if(!state.daily.solved && !state.daily.failed){
     document.getElementById('dailyGuessBtn').onclick = submitDailyGuess;
-    document.getElementById('dailyGuessInput').addEventListener('keydown', e=>{ if(e.key==='Enter') submitDailyGuess(); });
+    const guessInput = document.getElementById('dailyGuessInput');
+    attachGameAutocomplete(guessInput, ()=> CATALOG); // primero la lista (frena el Enter cuando se elige una opción) y después el Enter que envía
+    guessInput.addEventListener('keydown', e=>{ if(e.key==='Enter') submitDailyGuess(); });
   }
   if(state.daily.solved){
     document.getElementById('dailyRateBtn').onclick = ()=> jumpToRate(g.id);
@@ -145,8 +146,8 @@ async function submitDailyGuess(){
   await saveDailyState();
   await recordActivity(state.user.username, state.daily.date);
   renderGuessCard();
-  if(correct){ celebrateFavorite(document.getElementById('guessCard')); toast(t('toast_guessed')); }
-  else if(state.daily.failed){ toast(t('toast_out_of_guesses')); }
+  if(correct){ celebrateFavorite(document.getElementById('guessCard')); toast(t('toast_guessed'), 'good'); }
+  else if(state.daily.failed){ toast(t('toast_out_of_guesses'), 'bad'); }
 }
 /* ---------- ruleta del día ---------- */
 const MAX_SPINS = 3; // tiradas de ruleta por día por usuario
@@ -221,9 +222,9 @@ function rouletteScopePool(){
 // descuenta una tirada. Si el pool está vacío (rouletteScopePool devolvió
 // null), avisa por toast y no gasta la tirada.
 function spinRoulette(){
-  if(state.daily.rouletteSpins>=MAX_SPINS){ toast(t('toast_out_of_spins')); return; }
+  if(state.daily.rouletteSpins>=MAX_SPINS){ toast(t('toast_out_of_spins'), 'bad'); return; }
   const pool = rouletteScopePool();
-  if(!pool || !pool.length){ toast(t('toast_roulette_empty_pool')); return; }
+  if(!pool || !pool.length){ toast(t('toast_roulette_empty_pool'), 'bad'); return; }
   const reels = document.querySelectorAll('#reelRow .reel');
   const btn = document.getElementById('spinBtn');
   btn.disabled = true;
@@ -241,7 +242,7 @@ function spinRoulette(){
       const pick = pool[Math.floor(Math.random()*pool.length)];
       reels.forEach(r=> r.innerHTML = GENRE_EMOJI[primaryGenre(pick)]||ICONS.gamepad);
       showRouletteResult(pick);
-      if(allRated) toast(t('toast_all_rated'));
+      if(allRated) toast(t('toast_all_rated'), 'good');
       state.daily.rouletteSpins++;
       saveDailyState();
       const left = Math.max(0, MAX_SPINS - state.daily.rouletteSpins);
