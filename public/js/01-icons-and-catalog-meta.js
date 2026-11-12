@@ -79,6 +79,10 @@ const ICONS = {
   queen: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8l4 4 4-7 4 7 4-4-2 9H6z'/><path d='M8 17v4M16 17v4M6 21h12'/></svg>`,
   crosshair: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='22' y1='12' x2='18' y2='12'/><line x1='6' y1='12' x2='2' y2='12'/><line x1='12' y1='6' x2='12' y2='2'/><line x1='12' y1='22' x2='12' y2='18'/></svg>`,
   trophyBig: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 3h10v6a5 5 0 0 1-10 0z'/><path d='M7 5H3v2a5 5 0 0 0 5 5M17 5h4v2a5 5 0 0 1-5 5'/><path d='M12 14v5'/><path d='M8 21h8l-1-2H9z'/></svg>`,
+  // Íconos de los rangos (LEVELS en 07-stats-share-modals.js).
+  chick: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='13' cy='12' r='8'/><path d='M5.2 10.4L2.2 12l3 1.6'/><circle cx='11' cy='10' r='.9' fill='currentColor'/></svg>`,
+  feather: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z'/><line x1='16' y1='8' x2='2' y2='22'/><line x1='17.5' y1='15' x2='9' y2='15'/></svg>`,
+  graduationCap: `<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 10v6M2 10l10-5 10 5-10 5z'/><path d='M6 12v5c3 3 9 3 12 0v-5'/></svg>`,
 };
 
 /* Selección curada de títulos populares y su disponibilidad aproximada
