@@ -435,6 +435,32 @@ const today = new Date().toISOString().slice(0, 10);
     const pub = (await anon('GET', '/api/users/SMOKETEST_A')).body.user;
     assert.deepEqual([pub.username, pub.bio, pub.reviewCount], ['smoketest_a', 'Nueva bio', 0]);
   });
+  await step('eliminar la cuenta: pide confirmación, no borra cuentas admin y se lleva todo lo de la persona', async () => {
+    const d = client();
+    ok(await d('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_del@example.com', password: pass, username: 'smoketest_del' }));
+    ok(await d('PUT', `/api/reviews/${gameId}`, { rating: 7.5, text: 'Esta reseña se va con la cuenta' }));
+    ok(await d('POST', '/api/lists', { title: 'Lista que se va' }));
+    ok(await d('POST', '/api/suggestions', { title: 'Juego sugerido por quien se va' }));
+    const uid = (await db.prepare("SELECT id FROM users WHERE username = 'smoketest_del'").get()).id;
+    // sin confirmación (o sin sesión) no se borra nada
+    assert.equal((await d('DELETE', '/api/account', {})).body.error, 'confirm_required');
+    assert.equal((await d('DELETE', '/api/account', { confirm: 'si' })).body.error, 'confirm_required');
+    assert.equal((await d('GET', '/api/auth/me')).body.user.username, 'smoketest_del');
+    assert.equal((await anon('DELETE', '/api/account', { confirm: true })).status, 401);
+    // una cuenta admin no se puede borrar desde Ajustes
+    const e = client();
+    ok(await e('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_del2@example.com', password: pass, username: 'smoketest_del2' }));
+    await db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'smoketest_del2'").run();
+    assert.equal((await e('DELETE', '/api/account', { confirm: true })).body.error, 'admin_account');
+    await db.prepare("DELETE FROM users WHERE username = 'smoketest_del2'").run();
+    // con la confirmación: la sesión se cierra, la cuenta y lo suyo desaparecen, y la sugerencia queda sin nombre
+    ok(await d('DELETE', '/api/account', { confirm: true }));
+    const me = await d('GET', '/api/auth/me');
+    assert.ok(me.status === 401 || (me.body && me.body.user === null), 'ya no hay sesión');
+    for (const t of ['users WHERE id', 'reviews WHERE user_id', 'game_lists WHERE user_id', 'sessions WHERE user_id']) assert.equal((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} = ?`).get(uid)).n, 0, t);
+    assert.equal((await db.prepare("SELECT submitted_by FROM game_suggestions WHERE title = 'Juego sugerido por quien se va'").get()).submitted_by, null);
+    assert.equal((await d('POST', '/api/auth/login', { identifier: 'smoketest_del', password: pass })).status, 401);
+  });
   console.log('Steam');
   await step('vincular con OpenID (un Steam por cuenta, nonce y firma), horas, logros del favorito, importar, privacidad y desvincular', async () => {
     if (REMOTE) return; // el Steam de mentira solo lo alcanza la app en proceso

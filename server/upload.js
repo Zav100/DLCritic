@@ -8,7 +8,7 @@ const multer = require('multer');
 const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
-const { put } = require('@vercel/blob');
+const { put, del } = require('@vercel/blob');
 
 const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 const CONTENT_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
@@ -46,4 +46,19 @@ async function saveImage({ buffer, ext }) {
   return '/uploads/' + name;
 }
 
-module.exports = { receiveImage, saveImage, uploadsDir, ALLOWED_EXT, MAX_IMAGE_BYTES };
+// Borra una imagen que subimos nosotros (por ejemplo, la foto de una cuenta que se elimina). Solo toca lo que saveImage() pudo haber devuelto: una URL de Vercel Blob
+// o /uploads/<nombre>; cualquier otra URL se ignora. Es "al mejor esfuerzo": si falla, queda un archivo huérfano pero no se rompe lo que se estaba haciendo.
+async function deleteImage(url) {
+  if (!url) return;
+  try {
+    if (/^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i.test(url)) {
+      if (process.env.BLOB_READ_WRITE_TOKEN) await del(url);
+    } else if (url.startsWith('/uploads/')) {
+      fs.rmSync(path.join(uploadsDir, path.basename(url)), { force: true });
+    }
+  } catch (e) {
+    console.error('No se pudo borrar la imagen', url, e.message);
+  }
+}
+
+module.exports = { receiveImage, saveImage, deleteImage, uploadsDir, ALLOWED_EXT, MAX_IMAGE_BYTES };

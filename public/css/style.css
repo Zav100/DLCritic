@@ -8043,3 +8043,63 @@ a.btn-ghost {
   border-radius: 12px;
   padding: 0 14px;
 }
+
+/* Eliminar la cuenta (Ajustes › Privacidad y seguridad): el botón es un contorno rojo y el aviso lleva una casilla que habilita el botón de eliminar. */
+.settings-danger {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-dark);
+}
+
+.settings-danger h4 {
+  margin: 0 0 4px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 14px;
+  color: var(--red-dim);
+}
+
+.btn-danger {
+  padding: 9px 16px;
+  border: 1.5px solid var(--red);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--red-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, transform .15s var(--spring);
+}
+
+.btn-danger:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.btn-danger:active {
+  transform: scale(0.96);
+}
+
+.delete-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delete-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+.delete-account-box .error {
+  margin: -6px 0 14px;
+}

@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
-const { receiveImage, saveImage } = require('./upload');
+const { receiveImage, saveImage, deleteImage } = require('./upload');
 const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
 const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail } = require('./mail');
@@ -944,6 +944,25 @@ app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, re
   if (!file) return res.status(400).json({ error: 'invalid_file' });
   await setAvatarUrl.run(await saveImage(file), req.user.id);
   res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
+});
+
+// Eliminar la propia cuenta (Ajustes › Privacidad y seguridad). Borra la fila del usuario y, por ON DELETE CASCADE, todo lo suyo: reseñas (y los votos que recibieron),
+// reseñas de personajes, listas, seguidores y seguidos, avisos, progreso del reto, horas de Steam, sesiones y enlaces pendientes. Las sugerencias que envió quedan, sin su nombre.
+// Se pide { confirm: true } en el cuerpo (el cliente ya hizo su confirmación de tres pasos). Las cuentas de administración no se pueden borrar desde aquí: se perdería el acceso
+// al panel sin querer; se quitan a mano en la base.
+const deleteAccountLimiter = rateLimit({ name: 'delete-account', windowMs: 60 * 60 * 1000, max: 5, keyFn: req => 'u:' + req.user.id });
+app.delete('/api/account', requireAuth, deleteAccountLimiter, async (req, res) => {
+  if (!req.body || req.body.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
+  const user = await findUserById.get(req.user.id);
+  if (!user) return res.status(404).json({ error: 'not_found' });
+  if (user.is_admin) return res.status(403).json({ error: 'admin_account' });
+  await db.transaction(async tx => {
+    await tx.prepare('UPDATE game_suggestions SET submitted_by = NULL WHERE lower(submitted_by) = lower(?)').run(user.username);
+    await tx.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+  });
+  await deleteImage(user.avatar_url); // la foto de perfil (se espera: en Vercel la función puede congelarse apenas responde)
+  clearSessionCookie(res);
+  res.json({ deleted: true });
 });
 
 app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, res) => {
