@@ -11,18 +11,8 @@
  * Explorar y Personajes no están aquí: viven en 08-browse.js y 14-characters.js.
  */
 /* ---------- utilidades compartidas ---------- */
-// "hace 5 minutos" / "5 minutes ago" con Intl (sin librerías); pasados 30 días, la fecha normal.
-function timeAgo(iso){
-  const secs = (new Date(iso) - Date.now()) / 1000;
-  const rtf = new Intl.RelativeTimeFormat(state.lang==='en' ? 'en' : 'es', { numeric:'auto' });
-  const abs = Math.abs(secs);
-  if(abs < 3600) return rtf.format(Math.round(secs/60), 'minute');
-  if(abs < 86400) return rtf.format(Math.round(secs/3600), 'hour');
-  if(abs < 30*86400) return rtf.format(Math.round(secs/86400), 'day');
-  return fmtDate(iso);
-}
 // «Hoy», «Hace 1 día», «Hace 2 días»... (sin «ayer» ni «anteayer») hasta 31 días; pasado eso, «Hace 1 mes», «Hace 2 meses»... y desde los 365 días, «Hace 1 año», «Hace 2 años».
-// Cuenta días de calendario (lo de anoche a las 23:50 es «Hace 1 día» aunque hayan pasado diez minutos). Lo usan las calificaciones del perfil.
+// Cuenta días de calendario (lo de anoche a las 23:50 es «Hace 1 día» aunque hayan pasado diez minutos). Lo usan las calificaciones del perfil y las filas de actividad (Últimas reseñas, Actividad reciente).
 function agoLabel(iso){
   const startOfDay = d=> new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const days = Math.round((startOfDay(new Date()) - startOfDay(new Date(iso))) / 86400000);
@@ -125,7 +115,7 @@ function activityRowHTML(it, verbKey, subExtra=''){
     attrs: `data-go-review="${esc(it.reviewId)}"`, // la fila lleva a la reseña, en su propia página
     lead: userAvatarHTML(it.user),
     title: `${esc(it.user)} <span class="ri-verb">${esc(t(verbKey))}</span> ${esc(it.title)}`,
-    sub: `${esc(timeAgo(it.date))}${subExtra}`,
+    sub: `${esc(agoLabel(it.date))}${subExtra}`,
     score: it.rating!=null ? it.rating : null,
   });
 }
