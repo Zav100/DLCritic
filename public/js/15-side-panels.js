@@ -66,7 +66,7 @@ function characterRailRow(c, score=null, rank=null){
     attrs: `data-go-char="${esc(c.id)}"`,
     lead: (rank? `<span class="ri-rank">${rank}</span>` : '') + charAvatarHTML(c, 'ri-char-avatar'),
     title: esc(c.name),
-    sub: esc(characterGames(c).map(g=>g.title).join(', ')),
+    sub: esc(characterGamesLabel(characterGames(c))),
     score,
   });
 }
