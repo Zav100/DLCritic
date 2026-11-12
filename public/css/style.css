@@ -281,6 +281,7 @@ nav {
   background: var(--paper);
   color: var(--ink);
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-weight: 700;
   font-size: 12px;
   padding: 6px 10px;
@@ -303,6 +304,7 @@ nav {
   padding: 4px 12px 4px 4px;
   cursor: pointer;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-weight: 700;
   font-size: 12px;
   transition: background-color .2s ease;
@@ -484,6 +486,7 @@ nav {
   color: var(--ink-soft);
   cursor: pointer;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.5px;
@@ -546,6 +549,7 @@ main {
 
 .footer-brand small {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   letter-spacing: 0.3px;
@@ -622,6 +626,7 @@ main {
 .footer-bottom {
   text-align: center;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   padding-top: 18px;
@@ -725,6 +730,7 @@ main {
 
 .eyebrow {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -912,6 +918,7 @@ main {
 
 .flow-label {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -997,6 +1004,7 @@ main {
   background: var(--paper-alt);
   padding: 10px 12px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -1031,6 +1039,7 @@ main {
   border-radius: 10px;
   font-weight: 700;
   font-size: 9.5px;
+  line-height: 1.474; /* la altura que daba Space Mono a 9,5 px */
 }
 
 .flowcard-demo-rate {
@@ -1041,6 +1050,7 @@ main {
 
 .fd-num {
   font-family: 'Bungee', sans-serif;
+  line-height: normal; /* no hereda la altura de línea fija de .flowcard-demo */
   font-size: 18px;
   color: var(--gold-dim);
 }
@@ -1160,6 +1170,7 @@ main {
 .sectionhead .count {
   font-variant-numeric: tabular-nums;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   color: var(--ink-soft);
   background: var(--paper);
@@ -1181,6 +1192,7 @@ main {
   align-items: center;
   gap: 7px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.478;
   font-weight: 700;
   font-size: 11.5px;
   padding: 7px 14px;
@@ -1229,6 +1241,7 @@ main {
 
 .rc-meta {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   margin-top: 4px;
@@ -1261,6 +1274,7 @@ main {
 .first-badge {
   display: inline-block;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.474;
   font-size: 9.5px;
   font-weight: 700;
   background: var(--success-tint);
@@ -1268,6 +1282,10 @@ main {
   padding: 2px 8px;
   border-radius: 10px;
   vertical-align: middle;
+}
+
+.rc-game .first-badge {
+  line-height: inherit;
 }
 
 .first-badge svg {
@@ -1398,6 +1416,7 @@ main {
 
 .pbadge {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.444;
   font-size: 9px;
   letter-spacing: 0.5px;
   padding: 2px 6px;
@@ -1468,6 +1487,7 @@ main {
 .gauge-num {
   font-variant-numeric: tabular-nums;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.538;
   font-weight: 700;
   font-size: 13px;
   color: var(--gold-dim);
@@ -1479,6 +1499,7 @@ main {
 
 .no-rating-tag {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   font-style: italic;
@@ -1740,6 +1761,7 @@ main {
 
 .gc-sub {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   color: var(--ink-soft);
   margin-bottom: 8px;
@@ -1881,6 +1903,7 @@ main {
 .char-cat-tag {
   display: inline-block;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -2011,6 +2034,7 @@ main {
 
 .gcc-score {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -2109,6 +2133,7 @@ main {
 
 .versus-games {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   color: var(--ink-soft);
 }
@@ -2130,6 +2155,7 @@ main {
   background: var(--paper-alt);
   text-align: center;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.538;
   font-size: 13px;
   color: var(--ink-soft);
 }
@@ -2422,6 +2448,7 @@ main {
 
 .chip {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   padding: 7px 12px;
   border-radius: 20px;
@@ -2456,6 +2483,7 @@ main {
   align-items: center;
   gap: 8px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.478;
   font-size: 11.5px;
   font-weight: 700;
   padding: 6px 14px 6px 6px;
@@ -2536,6 +2564,7 @@ main {
 .field label {
   display: block;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -2645,6 +2674,7 @@ input[type=search]::-webkit-search-cancel-button {
   color: var(--red);
   font-size: 13px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.538;
   margin-top: 8px;
 }
 
@@ -2724,6 +2754,7 @@ input[type=search]::-webkit-search-cancel-button {
   border-radius: 9px;
   cursor: pointer;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -2959,6 +2990,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .rate-outof {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 16px;
   color: var(--ink-soft);
 }
@@ -3196,6 +3228,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .selected-game .info .s {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   color: var(--ink-soft);
 }
@@ -3372,6 +3405,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .clue-label {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -3400,6 +3434,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .guess-chip {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   padding: 4px 10px;
   border-radius: 12px;
@@ -3517,6 +3552,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .infoitem .il {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -3583,6 +3619,7 @@ input[type=search]::-webkit-search-cancel-button {
   padding-top: 14px;
   border-top: 1px dashed var(--line-dark);
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   color: var(--ink-soft);
 }
@@ -3642,6 +3679,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .stores-block .il {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -3660,6 +3698,7 @@ input[type=search]::-webkit-search-cancel-button {
   align-items: center;
   gap: 8px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   font-weight: 700;
   padding: 6px 14px 6px 6px;
@@ -3777,6 +3816,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .badge-row .bt {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-weight: 700;
   font-size: 11px;
   color: var(--ink-soft);
@@ -3907,6 +3947,7 @@ input[type=search]::-webkit-search-cancel-button {
   color: var(--ink-soft);
   margin-top: 4px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
 }
 
 @media(max-width:800px) {
@@ -4370,6 +4411,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .cal-month-label {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.52;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--ink-soft);
@@ -4415,6 +4457,7 @@ input[type=search]::-webkit-search-cancel-button {
 .cal-weekdays div {
   text-align: center;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   color: var(--ink-soft);
   text-transform: uppercase;
@@ -4461,6 +4504,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .cal-daynum {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   font-weight: 700;
   color: var(--ink-soft);
@@ -4576,6 +4620,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .newgamecard .ngc-year {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   color: var(--ink-soft);
   margin-bottom: 18px; /* el botón de «Calificar este juego» queda un poco más abajo (antes 10 px); el aire de abajo baja 8 px para que la tarjeta mida lo mismo */
@@ -4614,6 +4659,7 @@ input[type=search]::-webkit-search-cancel-button {
   border-radius: 6px;
   color: #fff;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.444;
   font-size: 9px;
   font-weight: 700;
   display: -webkit-flex;
@@ -4625,6 +4671,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .source-name {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   flex: 1;
@@ -4636,6 +4683,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .news-link {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--teal-dim);
   text-decoration: none;
@@ -4742,6 +4790,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .rail-sub {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
   margin: 4px 0 0;
@@ -4837,6 +4886,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .ri-sub {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   color: var(--ink-soft);
   overflow-wrap: anywhere;
@@ -4848,6 +4898,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .ri-score {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-weight: 700;
   font-size: 12px;
   color: #5A3DC2;
@@ -4868,6 +4919,7 @@ input[type=search]::-webkit-search-cancel-button {
   align-items: center;
   gap: 8px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -4932,6 +4984,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .streak-label {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -5052,6 +5105,7 @@ input[type=search]::-webkit-search-cancel-button {
     display: block;
     margin: 0 0 10px;
     font-family: 'Lexend', sans-serif;
+    line-height: 1.5;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -5634,6 +5688,13 @@ a.rc-author:hover {
   .infoitem .il,
   .newgamecard .ngc-year {
     font-size: 11px;
+    line-height: 1.455; /* la altura que daba Space Mono a 11 px */
+  }
+
+  .flow-label,
+  .fd-chip,
+  .source-badge {
+    line-height: 1.524; /* la altura que daba Space Mono a 10,5 px */
   }
 
   .flow-label,
@@ -5717,6 +5778,7 @@ a.rc-author:hover {
 
 .fav-genre {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   padding: 3px 9px;
   border-radius: 999px;
@@ -5730,6 +5792,7 @@ a.rc-author:hover {
 
 .fav-label {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -5760,6 +5823,7 @@ a.rc-author:hover {
   background: linear-gradient(135deg, #eef3f9, #b9c9dc 55%, #e6eef7);
   color: #1f3550;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   font-weight: 700;
 }
@@ -5791,6 +5855,7 @@ a.rc-author:hover {
   background: #1b2838;
   color: #fff;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   font-weight: 700;
 }
@@ -6055,6 +6120,7 @@ a.btn-ghost {
 
 .steam-import-row .sir-hours {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   color: var(--ink-soft);
   white-space: nowrap;
@@ -6382,6 +6448,7 @@ a.btn-ghost {
   margin-top: 10px;
   padding: 7px 6px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   letter-spacing: 0;
   white-space: nowrap; /* una sola línea aunque la tarjeta sea angosta */
@@ -6510,6 +6577,7 @@ a.btn-ghost {
 .profile-since {
   margin-top: 4px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -6573,6 +6641,7 @@ a.btn-ghost {
 
 .level-next {
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -6663,6 +6732,7 @@ a.btn-ghost {
   overflow-wrap: anywhere;
   margin-top: 2px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -6902,6 +6972,7 @@ a.btn-ghost {
   max-width: calc(100% - 24px);
   padding: 8px 16px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   text-align: center;
   color: var(--paper);
@@ -7016,6 +7087,7 @@ a.btn-ghost {
   padding: 0 10px;
   background: var(--paper);
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   color: var(--ink-soft);
 }
@@ -7634,6 +7706,7 @@ a.btn-ghost {
 .ac-year {
   flex: none;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.455;
   font-size: 11px;
   font-weight: 400;
   color: var(--ink-soft);
@@ -7760,6 +7833,7 @@ a.btn-ghost {
 .user-search-head {
   padding: 8px 10px 4px;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -7797,6 +7871,7 @@ a.btn-ghost {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.5;
   font-size: 10px;
   font-weight: 400;
   color: var(--ink-soft);
@@ -7934,6 +8009,7 @@ a.btn-ghost {
 .profile-tab .count {
   font-variant-numeric: tabular-nums;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.417;
   font-size: 12px;
   color: var(--ink-soft);
   background: var(--paper);
@@ -7984,6 +8060,7 @@ a.btn-ghost {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Lexend', sans-serif;
+  line-height: 1.524;
   font-size: 10.5px;
   color: var(--ink-soft);
 }
