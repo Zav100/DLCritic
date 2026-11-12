@@ -33,6 +33,16 @@ function characterGames(c){
   const ids = (c.gameIds && c.gameIds.length) ? c.gameIds : (c.gameId ? [c.gameId] : []);
   return ids.map(findGame).filter(Boolean);
 }
+// Texto de los juegos de un personaje para su tarjeta. Con 1 o 2 juegos los nombra; con más, nombra la saga cuando todos
+// comparten el texto antes de los dos puntos («The Legend of Zelda · 4 juegos») y, si no, el primero y cuántos hay además
+// («God of War (2005) +2 más»). Así una tarjeta con muchos juegos no se alarga a cuatro renglones.
+function characterGamesLabel(games){
+  const n = games.length;
+  if(n<=2) return games.map(g=>g.title).join(', ');
+  const sagas = games.map(g=>g.title.split(':')[0].trim());
+  if(games.every(g=>g.title.includes(':')) && sagas[0] && sagas.every(s=>s===sagas[0])) return `${sagas[0]} · ${n} ${t('games_count_label')}`;
+  return `${games[0].title} ${t('chars_more_games').replace('{n}', n-1)}`;
+}
 // El juego cuya portada hay que usar de banner en la ficha: el elegido a mano en el admin (bannerGameId) o, si el
 // personaje pertenece a un solo juego, ese — con varios juegos y sin elección explícita, no hay banner de juego.
 function characterBannerGame(c){
@@ -137,7 +147,7 @@ function paintCharactersGrid(animate){
     const st = characterStats(c.id);
     const rank = ranks.get(c.id) || 0;
     const games = characterGames(c);
-    const gameNames = games.map(g=>g.title).join(', ');
+    const gameNames = characterGamesLabel(games);
     const card = document.createElement('div');
     card.className = 'card gamecard character-card has-card-link' + (rank===1? ' featured' : '') + (animate? ' enter' : '');
     if(animate){
