@@ -16,9 +16,9 @@ a.logo { text-decoration: none; }
 .legal-doc a { color: var(--gold-dim); text-decoration: underline; text-underline-offset: 2px; }
 .legal-doc a.btn { color: #fff; text-decoration: none; }
 [data-theme="dark"] .legal-doc a { color: var(--gold); }
-.legal-doc code { font-family: 'Space Mono', monospace; font-size: 13px; background: var(--paper-alt); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
+.legal-doc code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--paper-alt); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
 
-.legal-updated { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--fg-soft); margin: 0 0 24px; }
+.legal-updated { font-family: 'Lexend', sans-serif; font-size: 12px; color: var(--fg-soft); margin: 0 0 24px; }
 .legal-summary { background: var(--paper-alt); color: var(--ink); border: 1px solid var(--line-dark); border-radius: 14px; padding: 6px 20px 10px; margin: 8px 0 8px; }
 .legal-summary h2 { margin-top: 14px; }
 

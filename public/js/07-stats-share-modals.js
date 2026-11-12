@@ -530,13 +530,13 @@ function wrapCardText(ctx, text, maxWidth, maxLines){
 // <canvas> no espera solo a que las fuentes @font-face terminen de cargar
 // (a diferencia del HTML normal) — si no se hace esto, la primera vez que
 // se dibuja la tarjeta puede salir con la tipografía de respaldo del
-// sistema en vez de Bungee/Space Grotesk/Space Mono. Esto fuerza la carga
+// sistema en vez de Bungee/Space Grotesk/Lexend. Esto fuerza la carga
 // de cada combinación peso+tamaño+fuente que drawShareCard va a usar.
 async function loadCardFonts(){
   const specs = [
     "700 42px Bungee", "700 58px Bungee", "700 124px Bungee", "700 220px Bungee",
     "700 34px 'Space Grotesk'", "700 36px 'Space Grotesk'", "500 32px 'Space Grotesk'",
-    "500 30px 'Space Mono'", "400 26px 'Space Mono'", "400 22px 'Space Mono'",
+    "500 30px 'Lexend'", "400 26px 'Lexend'", "400 22px 'Lexend'",
   ];
   try{ await Promise.all(specs.map(f=> document.fonts.load(f))); }catch(e){}
 }
@@ -606,7 +606,7 @@ async function drawShareCard(canvas, rv, game, bgOption){
   titleLines.forEach(line=>{ y += 60; ctx.fillText(line, W/2, y); });
   y += 36;
 
-  ctx.font = "500 30px 'Space Mono'";
+  ctx.font = "500 30px 'Lexend'";
   ctx.fillStyle = 'rgba(255,255,255,0.78)';
   const meta = [genreLabelList(game), game.releaseYear ? String(game.releaseYear) : ''].filter(Boolean).join('   ·   ');
   if(meta) ctx.fillText(meta, W/2, y+26);
@@ -664,11 +664,11 @@ async function drawShareCard(canvas, rv, game, bgOption){
   ctx.fillText(rv.username||'', W/2, footerY + avatarR + 50);
 
   const lvl = computeLevel(state.reviews.filter(r=>r.username===rv.username).length).current;
-  ctx.font = "400 26px 'Space Mono'";
+  ctx.font = "400 26px 'Lexend'";
   ctx.fillStyle = 'rgba(255,255,255,0.78)';
   ctx.fillText(t(lvl.nameKey), W/2, footerY + avatarR + 92);
 
-  ctx.font = "400 22px 'Space Mono'";
+  ctx.font = "400 22px 'Lexend'";
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.fillText('dlcritic', W/2, footerY + avatarR + 128);
   noShadow();
