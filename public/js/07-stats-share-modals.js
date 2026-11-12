@@ -21,19 +21,44 @@
  *      (emptyState, wireSearchClear).
  */
 /* ---------- rachas, niveles, logros y estadísticas ---------- */
-// Umbral de reseñas para cada nivel (Novato/Aficionado/Crítico/Leyenda). El orden importa: son de menor a mayor.
+// Rangos, de menor a mayor (el orden importa). Para llegar a uno hay que cumplir las dos condiciones a la vez:
+// `ratings` = calificaciones (toda nota puesta) y `reviews` = reseñas (las que tienen texto).
+// Novato es el rango de partida de todos, incluso con 0 calificaciones.
 const LEVELS = [
-  {min:0,  nameKey:'level_novato',     icon:ICONS.sprout},
-  {min:3,  nameKey:'level_aficionado', icon:ICONS.gamepad},
-  {min:10, nameKey:'level_critico',    icon:ICONS.star},
-  {min:25, nameKey:'level_leyenda',    icon:ICONS.crown}
+  {ratings:1,   reviews:0,   nameKey:'level_novato',     icon:ICONS.chick},
+  {ratings:5,   reviews:1,   nameKey:'level_aficionado', icon:ICONS.gamepad},
+  {ratings:15,  reviews:10,  nameKey:'level_conocedor',  icon:ICONS.search},
+  {ratings:50,  reviews:25,  nameKey:'level_critico',    icon:ICONS.feather},
+  {ratings:75,  reviews:50,  nameKey:'level_veterano',   icon:ICONS.medal},
+  {ratings:100, reviews:75,  nameKey:'level_experto',    icon:ICONS.graduationCap},
+  {ratings:200, reviews:100, nameKey:'level_leyenda',    icon:ICONS.crown}
 ];
-// Nivel actual de un usuario según su cantidad de reseñas, + el próximo nivel (o null si ya está en el máximo).
-function computeLevel(count){
+// Cuántas calificaciones y cuántas reseñas (con texto) tiene un usuario: lo único que cuenta para su rango.
+function levelCounts(username){
+  const mine = state.reviews.filter(r=>r.username===username);
+  return { ratings: mine.filter(r=>r.rating!=null).length, reviews: mine.filter(hasReviewContent).length };
+}
+// Rango actual según esos dos conteos, + el próximo rango (o null si ya está en el máximo).
+function computeLevel(counts){
   let current=LEVELS[0];
-  for(const lv of LEVELS){ if(count>=lv.min) current=lv; }
+  for(const lv of LEVELS){ if(counts.ratings>=lv.ratings && counts.reviews>=lv.reviews) current=lv; }
   const idx=LEVELS.indexOf(current);
   return { current, next: LEVELS[idx+1] || null };
+}
+// Progreso hacia el siguiente rango (0 a 100): el promedio de lo avanzado en cada conteo, así que solo llega a 100 cuando se cumplen los dos.
+function levelProgress(counts, lvl){
+  if(!lvl.next) return 100;
+  const part=(have, from, to)=> to>from ? Math.max(0, Math.min(1, (have-from)/(to-from))) : 1;
+  return Math.round((part(counts.ratings, lvl.current.ratings, lvl.next.ratings) + part(counts.reviews, lvl.current.reviews, lvl.next.reviews)) / 2 * 100);
+}
+// Lo que falta para el siguiente rango, ya redactado: «faltan 5 calificaciones y 3 reseñas para Veterano» (solo lo que falte).
+function levelMissingText(counts, next){
+  const r=Math.max(0, next.ratings-counts.ratings), v=Math.max(0, next.reviews-counts.reviews);
+  const parts=[];
+  if(r) parts.push(`${r} ${t(r===1 ? 'level_rating_one' : 'ratings_label')}`);
+  if(v) parts.push(`${v} ${t(v===1 ? 'level_review_one' : 'reviews_label')}`);
+  const single = parts.length===1 && (r||v)===1;
+  return t(single ? 'level_missing_one' : 'level_missing_many').replace('{parts}', parts.join(` ${t('level_and')} `)).replace('{name}', t(next.nameKey));
 }
 /* ---------- tarjeta de imagen para compartir: paleta de fondos ---------- */
 // Fondos sólidos/degradados que el usuario puede elegir para la tarjeta de imagen (ver drawShareCard más abajo).
@@ -663,7 +688,7 @@ async function drawShareCard(canvas, rv, game, bgOption){
   ctx.fillStyle = '#fff';
   ctx.fillText(rv.username||'', W/2, footerY + avatarR + 50);
 
-  const lvl = computeLevel(state.reviews.filter(r=>r.username===rv.username).length).current;
+  const lvl = computeLevel(levelCounts(rv.username)).current;
   ctx.font = "400 26px 'Lexend'";
   ctx.fillStyle = 'rgba(255,255,255,0.78)';
   ctx.fillText(t(lvl.nameKey), W/2, footerY + avatarR + 92);
@@ -824,7 +849,7 @@ function reviewCard(rv, opts){
   const div=document.createElement('div');
   div.className='card reviewcard';
   const mine = state.user && state.user.username===rv.username;
-  const authorLevel = computeLevel(state.reviews.filter(r=>r.username===rv.username).length).current;
+  const authorLevel = computeLevel(levelCounts(rv.username)).current;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
     <div class="rc-top">

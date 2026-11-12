@@ -137,8 +137,8 @@ function renderProfileBody(el, username, profile, editable){
   const avg = rated.length? Math.round((rated.reduce((sum,r)=>sum+r.rating,0)/rated.length)*10)/10 : 0;
   if(state.profileTabUser!==username){ state.profileTabUser = username; state.profileTab = 'reviews'; } // al cambiar de perfil se vuelve a la primera pestaña
   const color = AVATAR_COLORS[Math.abs(hashStr(username))%AVATAR_COLORS.length];
-  const lvl = computeLevel(s.count);
-  const toNext = lvl.next ? (lvl.next.min - s.count) : 0;
+  const counts = levelCounts(username);
+  const lvl = computeLevel(counts);
   const favGame = profile.favoriteGameId ? findGame(profile.favoriteGameId) : null;
 
   const avatarHTML = profile.avatarUrl
@@ -152,9 +152,9 @@ function renderProfileBody(el, username, profile, editable){
         ${profile.isFriend? `<span class="first-badge">${esc(t('friends_badge'))}</span>` : ''}
       ` : '');
 
-  // Progreso hacia el siguiente nivel (0 a 100 %): cuánto de la distancia entre los dos umbrales ya se reunió.
-  const levelPct = lvl.next ? Math.max(0, Math.min(100, Math.round((s.count - lvl.current.min) / (lvl.next.min - lvl.current.min) * 100))) : 100;
-  const levelNextText = lvl.next ? `${t('missing_for')} ${toNext} ${t('to_reach')} ${t(lvl.next.nameKey)}`.trim() : t('max_level');
+  // Progreso hacia el siguiente rango (0 a 100 %) y qué falta para llegar (ver levelProgress y levelMissingText en 07-stats-share-modals.js).
+  const levelPct = levelProgress(counts, lvl);
+  const levelNextText = lvl.next ? levelMissingText(counts, lvl.next) : t('max_level');
 
   // Seguidores y seguidos, en todos los perfiles (también el propio): botones con aspecto de enlace que abren la lista (openFollowListModal).
   const followsHTML = `
