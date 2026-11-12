@@ -8103,3 +8103,14 @@ a.btn-ghost {
 .delete-account-box .error {
   margin: -6px 0 14px;
 }
+
+.delete-pass {
+  margin: 0 0 16px;
+  text-align: left;
+}
+
+.delete-account-box .delete-nopass {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
