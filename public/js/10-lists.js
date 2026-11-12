@@ -414,7 +414,7 @@ function ratingRowsCard(rvs){
     if(!g) return '';
     return `<a class="rating-row" href="${gameHref(g.id)}" data-game-id="${esc(g.id)}">
       <span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</span>
-      <span class="rr-main"><span class="rr-title">${esc(g.title)}</span><span class="rr-sub">${esc(timeAgo(rv.date))}<span class="rr-genres"> · ${esc(genreLabelList(g))}</span></span></span>
+      <span class="rr-main"><span class="rr-title">${esc(g.title)}</span><span class="rr-sub">${esc(agoLabel(rv.date))}<span class="rr-genres"> · ${esc(genreLabelList(g))}</span></span></span>
       <span class="rr-bar" aria-hidden="true"><span style="width:${rv.rating*10}%; background:${MOOD_COLOR(rv.rating)};"></span></span>
       <span class="rr-score">${rv.rating}</span>
     </a>`;

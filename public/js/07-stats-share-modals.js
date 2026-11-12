@@ -303,8 +303,8 @@ function openSuggestModal(){
       </div>
       <div class="field-row">
         <div class="field">
-          <label for="sg-genre">${esc(t('suggest_genre_label'))}</label>
-          <select id="sg-genre"><option value="">—</option>${Object.keys(GENRE_EMOJI).map(g=>`<option value="${esc(g)}">${esc(genreLabel(g))}</option>`).join('')}</select>
+          <label>${esc(t('suggest_genre_label'))}</label>
+          <div id="sg-genre"></div>
         </div>
         <div class="field">
           <label for="sg-year">${esc(t('suggest_year_label'))}</label>
@@ -322,6 +322,13 @@ function openSuggestModal(){
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  let sgGenre = '';
+  buildSelectDropdown(overlay.querySelector('#sg-genre'), {
+    ariaLabel: ()=> t('suggest_genre_label'),
+    options: ()=> [{ value:'', label:'—' }, ...Object.keys(GENRE_EMOJI).map(g=>({ value:g, label:genreLabel(g) }))],
+    get: ()=> sgGenre,
+    set: v=>{ sgGenre = v; },
+  });
   overlay.querySelectorAll('#sgPlatforms .plat-chip').forEach(c=>{
     c.onclick = ()=>{ const p=c.dataset.plat; platSet.has(p) ? platSet.delete(p) : platSet.add(p); c.classList.toggle('active'); };
   });
@@ -334,7 +341,7 @@ function openSuggestModal(){
     errEl.hidden = true;
     const title = document.getElementById('sg-title').value.trim();
     if(title.length<2){ errEl.textContent = t('suggest_err_title'); errEl.hidden=false; return; }
-    const genre = document.getElementById('sg-genre').value;
+    const genre = sgGenre;
     const yearRaw = document.getElementById('sg-year').value.trim();
     const note = document.getElementById('sg-note').value.trim();
     try{

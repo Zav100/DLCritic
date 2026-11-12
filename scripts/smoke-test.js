@@ -97,6 +97,13 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal(dup.body.error, 'username_taken');
     assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'x2@example.com', password: '123', username: 'smoketest_x' })).body.error, 'weak_password');
     assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'x3@example.com', password: pass, username: 'a' })).body.error, 'invalid_username');
+    // largo máximo 25; no se aceptan tildes, ñ, espacios ni símbolos (sí punto, guion y guion bajo). Se prueba al cambiar el nombre (misma regla que el registro) y se vuelve al de antes.
+    for (const malo of ['v'.repeat(26), 'josé_perez', 'niño_gamer', 'con espacio', 'nombre@algo', 'hola!']) {
+      assert.equal((await a('PUT', '/api/profile', { username: malo })).body.error, 'invalid_username', malo);
+    }
+    const largo = 'v'.repeat(24) + '.';
+    assert.equal((await a('PUT', '/api/profile', { username: largo })).body.user.username, largo);
+    assert.equal((await a('PUT', '/api/profile', { username: 'smoketest_a' })).body.user.username, 'smoketest_a');
     assert.equal((await x('POST', '/api/auth/register', { acceptTerms: true, email: 'malo', password: pass, username: 'smoketest_x' })).body.error, 'invalid_email');
     assert.equal((await x('POST', '/api/auth/register', { email: 'x4@example.com', password: pass, username: 'smoketest_x' })).body.error, 'terms_required');
   });
@@ -434,6 +441,40 @@ const today = new Date().toISOString().slice(0, 10);
     assert.deepEqual(r.body.user.socialLinks, { steam: 'https://steamcommunity.com/id/x' });
     const pub = (await anon('GET', '/api/users/SMOKETEST_A')).body.user;
     assert.deepEqual([pub.username, pub.bio, pub.reviewCount], ['smoketest_a', 'Nueva bio', 0]);
+  });
+  await step('eliminar la cuenta: pide confirmación y contraseña, no borra cuentas admin y se lleva todo lo de la persona', async () => {
+    const d = client();
+    ok(await d('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_del@example.com', password: pass, username: 'smoketest_del' }));
+    ok(await d('PUT', `/api/reviews/${gameId}`, { rating: 7.5, text: 'Esta reseña se va con la cuenta' }));
+    ok(await d('POST', '/api/lists', { title: 'Lista que se va' }));
+    ok(await d('POST', '/api/suggestions', { title: 'Juego sugerido por quien se va' }));
+    const uid = (await db.prepare("SELECT id FROM users WHERE username = 'smoketest_del'").get()).id;
+    // sin confirmación (o sin sesión) no se borra nada
+    assert.equal((await d('DELETE', '/api/account', {})).body.error, 'confirm_required');
+    assert.equal((await d('DELETE', '/api/account', { confirm: 'si' })).body.error, 'confirm_required');
+    // con la confirmación pero sin la contraseña, o con una equivocada, tampoco
+    for (const password of [undefined, 'otra-contraseña']) {
+      const r = await d('DELETE', '/api/account', { confirm: true, password });
+      assert.deepEqual([r.status, r.body.error], [401, 'bad_current_password']);
+    }
+    assert.equal((await d('GET', '/api/auth/me')).body.user.username, 'smoketest_del');
+    assert.equal((await anon('DELETE', '/api/account', { confirm: true })).status, 401);
+    // una cuenta admin no se puede borrar desde Ajustes
+    const e = client();
+    ok(await e('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_del2@example.com', password: pass, username: 'smoketest_del2' }));
+    await db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'smoketest_del2'").run();
+    assert.equal((await e('DELETE', '/api/account', { confirm: true, password: pass })).body.error, 'admin_account');
+    // una cuenta de Google sin contraseña tiene que elegir una primero
+    await db.prepare("UPDATE users SET is_admin = 0, has_password = 0 WHERE username = 'smoketest_del2'").run();
+    assert.equal((await e('DELETE', '/api/account', { confirm: true, password: pass })).body.error, 'set_password_first');
+    await db.prepare("DELETE FROM users WHERE username = 'smoketest_del2'").run();
+    // con la confirmación: la sesión se cierra, la cuenta y lo suyo desaparecen, y la sugerencia queda sin nombre
+    ok(await d('DELETE', '/api/account', { confirm: true, password: pass }));
+    const me = await d('GET', '/api/auth/me');
+    assert.ok(me.status === 401 || (me.body && me.body.user === null), 'ya no hay sesión');
+    for (const t of ['users WHERE id', 'reviews WHERE user_id', 'game_lists WHERE user_id', 'sessions WHERE user_id']) assert.equal((await db.prepare(`SELECT COUNT(*) AS n FROM ${t} = ?`).get(uid)).n, 0, t);
+    assert.equal((await db.prepare("SELECT submitted_by FROM game_suggestions WHERE title = 'Juego sugerido por quien se va'").get()).submitted_by, null);
+    assert.equal((await d('POST', '/api/auth/login', { identifier: 'smoketest_del', password: pass })).status, 401);
   });
   console.log('Steam');
   await step('vincular con OpenID (un Steam por cuenta, nonce y firma), horas, logros del favorito, importar, privacidad y desvincular', async () => {

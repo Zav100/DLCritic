@@ -172,9 +172,7 @@ function renderRouletteSection(){
       <button type="button" class="chip ${scope==='catalog'?'active':''}" data-scope="catalog">${esc(t('roulette_scope_catalog'))}</button>
       <button type="button" class="chip ${scope==='library'?'active':''}" data-scope="library">${esc(t('roulette_scope_library'))}</button>
       <button type="button" class="chip ${scope==='genre'?'active':''}" data-scope="genre">${esc(t('roulette_scope_genre'))}</button>
-      <select id="rouletteGenreSelect" aria-label="${esc(t('roulette_scope_genre'))}" ${scope==='genre'?'':'hidden'}>
-        ${GENRE_ORDER.map(g=>`<option value="${esc(g)}" ${g===state.rouletteGenre?'selected':''}>${esc(genreLabel(g))}</option>`).join('')}
-      </select>
+      <div id="rouletteGenreDD" ${scope==='genre'?'':'hidden'}></div>
     </div>
     <div class="reel-row" id="reelRow"><div class="reel">${ICONS.gamepad}</div><div class="reel">${ICONS.gamepad}</div><div class="reel">${ICONS.gamepad}</div></div>
     <button class="btn gold small" id="spinBtn" style="margin:14px auto 0; display:flex;" ${left<=0?'disabled':''}>${left<=0? t('no_spins_today') : t('spin_btn')}</button>
@@ -182,8 +180,12 @@ function renderRouletteSection(){
   wrap.querySelectorAll('[data-scope]').forEach(btn=>{
     btn.onclick = ()=>{ state.rouletteScope = btn.dataset.scope; renderRouletteSection(); };
   });
-  const genreSelect = document.getElementById('rouletteGenreSelect');
-  if(genreSelect) genreSelect.onchange = (e)=>{ state.rouletteGenre = e.target.value; };
+  buildSelectDropdown(document.getElementById('rouletteGenreDD'), {
+    ariaLabel: ()=> t('roulette_scope_genre'),
+    options: ()=> GENRE_ORDER.map(g=>({ value:g, label:genreLabel(g) })),
+    get: ()=> state.rouletteGenre,
+    set: v=>{ state.rouletteGenre = v; },
+  });
   if(left>0) document.getElementById('spinBtn').onclick = spinRoulette;
 }
 // De una lista de juegos, saca los que el usuario YA calificó (para que la

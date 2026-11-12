@@ -168,7 +168,7 @@ function renderSettingsView(){
         </div>
         <div class="field">
           <label for="st-username">${esc(t('profile_username_label'))}</label>
-          <input type="text" id="st-username" maxlength="20" value="${esc(u.username)}">
+          <input type="text" id="st-username" maxlength="25" value="${esc(u.username)}">
           <p class="hint hint-tip">${esc(t('username_hint'))}</p>
         </div>
         <div class="field">
@@ -220,6 +220,11 @@ function renderSettingsView(){
           <div class="field" style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line-dark);">
             <p class="hint hint-tip" style="margin-top:0;">${esc(t('settings_logout_all_hint'))}</p>
             <button class="btn-ghost" id="stLogoutAll">${esc(t('settings_logout_all_btn'))}</button>
+          </div>
+          <div class="settings-danger">
+            <h4>${esc(t('delete_account_title'))}</h4>
+            <p class="hint hint-tip">${esc(t('delete_account_hint'))}</p>
+            <button type="button" class="btn-danger" id="stDeleteAccount">${esc(t('delete_account_btn'))}</button>
           </div>
         </section>`)}
 
@@ -353,5 +358,66 @@ function renderSettingsView(){
     try{ await apiPost('/auth/logout-all'); }catch(e){ toast(t('err_logout_all'), 'bad'); return; }
     await finishLogout('toast_logged_out_all');
   };
+  document.getElementById('stDeleteAccount').onclick = openDeleteAccountModal;
 }
 
+/* ---------- eliminar la cuenta ---------- */
+// El botón de Ajustes abre este aviso: hay que marcar «Deseo eliminar mi cuenta», escribir la contraseña y recién entonces se habilita el botón de eliminar. Borra todo en el servidor
+// (DELETE /api/account, que vuelve a comprobar la contraseña), cierra la sesión y lleva al inicio. No se cierra al tocar afuera (solo con Cancelar o Escape), para que no se pierda
+// por un toque sin querer. Una cuenta de Google (sin contraseña) no puede seguir: el aviso le dice cómo elegir una.
+function openDeleteAccountModal(){
+  const withPassword = !!(state.user && state.user.hasPassword);
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box notice-box tone-bad delete-account-box" role="alertdialog" aria-modal="true" aria-labelledby="delTitle" aria-describedby="delText">
+      <div class="notice-icon"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg></div>
+      <h3 id="delTitle">${esc(t('delete_modal_title'))}</h3>
+      <p id="delText">${esc(t('delete_modal_text'))}</p>
+      ${withPassword ? `
+      <label class="delete-check"><input type="checkbox" id="delCheck"><span>${esc(t('delete_modal_check'))}</span></label>
+      <div class="field delete-pass">
+        <input type="password" id="delPass" autocomplete="current-password" placeholder="${esc(t('delete_modal_password'))}" aria-label="${esc(t('delete_modal_password'))}">
+      </div>` : `<p class="error delete-nopass">${esc(t('delete_modal_no_password'))}</p>`}
+      <div class="error" id="delError" role="alert" hidden></div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-ghost" data-act="cancel">${esc(t('cancel_btn'))}</button>
+        <button type="button" class="btn gold" data-act="delete" disabled>${esc(t('delete_account_btn'))}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const check = overlay.querySelector('#delCheck'), pass = overlay.querySelector('#delPass'), del = overlay.querySelector('[data-act="delete"]'), errEl = overlay.querySelector('#delError');
+  const onKey = e=>{ if(e.key==='Escape') cleanup(); };
+  const cleanup = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
+  if(!withPassword){ del.hidden = true; overlay.querySelector('[data-act="cancel"]').focus(); return; }
+  // el botón de eliminar solo se habilita con la casilla marcada y la contraseña escrita
+  const sync = ()=>{ del.disabled = !(check.checked && pass.value.length>0); errEl.hidden = true; };
+  check.onchange = sync;
+  pass.oninput = sync;
+  const submit = async ()=>{
+    if(del.disabled) return;
+    del.disabled = true; check.disabled = true; pass.disabled = true;
+    try{
+      await api('/account', { method:'DELETE', body: JSON.stringify({ confirm: true, password: pass.value }) });
+    }catch(e){
+      const code = e && e.body && e.body.error;
+      errEl.textContent = t(code==='bad_current_password' ? 'err_bad_current_password' : code==='admin_account' ? 'err_admin_delete' : code==='too_many_requests' ? 'err_too_many' : 'err_save_user');
+      errEl.hidden = false;
+      check.disabled = false; pass.disabled = false; sync(); errEl.hidden = false;
+      pass.focus(); pass.select();
+      return;
+    }
+    cleanup();
+    state.user = null; state.notifications = [];
+    await loadAll();
+    await loadDailyState();
+    renderUserBadge();
+    goView('feed');
+    toast(t('toast_account_deleted'));
+  };
+  del.onclick = submit;
+  pass.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); } };
+  check.focus();
+}

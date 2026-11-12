@@ -284,7 +284,7 @@ function initUserSearch(){
     allGames().forEach(g=>{ const f = foldText(g.title); if(f.startsWith(folded)) starts.push(g); else if(f.includes(folded)) has.push(g); });
     const games = [...starts, ...has].slice(0, MAX_GAMES);
     let users = null;
-    try{ users = (await apiGet('/user-search?q='+encodeURIComponent(q.slice(0, 20)))).users; }catch(e){}
+    try{ users = (await apiGet('/user-search?q='+encodeURIComponent(q.slice(0, 25)))).users; }catch(e){}
     if(mine===seq) showResults(games, users);
   };
   input.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(search, 250); });
