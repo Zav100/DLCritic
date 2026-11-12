@@ -52,6 +52,14 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   expires_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
+-- Código de 6 dígitos para eliminar una cuenta que no tiene contraseña (las creadas con Google): se guarda su hash (el código solo viaja en el correo), vence a los 15 minutos y
+-- deja de valer tras 5 intentos fallidos. Hay uno por persona: pedir otro anula el anterior.
+CREATE TABLE IF NOT EXISTS account_deletion_codes (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0
+);
 -- Horas jugadas (en minutos) de cada persona en los juegos del catálogo que tiene en Steam; se actualizan en cada sincronización.
 CREATE TABLE IF NOT EXISTS steam_playtime (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

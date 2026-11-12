@@ -364,7 +364,7 @@ function renderSettingsView(){
 /* ---------- eliminar la cuenta ---------- */
 // El botón de Ajustes abre este aviso: hay que marcar «Deseo eliminar mi cuenta», escribir la contraseña y recién entonces se habilita el botón de eliminar. Borra todo en el servidor
 // (DELETE /api/account, que vuelve a comprobar la contraseña), cierra la sesión y lleva al inicio. No se cierra al tocar afuera (solo con Cancelar o Escape), para que no se pierda
-// por un toque sin querer. Una cuenta de Google (sin contraseña) no puede seguir: el aviso le dice cómo elegir una.
+// por un toque sin querer. Una cuenta de Google (sin contraseña) confirma con un código de 6 dígitos que le llega al correo (POST /api/account/delete-code): botón «Enviar código» y campo del código.
 function openDeleteAccountModal(){
   const withPassword = !!(state.user && state.user.hasPassword);
   const overlay = document.createElement('div');
@@ -378,7 +378,13 @@ function openDeleteAccountModal(){
       <label class="delete-check"><input type="checkbox" id="delCheck"><span>${esc(t('delete_modal_check'))}</span></label>
       <div class="field delete-pass">
         <input type="password" id="delPass" autocomplete="current-password" placeholder="${esc(t('delete_modal_password'))}" aria-label="${esc(t('delete_modal_password'))}">
-      </div>` : `<p class="error delete-nopass">${esc(t('delete_modal_no_password'))}</p>`}
+      </div>` : `
+      <label class="delete-check"><input type="checkbox" id="delCheck"><span>${esc(t('delete_modal_check'))}</span></label>
+      <p class="delete-code-hint" id="delCodeHint">${esc(t('delete_modal_code_hint'))}</p>
+      <div class="field delete-pass delete-code-row">
+        <input type="text" id="delCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${esc(t('delete_modal_code_ph'))}" aria-label="${esc(t('delete_modal_code_ph'))}">
+        <button type="button" class="btn-ghost" id="delSend">${esc(t('delete_modal_send_code'))}</button>
+      </div>`}
       <div class="error" id="delError" role="alert" hidden></div>
       <div class="confirm-actions">
         <button type="button" class="btn-ghost" data-act="cancel">${esc(t('cancel_btn'))}</button>
@@ -386,24 +392,38 @@ function openDeleteAccountModal(){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  const check = overlay.querySelector('#delCheck'), pass = overlay.querySelector('#delPass'), del = overlay.querySelector('[data-act="delete"]'), errEl = overlay.querySelector('#delError');
+  const check = overlay.querySelector('#delCheck'), pass = overlay.querySelector('#delPass') || overlay.querySelector('#delCode'), del = overlay.querySelector('[data-act="delete"]'), errEl = overlay.querySelector('#delError');
   const onKey = e=>{ if(e.key==='Escape') cleanup(); };
   const cleanup = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
   document.addEventListener('keydown', onKey);
   overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
-  if(!withPassword){ del.hidden = true; overlay.querySelector('[data-act="cancel"]').focus(); return; }
-  // el botón de eliminar solo se habilita con la casilla marcada y la contraseña escrita
-  const sync = ()=>{ del.disabled = !(check.checked && pass.value.length>0); errEl.hidden = true; };
+  // el botón de eliminar solo se habilita con la casilla marcada y la contraseña (o el código de 6 dígitos) escrita
+  const sync = ()=>{ del.disabled = !(check.checked && (withPassword ? pass.value.length>0 : /^\d{6}$/.test(pass.value.trim()))); errEl.hidden = true; };
+  const send = overlay.querySelector('#delSend');
+  if(send) send.onclick = async ()=>{
+    send.disabled = true; errEl.hidden = true;
+    try{
+      await api('/account/delete-code', { method:'POST', body: JSON.stringify({ lang: state.lang }) });
+      overlay.querySelector('#delCodeHint').textContent = t('delete_modal_code_sent');
+      send.textContent = t('delete_modal_resend_code');
+      pass.focus();
+    }catch(e){
+      const code = e && e.body && e.body.error;
+      errEl.textContent = t(code==='too_many_requests' ? 'err_too_many' : 'err_send_code');
+      errEl.hidden = false;
+    }
+    send.disabled = false;
+  };
   check.onchange = sync;
   pass.oninput = sync;
   const submit = async ()=>{
     if(del.disabled) return;
     del.disabled = true; check.disabled = true; pass.disabled = true;
     try{
-      await api('/account', { method:'DELETE', body: JSON.stringify({ confirm: true, password: pass.value }) });
+      await api('/account', { method:'DELETE', body: JSON.stringify(withPassword ? { confirm: true, password: pass.value } : { confirm: true, code: pass.value.trim() }) });
     }catch(e){
       const code = e && e.body && e.body.error;
-      errEl.textContent = t(code==='bad_current_password' ? 'err_bad_current_password' : code==='admin_account' ? 'err_admin_delete' : code==='too_many_requests' ? 'err_too_many' : 'err_save_user');
+      errEl.textContent = t(code==='bad_current_password' ? 'err_bad_current_password' : code==='bad_delete_code' ? 'err_bad_delete_code' : code==='admin_account' ? 'err_admin_delete' : code==='too_many_requests' ? 'err_too_many' : 'err_save_user');
       errEl.hidden = false;
       check.disabled = false; pass.disabled = false; sync(); errEl.hidden = false;
       pass.focus(); pass.select();

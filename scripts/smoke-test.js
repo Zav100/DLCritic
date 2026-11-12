@@ -464,9 +464,23 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await e('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_del2@example.com', password: pass, username: 'smoketest_del2' }));
     await db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'smoketest_del2'").run();
     assert.equal((await e('DELETE', '/api/account', { confirm: true, password: pass })).body.error, 'admin_account');
-    // una cuenta de Google sin contraseña tiene que elegir una primero
+    // una cuenta de Google sin contraseña confirma con un código de 6 dígitos que le llega al correo (5 intentos por código; uno nuevo anula el anterior)
+    assert.equal((await d('POST', '/api/account/delete-code', {})).body.error, 'password_required'); // quien tiene contraseña no usa código
     await db.prepare("UPDATE users SET is_admin = 0, has_password = 0 WHERE username = 'smoketest_del2'").run();
-    assert.equal((await e('DELETE', '/api/account', { confirm: true, password: pass })).body.error, 'set_password_first');
+    assert.equal((await e('DELETE', '/api/account', { confirm: true, code: '123456' })).body.error, 'bad_delete_code'); // sin haber pedido ninguno
+    if (!REMOTE) { // el código se lee del correo en la memoria del proceso (mail.outbox): solo en modo local
+      const mail = require('../server/mail');
+      const codeOf = () => /\n(\d{6})\n/.exec(mail.outbox.at(-1).text)[1];
+      const antes = mail.outbox.length;
+      ok(await e('POST', '/api/account/delete-code', {}));
+      assert.deepEqual([mail.outbox.length, mail.outbox.at(-1).to], [antes + 1, 'smoketest_del2@example.com']);
+      const code = codeOf(), wrong = code === '000000' ? '111111' : '000000';
+      for (let i = 0; i < 5; i++) assert.equal((await e('DELETE', '/api/account', { confirm: true, code: wrong })).body.error, 'bad_delete_code');
+      assert.equal((await e('DELETE', '/api/account', { confirm: true, code })).body.error, 'bad_delete_code'); // tras 5 fallos el código ya no sirve
+      ok(await e('POST', '/api/account/delete-code', {})); // pedir otro reinicia los intentos
+      ok(await e('DELETE', '/api/account', { confirm: true, code: codeOf() }));
+      assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM users WHERE username = 'smoketest_del2'").get()).n, 0);
+    }
     await db.prepare("DELETE FROM users WHERE username = 'smoketest_del2'").run();
     // con la confirmación: la sesión se cierra, la cuenta y lo suyo desaparecen, y la sugerencia queda sin nombre
     ok(await d('DELETE', '/api/account', { confirm: true, password: pass }));

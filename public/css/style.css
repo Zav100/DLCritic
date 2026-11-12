@@ -8186,8 +8186,27 @@ a.btn-ghost {
   text-align: left;
 }
 
-.delete-account-box .delete-nopass {
-  margin: 0 0 18px;
+/* cuenta sin contraseña (Google): explicación del código y, debajo, el campo del código con su botón «Enviar código» */
+.delete-account-box .delete-code-hint {
+  margin: 0 0 14px;
   font-size: 13.5px;
   line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.delete-code-row {
+  display: flex;
+  gap: 8px;
+}
+
+.delete-code-row input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+.delete-code-row .btn-ghost {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
