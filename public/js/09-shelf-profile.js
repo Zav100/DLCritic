@@ -214,9 +214,6 @@ function renderProfileBody(el, username, profile, editable){
       <div class="picker-grid" id="favPickGrid"></div>
     </div>` : ''}
 
-    <div class="sectionhead"><h2>${t('lists_title')}</h2></div>
-    <div class="grid" id="listsGrid" style="margin-bottom:22px;"></div>
-
     ${editable ? `
     <div class="sectionhead"><h2>${t('wishlist_title')}</h2></div>
     <div class="library-actions">
@@ -227,6 +224,9 @@ function renderProfileBody(el, username, profile, editable){
     ` : (profile.library && profile.library.some(id=>findGame(id)) ? `
     <div class="sectionhead"><h2>${t('library_title_other')}</h2></div>
     <div id="publicLibrary" style="margin-bottom:22px;"><div class="grid wishlist-grid" id="publicLibraryGrid"></div></div>` : '')}
+
+    <div class="sectionhead"><h2>${t('lists_title')}</h2></div>
+    <div class="grid" id="listsGrid" style="margin-bottom:22px;"></div>
 
     <div class="shelf-layout">
       <div class="shelf-main">
