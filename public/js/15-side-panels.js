@@ -11,13 +11,14 @@
  * Explorar y Personajes no están aquí: viven en 08-browse.js y 14-characters.js.
  */
 /* ---------- utilidades compartidas ---------- */
-// «Hoy», «Hace 1 día», «Hace 2 días»... (sin «ayer» ni «anteayer») hasta 31 días; pasado eso, «Hace 1 mes», «Hace 2 meses»... y desde los 365 días, «Hace 1 año», «Hace 2 años».
-// Cuenta días de calendario (lo de anoche a las 23:50 es «Hace 1 día» aunque hayan pasado diez minutos). Lo usan las calificaciones del perfil y las filas de actividad (Últimas reseñas, Actividad reciente).
+// «Hace 1 hora», «Hace 2 horas»... durante las primeras 24 horas (menos de una hora: «Hace menos de 1 hora»); a las 24 horas, «Hace 1 día», «Hace 2 días»... (sin «ayer» ni «anteayer») hasta 31 días; pasado eso, «Hace 1 mes», «Hace 2 meses»... y desde los 365 días, «Hace 1 año», «Hace 2 años».
+// Cuenta tiempo transcurrido real (24 horas exactas = 1 día), no días de calendario. Lo usan las calificaciones del perfil y las filas de actividad (Últimas reseñas, Actividad reciente).
 function agoLabel(iso){
-  const startOfDay = d=> new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const days = Math.round((startOfDay(new Date()) - startOfDay(new Date(iso))) / 86400000);
+  const hours = Math.floor((Date.now() - new Date(iso)) / 3600000); // si el reloj del navegador va atrasado y sale negativo, cae en «menos de 1 hora»
+  const days = Math.floor(hours / 24);
   const fmt = (one, many, n)=> n===1 ? t(one) : t(many).replace('{n}', n);
-  if(days<=0) return t('ago_today');
+  if(hours<1) return t('ago_lt_hour');
+  if(hours<24) return fmt('ago_hour', 'ago_hours', hours);
   if(days<=31) return fmt('ago_day', 'ago_days', days);
   if(days<365) return fmt('ago_month', 'ago_months', Math.min(11, Math.floor(days/30))); // meses de 30 días, sin llegar a «12 meses»: a los 365 días ya es un año
   return fmt('ago_year', 'ago_years', Math.floor(days/365));
