@@ -29,7 +29,7 @@
   /* Logo de DLCritic (mismo dibujo y colores que el header del sitio) con la etiqueta "Admin" y la llave inglesa. */
   h1.logo svg{ width:28px; height:28px; }
   .logo-word span{ color:var(--pink); }
-  h1.logo small{ font-family:'Space Mono',monospace; font-size:10px; font-weight:400; color:var(--teal); letter-spacing:1px; display:flex; align-items:center; gap:4px; margin-left:2px; }
+  h1.logo small{ font-family:'Lexend',sans-serif; line-height:1.5; font-size:10px; font-weight:400; color:var(--teal); letter-spacing:1px; display:flex; align-items:center; gap:4px; margin-left:2px; }
   h1.logo small svg{ width:11px; height:11px; }
   .topbar{
     display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
@@ -38,17 +38,17 @@
     border-bottom:1px solid var(--line); box-shadow:inset 0 1px 0 rgba(255,255,255,0.35);
   }
   .authwrap{ padding-top:60px; }
-  .pill{ font-family:'Space Mono',monospace; font-size:12px; background:var(--paper-alt); color:var(--ink); padding:6px 12px; border-radius:16px; font-weight:700; }
+  .pill{ font-family:'Lexend',sans-serif; line-height:1.417; font-size:12px; background:var(--paper-alt); color:var(--ink); padding:6px 12px; border-radius:16px; font-weight:700; }
   .card{ background:var(--paper); color:var(--ink); border-radius:18px; padding:20px; box-shadow:0 1px 2px var(--shadow-soft), 0 10px 24px var(--shadow-strong); }
   .glass{ background:var(--paper-glass); -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6); }
   .authcard{ max-width:360px; margin:0 auto; }
   .field{ margin-bottom:14px; }
-  .field label{ display:block; font-family:'Space Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); margin-bottom:6px; }
+  .field label{ display:block; font-family:'Lexend',sans-serif; line-height:1.455; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); margin-bottom:6px; }
   /* Casilla con texto (recordar el dispositivo): texto normal, no el estilo de etiqueta en mayúsculas. */
   .field label.check-row{ display:flex; align-items:flex-start; gap:8px; margin-bottom:0; font-family:inherit; font-size:13px; line-height:1.45; text-transform:none; letter-spacing:0; cursor:pointer; }
   .check-row input{ margin-top:2px; flex-shrink:0; }
   /* Cajita para una clave o una lista de códigos (activar la verificación en dos pasos). */
-  .keybox{ font-family:'Space Mono',monospace; font-size:13px; letter-spacing:1px; line-height:1.7; background:var(--paper-alt); color:var(--ink); border:1px solid var(--line-dark); border-radius:8px; padding:10px 12px; margin:6px 0 10px; word-break:break-all; white-space:pre-wrap; user-select:all; }
+  .keybox{ font-family:'Lexend',sans-serif; font-size:13px; letter-spacing:1px; line-height:1.7; background:var(--paper-alt); color:var(--ink); border:1px solid var(--line-dark); border-radius:8px; padding:10px 12px; margin:6px 0 10px; word-break:break-all; white-space:pre-wrap; user-select:all; }
   input[type=text], input[type=search], input[type=password], input[type=number], input[type=url], input[type=date], select, textarea{
     width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line-dark);
     background:var(--paper-alt); color:var(--ink); font-family:'Space Grotesk',sans-serif; font-size:14px;
@@ -113,7 +113,7 @@
   .cover-preview img{ width:100%; height:100%; object-fit:cover; }
 
   table{ font-variant-numeric:tabular-nums; width:100%; min-width:520px; border-collapse:collapse; font-size:13.5px; }
-  th{ text-align:left; font-family:'Space Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-soft); padding:9px 10px; border-bottom:1px solid var(--line-dark); }
+  th{ text-align:left; font-family:'Lexend',sans-serif; line-height:1.524; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-soft); padding:9px 10px; border-bottom:1px solid var(--line-dark); }
   th.col-actions, td.col-actions{ text-align:right; }
   th.col-icon, td.col-icon{ width:56px; }
   td{ padding:10px; border-bottom:1px solid var(--line-dark); vertical-align:middle; }
@@ -187,7 +187,7 @@
   .chip-group{ display:flex; gap:6px; flex-wrap:wrap; }
   .chip{
     display:inline-flex; align-items:center; gap:5px;
-    font-family:'Space Mono',monospace; font-size:11px; font-weight:700; padding:7px 14px; border-radius:20px;
+    font-family:'Lexend',sans-serif; line-height:1.455; font-size:11px; font-weight:700; padding:7px 14px; border-radius:20px;
     border:none; background:var(--paper-alt); color:var(--ink-soft); cursor:pointer;
     letter-spacing:0.3px; transition:background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
   }
@@ -197,27 +197,27 @@
   .sort-select{ width:auto; min-width:200px; height:38px; padding:0 12px; font-weight:700; font-size:12.5px; cursor:pointer; }
 
   .row-hidden{ opacity:0.5; }
-  .tag{ font-family:'Space Mono',monospace; font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; display:inline-block; }
+  .tag{ font-family:'Lexend',sans-serif; line-height:1.5; font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; display:inline-block; }
   .tag.tag-hidden{ background:var(--red); color:#fff; }
   .tag.tag-new{ background:var(--gold); color:var(--ink); }
   .tag.tag-builtin{ background:var(--paper-alt); color:var(--ink-soft); border:1px solid var(--line-dark); }
-  .source-dot{ width:22px; height:22px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; }
+  .source-dot{ width:22px; height:22px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:'Lexend',sans-serif; line-height:1.444; font-size:9px; font-weight:700; }
 
   .suggestion-card{ background:var(--paper-alt); border-radius:14px; padding:16px 18px; margin-bottom:12px; }
   .suggestion-card.kind-game{ border-left:4px solid var(--teal); }
   .suggestion-card.kind-character{ border-left:4px solid var(--pink); }
-  .kind-badge{ display:inline-block; vertical-align:middle; font-family:'Space Mono',monospace; font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; margin-right:6px; color:#fff; }
+  .kind-badge{ display:inline-block; vertical-align:middle; font-family:'Lexend',sans-serif; line-height:1.474; font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; margin-right:6px; color:#fff; }
   .kind-badge.game{ background:var(--teal); }
   .kind-badge.character{ background:var(--pink); }
   .suggestion-card.is-read{ opacity:0.7; }
   .suggestion-card.is-archived{ opacity:0.55; }
   .suggestion-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:6px; }
   .suggestion-title{ font-family:'Bungee',sans-serif; font-size:14px; color:var(--ink); }
-  .suggestion-meta{ font-family:'Space Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-bottom:8px; }
+  .suggestion-meta{ font-family:'Lexend',sans-serif; line-height:1.524; font-size:10.5px; color:var(--ink-soft); margin-bottom:8px; }
   .suggestion-note{ font-size:13px; color:var(--ink); margin-bottom:10px; line-height:1.4; }
   .suggestion-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-  .suggestion-sub{ font-family:'Space Mono',monospace; font-size:10.5px; color:var(--ink-soft); }
-  .status-badge{ font-family:'Space Mono',monospace; font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; flex-shrink:0; }
+  .suggestion-sub{ font-family:'Lexend',sans-serif; line-height:1.524; font-size:10.5px; color:var(--ink-soft); }
+  .status-badge{ font-family:'Lexend',sans-serif; line-height:1.474; font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:10px; text-transform:uppercase; letter-spacing:0.3px; flex-shrink:0; }
   .status-badge.unread{ background:var(--gold); color:#fff; }
   .status-badge.read{ background:var(--teal); color:#fff; }
   .status-badge.archived{ background:var(--paper); color:var(--ink-soft); border:1px solid var(--line-dark); }

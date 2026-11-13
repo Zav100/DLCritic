@@ -6,7 +6,7 @@ const { Readable } = require('node:stream');
 const { receiveImage, saveImage, deleteImage } = require('./upload');
 const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
-const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail } = require('./mail');
+const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail } = require('./mail');
 const google = require('./google');
 const { checkSecondFactor } = require('./twofactor');
 const steam = require('./steam');
@@ -949,24 +949,63 @@ app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, re
 // Eliminar la propia cuenta (Ajustes › Privacidad y seguridad). Borra la fila del usuario y, por ON DELETE CASCADE, todo lo suyo: reseñas (y los votos que recibieron),
 // reseñas de personajes, listas, seguidores y seguidos, avisos, progreso del reto, horas de Steam, sesiones y enlaces pendientes. Las sugerencias que envió quedan, sin su nombre.
 // Pide { confirm: true } (el cliente ya hizo su confirmación de tres pasos) y la contraseña actual: sin ella, una sesión robada alcanzaría para borrar la cuenta, igual que para cambiar
-// el correo. Una cuenta creada con Google no tiene contraseña: tiene que elegir una primero (set_password_first). Las cuentas de administración no se pueden borrar desde aquí:
-// se perdería el acceso al panel sin querer; se quitan a mano en la base.
+// el correo. Una cuenta creada con Google no tiene contraseña: en su lugar pide { code }, el código de 6 dígitos que se manda a su correo con POST /api/account/delete-code.
+// Las cuentas de administración no se pueden borrar desde aquí: se perdería el acceso al panel sin querer; se quitan a mano en la base.
+const DELETE_CODE_TTL_MS = 15 * 60 * 1000; // el código vale 15 minutos
+const DELETE_CODE_MAX_TRIES = 5; // tras 5 códigos mal escritos hay que pedir uno nuevo
+const upsertDeleteCode = db.prepare('INSERT INTO account_deletion_codes (user_id, code_hash, expires_at, attempts) VALUES (?, ?, ?, 0) ON CONFLICT (user_id) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0');
+const findDeleteCode = db.prepare('SELECT * FROM account_deletion_codes WHERE user_id = ?');
+const bumpDeleteCodeTries = db.prepare('UPDATE account_deletion_codes SET attempts = attempts + 1 WHERE user_id = ?');
+
+// Manda al correo de la cuenta el código para eliminarla (3 por hora por persona; uno nuevo anula el anterior). Solo para cuentas sin contraseña: las demás confirman con ella.
+app.post('/api/account/delete-code', requireAuth, writeLimiter, async (req, res) => {
+  const user = await findUserById.get(req.user.id);
+  if (!user) return res.status(404).json({ error: 'not_found' });
+  if (user.is_admin) return res.status(403).json({ error: 'admin_account' });
+  if (user.has_password) return res.status(400).json({ error: 'password_required' });
+  if (!user.email) return res.status(400).json({ error: 'invalid_email' });
+  const r = await consume('delete-code', 'u:' + user.id, 60 * 60 * 1000, 3);
+  if (r.limited) { res.setHeader('Retry-After', String(r.retryAfter)); return res.status(429).json({ error: 'too_many_requests', retryAfter: r.retryAfter }); }
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  await upsertDeleteCode.run(user.id, sha256(code), new Date(Date.now() + DELETE_CODE_TTL_MS).toISOString());
+  try {
+    await sendMail({ to: user.email, ...deleteCodeEmail(req.body && req.body.lang === 'en' ? 'en' : 'es', user.username, code) });
+  } catch (e) {
+    console.error('No se pudo mandar el código para eliminar la cuenta:', e.message); // el código nunca se imprime
+    return res.status(502).json({ error: 'mail_failed' });
+  }
+  res.json({ ok: true });
+});
+
 const deleteAccountLimiter = rateLimit({ name: 'delete-account', windowMs: 60 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
 app.delete('/api/account', requireAuth, deleteAccountLimiter, async (req, res) => {
   if (!req.body || req.body.confirm !== true) return res.status(400).json({ error: 'confirm_required' });
   const user = await findUserById.get(req.user.id);
   if (!user) return res.status(404).json({ error: 'not_found' });
   if (user.is_admin) return res.status(403).json({ error: 'admin_account' });
-  if (!user.has_password) return res.status(400).json({ error: 'set_password_first' });
-  await passwordCheckLimiter(req, res, async () => {
-    if (!verifyPin(String(req.body.password || ''), user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
+  const removeAccount = async () => {
     await db.transaction(async tx => {
       await tx.prepare('UPDATE game_suggestions SET submitted_by = NULL WHERE lower(submitted_by) = lower(?)').run(user.username);
-      await tx.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+      await tx.prepare('DELETE FROM users WHERE id = ?').run(user.id); // por ON DELETE CASCADE se va también su código de eliminación
     });
     await deleteImage(user.avatar_url); // la foto de perfil (se espera: en Vercel la función puede congelarse apenas responde)
     clearSessionCookie(res);
     res.json({ deleted: true });
+  };
+  if (!user.has_password) {
+    // Sin contraseña: vale el código del correo. Un código vencido, ya agotado o mal escrito dan el mismo error; cada fallo gasta un intento.
+    const row = await findDeleteCode.get(user.id);
+    const code = String(req.body.code || '').trim();
+    if (!row || new Date(row.expires_at) < new Date() || row.attempts >= DELETE_CODE_MAX_TRIES) return res.status(401).json({ error: 'bad_delete_code' });
+    if (!/^\d{6}$/.test(code) || sha256(code) !== row.code_hash) {
+      await bumpDeleteCodeTries.run(user.id);
+      return res.status(401).json({ error: 'bad_delete_code' });
+    }
+    return removeAccount();
+  }
+  await passwordCheckLimiter(req, res, async () => {
+    if (!verifyPin(String(req.body.password || ''), user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
+    await removeAccount();
   });
 });
 

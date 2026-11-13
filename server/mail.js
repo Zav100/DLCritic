@@ -81,6 +81,13 @@ const EMAILS = {
       paragraphs: ['La contraseña de tu cuenta de DLCritic se acaba de cambiar y se cerró la sesión en todos tus dispositivos.', 'Si fuiste tú, no tienes que hacer nada.'],
       box: { label: 'Si no fuiste tú', note: 'Responde a este correo cuanto antes.', accent: C.pink },
     }),
+    deleteCode: (name, code) => ({
+      subject: 'Tu código para eliminar tu cuenta de DLCritic',
+      preheader: 'Código de 6 dígitos para confirmar que quieres eliminar tu cuenta: vale 15 minutos.',
+      title: 'Confirma que quieres eliminar tu cuenta',
+      paragraphs: ['Alguien pidió eliminar tu cuenta de DLCritic. Si fuiste tú, escribe este código en la pantalla de eliminación: se borrarán tu perfil, tus reseñas y todo lo demás, y no se podrá deshacer.'],
+      box: { label: 'Tu código', code, note: 'Vale 15 minutos y se usa una sola vez. Si no fuiste tú, ignora este mensaje: tu cuenta no se borrará.', accent: C.pink },
+    }),
   },
   en: {
     verify: (name, link) => ({
@@ -114,6 +121,13 @@ const EMAILS = {
       paragraphs: ['The password of your DLCritic account was just changed and you were signed out on all your devices.', 'If it was you, there is nothing to do.'],
       box: { label: "If it wasn't you", note: 'Reply to this email right away.', accent: C.pink },
     }),
+    deleteCode: (name, code) => ({
+      subject: 'Your code to delete your DLCritic account',
+      preheader: '6-digit code to confirm you want to delete your account: valid for 15 minutes.',
+      title: 'Confirm you want to delete your account',
+      paragraphs: ['Someone asked to delete your DLCritic account. If it was you, type this code on the deletion screen: your profile, your reviews and everything else will be deleted, and it can\'t be undone.'],
+      box: { label: 'Your code', code, note: "It's valid for 15 minutes and can be used only once. If it wasn't you, ignore this message: your account won't be deleted.", accent: C.pink },
+    }),
   },
 };
 
@@ -122,4 +136,6 @@ const verifyEmail = (lang, name, link) => buildEmail(lang, name, EMAILS[lang].ve
 const googleLinkedEmail = (lang, name, takeover) => buildEmail(lang, name, EMAILS[lang].googleLinked(name, takeover), siteUrlOrEmpty());
 const passwordChangedEmail = (lang, name) => buildEmail(lang, name, EMAILS[lang].changed(name), siteUrlOrEmpty());
 
-module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, outbox };
+const deleteCodeEmail = (lang, name, code) => buildEmail(lang, name, EMAILS[lang].deleteCode(name, code), siteUrlOrEmpty());
+
+module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail, outbox };

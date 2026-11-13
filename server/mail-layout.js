@@ -4,7 +4,7 @@
 // estructura (textOf), así que cada correo sale en las dos versiones y no pueden quedar distintas.
 //
 // Un correo se describe así (mail.js tiene los de ahora):
-//   { subject, preheader, title, paragraphs: [texto, ...], box: { label, note, accent?, button?: { text, url }, fallback? } }
+//   { subject, preheader, title, paragraphs: [texto, ...], box: { label, note, accent?, code?, button?: { text, url }, fallback? } }
 // El logo es el PNG del sitio (public/img/icon-192.png) en la dirección pública: si no se conoce (siteUrl vacío) se omite y queda el nombre en texto.
 
 const C = { page: '#0B0A14', card: '#12111F', box: '#1B1936', title: '#FFFFFF', body: '#C9C5E6', muted: '#9A97B5', faint: '#77739A', purple: '#8B7FE8', pink: '#F0A8D0', button: '#7B61FF' };
@@ -22,6 +22,7 @@ const FOOTER = {
 function textOf({ lang, name, paragraphs, box }) {
   const lines = [`${GREETING[lang]} ${name},`, '', ...paragraphs.flatMap(p => [p, ''])];
   lines.push(box.label.toUpperCase());
+  if (box.code) lines.push(box.code, '');
   if (box.button) lines.push(`${box.button.text}:`, box.button.url, '');
   if (box.note) lines.push(box.note, '');
   lines.push('— DLCritic');
@@ -32,6 +33,8 @@ function htmlOf({ lang, name, preheader, title, paragraphs, box, siteUrl }) {
   const accent = box.accent || C.button;
   const logo = siteUrl ? `<td style="padding-right:12px;"><img src="${esc(siteUrl)}/img/icon-192.png" width="44" height="44" alt="" style="display:block;border:0;width:44px;height:44px;"></td>` : '';
   const row = (inner, pad) => `<tr><td style="padding:${pad};font-family:${FONT};">${inner}</td></tr>`;
+  const code = box.code ? `
+          <div style="margin:0 0 14px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:8px;color:#FFFFFF;">${esc(box.code)}</div>` : '';
   const button = box.button ? `
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;"><tr>
             <td bgcolor="${C.button}" style="background-color:${C.button};border-radius:6px;"><a href="${esc(box.button.url)}" style="display:inline-block;padding:13px 24px;font-family:${FONT};font-size:15px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:6px;">${esc(box.button.text)}</a></td>
@@ -60,7 +63,7 @@ function htmlOf({ lang, name, preheader, title, paragraphs, box, siteUrl }) {
     <tr><td style="padding:24px 40px 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.box}" style="background-color:${C.box};border:1px solid ${accent};">
         <tr><td style="padding:20px 22px;font-family:${FONT};">
-          <div style="margin:0 0 12px;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${accent};">${esc(box.label)}</div>${button}
+          <div style="margin:0 0 12px;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${accent};">${esc(box.label)}</div>${code}${button}
           ${box.note ? `<p style="margin:0;font-size:13px;line-height:1.5;color:${C.muted};">${esc(box.note)}</p>` : ''}
         </td></tr>
       </table>
