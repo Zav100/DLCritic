@@ -393,7 +393,8 @@ function openDeleteAccountModal(){
     </div>`;
   document.body.appendChild(overlay);
   const check = overlay.querySelector('#delCheck'), pass = overlay.querySelector('#delPass') || overlay.querySelector('#delCode'), del = overlay.querySelector('[data-act="delete"]'), errEl = overlay.querySelector('#delError');
-  const onKey = e=>{ if(e.key==='Escape') cleanup(); };
+  // Escape con un aviso encima (el del código enviado) cierra solo el aviso, no esta ventana
+  const onKey = e=>{ if(e.key==='Escape' && !document.querySelector('.notice-box:not(.delete-account-box)')) cleanup(); };
   const cleanup = ()=>{ overlay.remove(); document.removeEventListener('keydown', onKey); };
   document.addEventListener('keydown', onKey);
   overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
@@ -406,7 +407,8 @@ function openDeleteAccountModal(){
       await api('/account/delete-code', { method:'POST', body: JSON.stringify({ lang: state.lang }) });
       overlay.querySelector('#delCodeHint').textContent = t('delete_modal_code_sent');
       send.textContent = t('delete_modal_resend_code');
-      pass.focus();
+      // aviso en tarjeta ("Entendido"); al cerrarlo el cursor pasa al campo del código
+      noticeDialog('', t('delete_modal_code_sent'), '', 'good').then(()=> pass.focus());
     }catch(e){
       const code = e && e.body && e.body.error;
       errEl.textContent = t(code==='too_many_requests' ? 'err_too_many' : 'err_send_code');
