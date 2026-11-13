@@ -105,24 +105,14 @@ const PLATFORM_META = {
   xbox:   { color:"#107c10", mono:"XB" },
   switch: { color:"#c8102e", mono:"NS" }
 };
-// Genera la URL de búsqueda de un juego dentro de cada tienda (fallback cuando el juego no tiene un link directo cargado).
-const STORE_SEARCH = {
-  steam:  (title)=> `https://store.steampowered.com/search/?term=${encodeURIComponent(title)}`,
-  epic:   (title)=> `https://store.epicgames.com/en-US/browse?q=${encodeURIComponent(title)}&sortBy=relevancy&sortDir=DESC`,
-  riot:   ()=> 'https://www.riotgames.com/',
-  psn:    (title)=> `https://store.playstation.com/en-us/search/${encodeURIComponent(title)}`,
-  xbox:   (title)=> `https://www.xbox.com/en-us/search/results/games?q=${encodeURIComponent(title)}`,
-  switch: (title)=> `https://www.nintendo.com/us/search/?q=${encodeURIComponent(title)}&p=1&cat=Games`
-};
-// Arma los botones "Steam ↗", "Xbox ↗", etc. de la ficha de un juego (usa el link directo si existe, si no la búsqueda de arriba).
+// Arma los botones "Steam ↗", "Xbox ↗", etc. de la ficha de un juego: solo de las plataformas que tienen enlace cargado en el panel.
+// Una plataforma marcada sin enlace queda únicamente como etiqueta (platBadges), sin botón.
 function storeLinksHTML(g){
   if(!g.platforms || !g.platforms.length) return '';
   return g.platforms.map(p=>{
     const meta = PLATFORM_META[p];
-    if(!meta) return '';
-    const direct = g.storeLinks && g.storeLinks[p];
-    const href = direct || (STORE_SEARCH[p] && STORE_SEARCH[p](g.title));
-    if(!href) return '';
+    const href = g.storeLinks && g.storeLinks[p];
+    if(!meta || !href) return '';
     return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" class="store-link" style="--pcolor:${meta.color}"><span class="plat-chip-icon">${meta.mono}</span>${esc(PLATFORM_NAMES[p])} ↗</a>`;
   }).join('');
 }
