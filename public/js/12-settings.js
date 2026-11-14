@@ -161,8 +161,8 @@ function renderSettingsView(){
           <div class="cover-picker" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
             <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
             <div style="min-width:0; flex:1 1 200px;">
-              <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
-              <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
+              <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp${u.isSubscriber? ',image/gif' : ''}" style="max-width:100%;">
+              <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t(u.isSubscriber? 'avatar_file_hint_sub' : 'avatar_file_hint'))}</p>
             </div>
           </div>
         </div>
@@ -254,6 +254,14 @@ function renderSettingsView(){
   document.getElementById('st-avatar-file').onchange = (e)=>{
     const file = e.target.files[0];
     if(!file) return;
+    // Los GIF (y las imágenes animadas) son solo de los suscriptores; el servidor lo vuelve a comprobar, esto solo avisa antes de subir.
+    if(file.type==='image/gif' && !state.user.isSubscriber){
+      e.target.value = '';
+      const errEl = document.getElementById('stProfileError');
+      errEl.textContent = t('err_avatar_animated'); errEl.hidden = false;
+      return;
+    }
+    document.getElementById('stProfileError').hidden = true;
     pendingSettingsAvatarFile = file;
     const reader = new FileReader();
     reader.onload = ()=>{ document.getElementById('settingsAvatarPreview').innerHTML = `<img src="${reader.result}">`; };
@@ -270,9 +278,16 @@ function renderSettingsView(){
       if(pendingSettingsAvatarFile){
         const fd = new FormData();
         fd.append('image', await shrinkImage(pendingSettingsAvatarFile, 1000));
-        const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
-        state.user = r.user;
-        pendingSettingsAvatarFile = null;
+        try{
+          const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
+          state.user = r.user;
+          pendingSettingsAvatarFile = null;
+        }catch(e){
+          const code = e.body && e.body.error;
+          errEl.textContent = t(code==='avatar_weekly_limit' ? 'err_avatar_weekly' : code==='animated_not_allowed' ? 'err_avatar_animated' : code==='invalid_file' ? 'err_avatar_invalid' : 'err_avatar_upload');
+          errEl.hidden = false;
+          return;
+        }
       }
       const oldUsername = state.user.username;
       const { user } = await apiPut('/profile', { username, bio });

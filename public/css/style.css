@@ -8210,3 +8210,34 @@ a.btn-ghost {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ---------- rol de suscriptor: borde multicolor alrededor de la foto de perfil ----------
+   Mismo degradado animado que el anillo de progreso de la biblioteca (.wishlist-ring-fill), pero más angosto. Lo pone subRing() (03-state-and-utils.js)
+   en el perfil, el menú de la cuenta y las listas de personas. No lleva etiqueta ni texto: solo el borde. */
+.sub-ring {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--pink), var(--teal), var(--gold));
+  background-size: 300% 300%;
+  animation: gradient-border-spin 5s linear infinite;
+}
+
+.profile-avatar .sub-ring {
+  display: flex;
+  padding: 3px;
+  border-radius: 29px; /* los 26px de la foto del perfil + el grosor del borde */
+}
+
+@media (max-width: 560px) {
+  .profile-avatar .sub-ring {
+    border-radius: 23px; /* 20px de la foto en pantallas chicas + el borde */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sub-ring {
+    animation: none;
+  }
+}

@@ -51,6 +51,8 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 // Texto "plano" para buscar: sin mayúsculas ni tildes, así "ragnarok" encuentra "Ragnarök" y "pokemon" encuentra "Pokémon".
 function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
 function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Rodea la foto de perfil con el borde multicolor de los suscriptores (CSS: .sub-ring). Para las demás cuentas devuelve la foto tal cual.
+function subRing(html, isSub){ return isSub ? `<span class="sub-ring">${html}</span>` : html; }
 // Formatea una fecha ISO al formato lindo ("04 sept 2026" / "Sep 04, 2026" según el idioma).
 function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(state.lang==='en'?'en-US':'es-ES',{day:'2-digit',month:'short',year:'numeric'}); }
 // Avisa algo con una tarjeta en el centro de la pantalla y un botón «Entendido» (ver noticeDialog en 07-stats-share-modals.js); antes era un mensajito que se iba solo abajo.

@@ -73,6 +73,9 @@ function refreshGoogleAuth(){
   document.getElementById('googleBtn').href = '/api/auth/google/start?next=/&lang=' + (state.lang==='en' ? 'en' : 'es');
 }
 // Al volver de Google con un error, /cuenta?google=error&reason=... : se muestra el motivo en la pestaña de iniciar sesión y se limpia la dirección.
+// Las pestañas se enganchan aquí y no con onclick="" en el HTML: la Content-Security-Policy (server/index.js) no permite código en los atributos.
+document.getElementById('tabLogin').onclick = ()=> setAuthTab('login');
+document.getElementById('tabRegister').onclick = ()=> setAuthTab('register');
 function showGoogleReturn(){
   const q = new URLSearchParams(location.search);
   if(q.get('google')!=='error') return;

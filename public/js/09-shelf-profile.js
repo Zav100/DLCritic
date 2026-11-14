@@ -18,7 +18,7 @@
 function profileShapeFromSelf(u){
   return {
     username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum, favoriteSteam: u.favoriteSteam,
-    bio: u.bio, avatarUrl: u.avatarUrl, socialLinks: u.socialLinks,
+    bio: u.bio, avatarUrl: u.avatarUrl, isSubscriber: u.isSubscriber, socialLinks: u.socialLinks,
     isFollowing:false, isFriend:false, followerCount:u.followerCount||0, followingCount:u.followingCount||0,
   };
 }
@@ -141,9 +141,9 @@ function renderProfileBody(el, username, profile, editable){
   const lvl = computeLevel(counts);
   const favGame = profile.favoriteGameId ? findGame(profile.favoriteGameId) : null;
 
-  const avatarHTML = profile.avatarUrl
+  const avatarHTML = subRing(profile.avatarUrl
     ? `<img class="avatar-img" src="${esc(profile.avatarUrl)}" alt="">`
-    : `<div class="avatar" style="background:${color}">${esc(username[0].toUpperCase())}</div>`;
+    : `<div class="avatar" style="background:${color}">${esc(username[0].toUpperCase())}</div>`, profile.isSubscriber);
 
   const headActionsHTML = editable
     ? `<a class="btn-edit-profile" id="editProfileBtn" href="/ajustes">${ICONS.edit} ${t('profile_edit_btn')}</a>`
@@ -304,10 +304,10 @@ function renderProfileBody(el, username, profile, editable){
   renderShelfReviewsList();
 }
 // Avatar chico (la foto, o la inicial en un círculo de color) para las listas de personas: el buscador del header y la lista de seguidores.
-function miniAvatarHTML(username, avatarUrl){
-  if(avatarUrl) return `<img class="mini-avatar" src="${esc(avatarUrl)}" alt="" loading="lazy" decoding="async">`;
+function miniAvatarHTML(username, avatarUrl, isSub){
+  if(avatarUrl) return subRing(`<img class="mini-avatar" src="${esc(avatarUrl)}" alt="" loading="lazy" decoding="async">`, isSub);
   const color = AVATAR_COLORS[Math.abs(hashStr(username))%AVATAR_COLORS.length];
-  return `<span class="mini-avatar" style="background:${color}">${esc(username[0].toUpperCase())}</span>`;
+  return subRing(`<span class="mini-avatar" style="background:${color}">${esc(username[0].toUpperCase())}</span>`, isSub);
 }
 // Abre el perfil de una persona: el propio es Mi estantería; el de otra persona, su perfil público.
 function openProfileOf(username){
@@ -347,7 +347,7 @@ async function openFollowListModal(username, kind, isSelf){
   try{
     const { total, users } = await apiGet('/users/'+encodeURIComponent(username)+'/'+kind);
     if(!users.length){ body.innerHTML = `<p class="hint">${esc(t('follow_list_empty_'+kind+(isSelf? '_self' : '_other')))}</p>`; return; }
-    body.innerHTML = `<div class="follow-rows">${users.map(u=>`<a class="follow-row" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span>${esc(u.username)}</span></a>`).join('')}</div>`
+    body.innerHTML = `<div class="follow-rows">${users.map(u=>`<a class="follow-row" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl, u.isSubscriber)}<span>${esc(u.username)}</span></a>`).join('')}</div>`
       + (total>users.length? `<p class="hint" style="margin:10px 0 0;">${esc(t('follow_list_more').replace('{n}', users.length).replace('{total}', total))}</p>` : '');
     body.querySelectorAll('.follow-row').forEach(a=>{ a.onclick = spa(()=>{ close(); openProfileOf(a.dataset.user); }); });
   }catch(e){ body.innerHTML = `<p class="error">${esc(t('follow_list_error'))}</p>`; }

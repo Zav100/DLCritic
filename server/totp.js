@@ -70,4 +70,34 @@ function newRecoveryCodes() {
 // En la base se guarda el hash (SHA-256, alcanza porque el código ya es aleatorio y largo). Mayúsculas y guiones no importan al escribirlo.
 const hashRecoveryCode = code => crypto.createHash('sha256').update(String(code).toUpperCase().replace(/[^A-Z0-9]/g, '')).digest('hex');
 
-module.exports = { newSecret, codeForStep, verifyCode, otpauthUri, newRecoveryCodes, hashRecoveryCode, base32Encode, base32Decode, STEP_MS };
+// El secreto se guarda cifrado en la base (AES-256-GCM): una copia de la base o de un respaldo no alcanza para generar códigos. La clave son 32 bytes en
+// hexadecimal (64 caracteres) en la variable TOTP_ENCRYPTION_KEY, que NO está en la base ni en los respaldos (en Vercel: Settings > Environment Variables).
+// Un secreto guardado antes de esto (sin el prefijo enc1:) sigue valiendo y se cifra solo la próxima vez que su dueño entra con un código (twofactor.js).
+// Fuera de producción, sin la variable, se usa una clave fija de desarrollo; en producción sin ella no se puede cifrar uno nuevo (falla, nunca guarda en claro).
+const SEALED = 'enc1:';
+function encryptionKey() {
+  const hex = process.env.TOTP_ENCRYPTION_KEY;
+  if (hex) {
+    if (!/^[0-9a-f]{64}$/i.test(hex)) throw new Error('TOTP_ENCRYPTION_KEY tiene que tener 64 caracteres hexadecimales (32 bytes)');
+    return Buffer.from(hex, 'hex');
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('Falta la variable TOTP_ENCRYPTION_KEY');
+  return crypto.createHash('sha256').update('dlcritic: clave solo para desarrollo').digest();
+}
+const isSealed = stored => typeof stored === 'string' && stored.startsWith(SEALED);
+function sealSecret(secret) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey(), iv);
+  const body = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+  return SEALED + [iv, cipher.getAuthTag(), body].map(b => b.toString('base64')).join('.');
+}
+// Devuelve el secreto en claro (si lo guardado no está cifrado, tal cual).
+function openSecret(stored) {
+  if (!isSealed(stored)) return stored;
+  const [iv, tag, body] = stored.slice(SEALED.length).split('.').map(s => Buffer.from(s, 'base64'));
+  const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
+}
+
+module.exports = { newSecret, codeForStep, verifyCode, otpauthUri, newRecoveryCodes, hashRecoveryCode, base32Encode, base32Decode, sealSecret, openSecret, isSealed, STEP_MS };

@@ -312,6 +312,8 @@ function noticeDialog(title, message, icon, tone){
 // manda la sugerencia a /api/suggestions (la revisa un admin desde el
 // panel de administración, ver admin-ui/assets/js/06-suggestions-and-init.js).
 function openSuggestModal(){
+  // Solo con cuenta (el servidor también lo exige): sin sesión, lleva a iniciar sesión.
+  if(!state.user){ goView('auth'); toast(t('suggest_login_needed')); return; }
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   const platSet = new Set();
@@ -378,7 +380,7 @@ function openSuggestModal(){
       });
       toast(t('toast_suggestion_sent'), 'good');
       cleanup();
-    }catch(e){ errEl.textContent = t('err_send_suggestion'); errEl.hidden=false; }
+    }catch(e){ errEl.textContent = t(e.body && e.body.error==='too_many_requests' ? 'err_suggest_limit' : 'err_send_suggestion'); errEl.hidden=false; }
   };
   document.getElementById('sg-title').focus();
 }

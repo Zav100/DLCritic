@@ -18,9 +18,39 @@ const {
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+
+// Content-Security-Policy: segunda barrera contra XSS. Aunque algún día se escapara mal un texto, el navegador no ejecuta scripts que no sean de este sitio.
+//  · script-src: solo archivos propios y los scripts escritos en las páginas (views/*.html y admin.html), que se reconocen por su hash (se calcula al arrancar,
+//    así no hay que mantener la lista a mano). No hay eval ni onclick="" en línea: si se agrega un script en línea nuevo, el hash se suma solo; un onclick="" no.
+//  · style-src deja 'unsafe-inline' porque el sitio usa style="" en muchos lugares (y fonts.googleapis.com para las fuentes).
+//  · img-src deja cualquier https: porque las portadas de los juegos pueden venir de cualquier sitio (Blob, Steam, PlayStation...); data: y blob: son las máscaras y la tarjeta de compartir.
+//  · connect-src 'self': la página solo le habla a este mismo servidor (las imágenes de otros sitios pasan por /api/image-proxy).
+const inlineScriptHashes = (() => {
+  const hashes = new Set();
+  for (const dir of [path.join(__dirname, 'views'), path.join(__dirname, '..', 'admin-ui')]) {
+    for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
+      for (const m of fs.readFileSync(path.join(dir, file), 'utf8').matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+        // El navegador cuenta los saltos de línea como \n aunque el archivo tenga \r\n (Windows): el hash tiene que salir de ese texto.
+        hashes.add(`'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`);
+      }
+    }
+  }
+  return [...hashes].join(' ');
+})();
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  `script-src 'self' ${inlineScriptHashes}`.trim(),
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self'",
+  "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+].join('; ');
+
 // X-Frame-Options evita que otro sitio meta DLCritic en un iframe (clickjacking sobre el login y los botones de la cuenta).
 app.use((req, res, next) => {
   res.set({
+    'Content-Security-Policy': CONTENT_SECURITY_POLICY,
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -75,6 +105,7 @@ async function publicUser(u) {
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
+    isSubscriber: !!u.is_subscriber, // rol de suscriptor: borde multicolor en la foto, GIFs como foto de perfil, etc.
     twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
     avatarUrl: u.avatar_url || null,
     bio: u.bio || null,
@@ -513,20 +544,23 @@ const insertSuggestion = db.prepare(`
   VALUES (@id, @title, @platforms, @genre, @release_year, @note, @submitted_by, 'unread', @created_at, @kind, @related_game, @categories)
 `);
 
-app.post('/api/suggestions', writeLimiter, async (req, res) => {
+// Solo con cuenta, y 10 sugerencias por día por IP: sin esto cualquiera podía llenarle la bandeja al administrador.
+const suggestionLimiter = rateLimit({ name: 'suggest', windowMs: 24 * 60 * 60 * 1000, max: 10 });
+app.post('/api/suggestions', requireAuth, suggestionLimiter, async (req, res) => {
   const b = req.body || {};
   const title = String(b.title || '').trim();
   if (title.length < 2) return res.status(400).json({ error: 'title_too_short' });
-  const user = await currentUser(req);
+  const user = req.user;
   const id = 'sg-' + crypto.randomBytes(8).toString('hex');
   const isCharacter = b.kind === 'character';
+  const year = Number(b.releaseYear);
   await insertSuggestion.run({
     id, title: title.slice(0, 80),
-    platforms: JSON.stringify(Array.isArray(b.platforms) ? b.platforms : []),
-    genre: b.genre ? String(b.genre) : null,
-    release_year: b.releaseYear ? Number(b.releaseYear) : null,
+    platforms: JSON.stringify(Array.isArray(b.platforms) ? [...new Set(b.platforms.filter(p => KNOWN_PLATFORMS.has(p)))] : []), // solo plataformas conocidas
+    genre: b.genre ? String(b.genre).slice(0, 40) : null,
+    release_year: Number.isInteger(year) && year >= 1950 && year <= 2100 ? year : null,
     note: b.note ? String(b.note).slice(0, 500) : null,
-    submitted_by: user ? user.username : null,
+    submitted_by: user.username,
     created_at: new Date().toISOString(),
     kind: isCharacter ? 'character' : 'game',
     related_game: isCharacter && b.relatedGame ? String(b.relatedGame).slice(0, 80) : null,
@@ -868,7 +902,8 @@ async function shapePublicProfile(u, viewer) {
   return {
     username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null,
     ...(await steam.favoriteView(u, !!(viewer && viewer.id === u.id))), // favoritePlatinum y favoriteSteam (solo si no ocultó sus horas y logros)
-    isAdmin: !!u.is_admin, bio: u.bio || null, avatarUrl: u.avatar_url || null,
+    // Ya no se publica quién es admin (el perfil público no lo mostraba, pero la API sí lo devolvía).
+    isSubscriber: !!u.is_subscriber, bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
     followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n,
@@ -937,12 +972,19 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
 
 const avatarUploadLimiter = rateLimit({ name: 'avatar', windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
 
+// La foto de perfil se puede cambiar 5 veces por semana (7 días desde el primer cambio). Solo cuentan las fotos válidas: un archivo rechazado no gasta uno.
+const AVATAR_CHANGES_PER_WEEK = 5;
+// Fotos animadas (GIF, PNG o WebP animados): solo las cuentas con el rol de suscriptor. Las demás, solo imágenes fijas.
 app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, res) => {
   let file;
-  try { file = await receiveImage(req, res); }
-  catch (e) { return res.status(400).json({ error: 'upload_failed' }); }
+  try { file = await receiveImage(req, res, { animated: !!req.user.is_subscriber }); }
+  catch (e) { return res.status(400).json({ error: e.code === 'animated_not_allowed' ? 'animated_not_allowed' : 'upload_failed' }); }
   if (!file) return res.status(400).json({ error: 'invalid_file' });
+  const week = await consume('avatar-week', 'u:' + req.user.id, 7 * 24 * 60 * 60 * 1000, AVATAR_CHANGES_PER_WEEK);
+  if (week.limited) { res.setHeader('Retry-After', String(week.retryAfter)); return res.status(429).json({ error: 'avatar_weekly_limit', retryAfter: week.retryAfter }); }
+  const previous = req.user.avatar_url;
   await setAvatarUrl.run(await saveImage(file), req.user.id);
+  await deleteImage(previous); // la foto anterior ya no se usa: se borra (se espera: en Vercel la función puede congelarse apenas responde)
   res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
 });
 
@@ -1028,9 +1070,9 @@ app.post('/api/users/:username/follow', requireAuth, writeLimiter, async (req, r
 // Tope de 100 por lista (el total real viene aparte); si alguna vez hace falta más, paginar por created_at.
 const FOLLOW_LIST_LIMIT = 100;
 const lookupLimiter = rateLimit({ name: 'lookup', windowMs: 60 * 1000, max: 90 }); // por IP: lo usan estas listas y el buscador, que se consulta al teclear
-const listFollowers = db.prepare(`SELECT u.username, u.avatar_url FROM follows f JOIN users u ON u.id = f.follower_id WHERE f.followed_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
-const listFollowing = db.prepare(`SELECT u.username, u.avatar_url FROM follows f JOIN users u ON u.id = f.followed_id WHERE f.follower_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
-const publicPerson = r => ({ username: r.username, avatarUrl: r.avatar_url || null });
+const listFollowers = db.prepare(`SELECT u.username, u.avatar_url, u.is_subscriber FROM follows f JOIN users u ON u.id = f.follower_id WHERE f.followed_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
+const listFollowing = db.prepare(`SELECT u.username, u.avatar_url, u.is_subscriber FROM follows f JOIN users u ON u.id = f.followed_id WHERE f.follower_id = ? ORDER BY f.created_at DESC LIMIT ${FOLLOW_LIST_LIMIT}`);
+const publicPerson = r => ({ username: r.username, avatarUrl: r.avatar_url || null, isSubscriber: !!r.is_subscriber });
 const followListRoute = (listPeople, countPeople) => async (req, res) => {
   const target = await findUserByNameCI.get(req.params.username);
   if (!target) return res.status(404).json({ error: 'not_found' });
@@ -1039,9 +1081,9 @@ const followListRoute = (listPeople, countPeople) => async (req, res) => {
 app.get('/api/users/:username/followers', lookupLimiter, followListRoute(listFollowers, countFollowers));
 app.get('/api/users/:username/following', lookupLimiter, followListRoute(listFollowing, countFollowing));
 
-// Buscador de perfiles del header: nombres que contienen el texto (primero los que empiezan con él). Mínimo 2 letras. Devuelve solo nombre y foto, que ya son públicos.
+// Buscador de perfiles del header: nombres que contienen el texto (primero los que empiezan con él). Mínimo 2 letras. Devuelve solo nombre, foto y si es suscriptor, que ya son públicos.
 // strpos en vez de LIKE: así el guion bajo y el % del texto buscado no cuentan como comodines. La ruta no es /api/users/search para que ninguna cuenta llamada "search" choque con ella.
-const searchUsers = db.prepare('SELECT username, avatar_url FROM users WHERE strpos(lower(username), @q) > 0 ORDER BY (strpos(lower(username), @q) = 1) DESC, lower(username) LIMIT 8');
+const searchUsers = db.prepare('SELECT username, avatar_url, is_subscriber FROM users WHERE strpos(lower(username), @q) > 0 ORDER BY (strpos(lower(username), @q) = 1) DESC, lower(username) LIMIT 8');
 app.get('/api/user-search', lookupLimiter, async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase().slice(0, 25);
   if (q.length < 2) return res.json({ users: [] });
