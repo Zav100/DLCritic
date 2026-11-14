@@ -79,7 +79,7 @@ function charCategoryTagHTML(c){
 }
 // Esqueleto de una card de personaje (retrato circular + dos líneas) para mientras cargan los datos.
 function charSkeletonHTML(){
-  return `<div class="card gamecard character-card skeleton-card"><div class="char-card-avatar-wrap"><div class="skel skel-avatar"></div></div><div class="skel skel-title" style="margin:0 auto 10px;"></div><div class="skel skel-line" style="margin:0 auto;"></div></div>`;
+  return `<div class="card gamecard character-card skeleton-card"><div class="char-card-avatar-wrap"><div class="skel skel-avatar"></div></div><div class="gc-title"><div class="skel" style="height:13px; width:60%; margin:0 auto;"></div></div><div style="height:30px;"></div><div class="gc-sub" style="min-height:3.5em;"><div class="skel" style="height:10px; width:85%; margin:0 auto;"></div></div></div>`;
 }
 // Posición (1º, 2º, 3º…) de cada personaje con al menos una calificación, calculada sobre TODOS los personajes — así el podio no cambia al filtrar u ordenar la grilla de otra forma.
 function characterRanks(){

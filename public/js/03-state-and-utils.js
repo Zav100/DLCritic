@@ -164,17 +164,35 @@ function attachGameAutocomplete(input, getGames, onPick){
     else if(e.key==='Escape' && !list.hidden){ e.stopPropagation(); close(); }
   });
 }
-// HTML de una card "esqueleto" (gris, animada) que se muestra mientras todavía no cargaron los datos reales.
+// Cards "esqueleto" (grises, animadas) para mientras todavía no cargaron los datos reales. Usan las MISMAS clases y medidas que las cards de verdad (portada 16:9, título de
+// 2 líneas, etc.): así, cuando llegan los datos, lo que está debajo no se corre de lugar. Si cambia el diseño de una card real, hay que cambiar también su esqueleto.
+// Juego nuevo del inicio (card newscard):
 function skeletonCardHTML(){
-  return `<div class="card newscard skeleton-card"><div class="skel skel-cover"></div><div class="skel skel-title"></div><div class="skel skel-line"></div></div>`;
+  return `<div class="card newscard skeleton-card"><div class="news-cover skel"></div><div class="news-title"><div class="skel skel-title" style="width:70%; margin:0;"></div></div><div class="skel" style="height:20px;"></div></div>`;
+}
+// Juego de «Más valorados» del inicio (card newscard newgamecard: portada, título, una línea de datos de dos renglones y el botón de calificar).
+function skeletonFeedCardHTML(){
+  return `<div class="card newscard newgamecard skeleton-card"><div class="news-cover skel"></div><div class="news-title" style="height:19.5px;"><div class="skel" style="height:14px; width:70%;"></div></div><div class="ngc-year" style="height:36px;"><div class="skel" style="height:10px; width:85%;"></div></div><div class="skel" style="height:35px; width:150px; align-self:center; margin-top:auto;"></div></div>`;
+}
+// Juego del catálogo (Explorar): card gamecard.
+function skeletonGameCardHTML(){
+  return `<div class="card gamecard skeleton-card"><div class="gc-cover skel"></div><div class="gc-title" style="min-height:2.6em;"><div class="skel" style="height:13px; width:75%;"></div></div><div class="gc-sub" style="min-height:3em;"><div class="skel" style="height:10px; width:90%;"></div></div><div class="platbadges"><div class="skel" style="height:19px; width:46px;"></div><div class="skel" style="height:19px; width:58px;"></div></div></div>`;
+}
+// Noticia (vista Noticias): card newsitem.
+function skeletonNewsItemHTML(){
+  const line = w => `<div class="skel skel-line" style="width:${w}; margin-bottom:9px;"></div>`;
+  return `<div class="card newsitem skeleton-card"><div class="rc-game" style="min-height:3.9em;"><div class="skel skel-title" style="width:85%; margin:0 0 8px;"></div><div class="skel skel-title" style="width:60%; margin:0;"></div></div><div class="rc-text">${line('100%')}${line('96%')}${line('100%')}${line('92%')}${line('100%')}${line('94%')}${line('100%')}${line('70%')}</div><div class="news-source"><div class="skel" style="width:28px; height:28px; border-radius:50%;"></div><div class="skel skel-line" style="width:40%;"></div></div></div>`;
+}
+// Lista de juegos (Mis listas): card list-card.
+function skeletonListCardHTML(){
+  return `<div class="card list-card skeleton-card" style="min-height:83px;"><div class="skel skel-title" style="width:65%;"></div><div class="skel skel-line"></div></div>`;
 }
 // Llena las grillas principales con cards esqueleto apenas arranca la página (antes de que responda el servidor).
 function renderSkeletonGrids(){
-  const grids = ['newGamesGrid','feedList'];
-  grids.forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.innerHTML = skeletonCardHTML().repeat(4);
-  });
+  const ng = document.getElementById('newGamesGrid');
+  if(ng) ng.innerHTML = skeletonCardHTML().repeat(4);
+  const feed = document.getElementById('feedList');
+  if(feed) feed.innerHTML = skeletonFeedCardHTML().repeat(6); // «Más valorados» muestra 6 juegos (2 filas completas)
   document.getElementById('charactersGrid').innerHTML = charSkeletonHTML().repeat(8);
   renderViewSkeleton();
   document.getElementById('characterDetail').innerHTML = `<div class="card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel skel-avatar" style="margin:0;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div></div>`;
@@ -185,14 +203,14 @@ function renderSkeletonGrids(){
 const skelRow = `<div class="card skeleton-card" style="margin-bottom:10px;"><div style="display:flex; gap:12px; align-items:center;"><div class="skel skel-avatar" style="width:38px; height:38px; margin:0;"></div><div style="flex:1;"><div class="skel skel-title" style="width:60%;"></div><div class="skel skel-line"></div></div></div></div>`;
 const skelBlock = `<div class="card skeleton-card"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`;
 const VIEW_SKELETONS = {
-  browse: ['browseGrid', ()=> skeletonCardHTML().repeat(8)],
-  news: ['newsViewList', ()=> skeletonCardHTML().repeat(6)],
-  lists: ['listsViewGrid', ()=> skeletonCardHTML().repeat(3)],
+  browse: ['browseGrid', ()=> skeletonGameCardHTML().repeat(8)],
+  news: ['newsViewList', ()=> skeletonNewsItemHTML().repeat(8)],
+  lists: ['listsViewGrid', ()=> skeletonListCardHTML().repeat(3)],
   notifications: ['notificationsList', ()=> skelRow.repeat(4)],
-  settings: ['settingsContent', ()=> skelBlock.repeat(2)],
-  daily: ['guessCard', ()=> `<div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div>`],
+  settings: ['settingsContent', ()=> `<div class="card skeleton-card" style="min-height:487px;"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`],
+  daily: ['guessCard', ()=> `<div style="min-height:241px;"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`],
   game: ['gameDetail', ()=> `<div class="layout-rail"><div class="rail-main"><div class="game-hero"><div class="game-hero-bg"></div><div class="card game-hero-card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel" style="width:64px; height:64px; border-radius:14px;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div><div class="skel skel-line" style="width:90%; margin-top:18px;"></div><div class="skel skel-line" style="width:70%; margin-top:10px;"></div></div></div></div></div>`],
-  profile: ['profileContent', ()=> `<div class="profile-card skeleton-card"><div class="skel" style="width:88px; height:88px; border-radius:26px; flex-shrink:0;"></div><div class="profile-card-main"><div class="skel skel-title" style="width:40%; height:22px;"></div><div class="skel skel-line" style="width:28%;"></div><div class="skel skel-line" style="width:65%; margin-top:20px;"></div><div class="skel skel-line" style="width:45%; margin-top:10px;"></div></div></div><div class="statsstrip skeleton-card">${'<div class="statscell"><div class="skel" style="width:38px; height:26px;"></div><div class="skel skel-line" style="width:70%; margin-top:8px;"></div></div>'.repeat(3)}</div>`],
+  profile: ['profileContent', ()=> `<div class="profile-card skeleton-card" style="min-height:153px;"><div class="skel" style="width:88px; height:88px; border-radius:26px; flex-shrink:0;"></div><div class="profile-card-main"><div class="skel skel-title" style="width:40%; height:22px;"></div><div class="skel skel-line" style="width:28%;"></div><div class="skel skel-line" style="width:65%; margin-top:20px;"></div><div class="skel skel-line" style="width:45%; margin-top:10px;"></div></div></div><div class="statsstrip skeleton-card">${'<div class="statscell"><div class="skel" style="width:38px; height:26px;"></div><div class="skel skel-line" style="width:70%; margin-top:8px;"></div></div>'.repeat(3)}</div>`],
 };
 function renderViewSkeleton(){
   const entry = VIEW_SKELETONS[document.documentElement.dataset.bootView];

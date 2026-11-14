@@ -214,6 +214,9 @@ function renderVerifyBanner(){
   const u = state.user;
   box.hidden = !(u && u.email && !u.emailVerified && !off);
   if(!box.hidden) document.getElementById('verifyBannerText').textContent = t('verify_banner_text').replace('{email}', u.email);
+  // La próxima vez, el <head> de index.html deja el lugar del aviso desde el primer dibujo (clase verify-pending); aquí se anota y se quita la reserva (ya está el aviso real, o no hace falta).
+  try{ if(u && u.email && !u.emailVerified) localStorage.setItem('dlcVerifyBanner', '1'); else localStorage.removeItem('dlcVerifyBanner'); }catch(e){}
+  document.documentElement.classList.remove('verify-pending');
 }
 function renderUserBadge(){
   renderVerifyBanner();
