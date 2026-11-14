@@ -629,7 +629,7 @@ app.post('/api/reports', requireAuth, reportLimiter, async (req, res) => {
 /* ---------------- reviews ---------------- */
 
 const listReviewsWithVotes = db.prepare(`
-  SELECT r.id, r.game_id AS "gameId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
+  SELECT r.id, r.game_id AS "gameId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
     r.hidden,
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
        JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = 1), '[]') AS "helpfulByJson",
@@ -651,7 +651,7 @@ const findVote = db.prepare('SELECT value FROM helpful_votes WHERE review_id = ?
 
 function shapeReviewRow(r) {
   return {
-    id: r.id, gameId: r.gameId, username: r.username, rating: r.rating,
+    id: r.id, gameId: r.gameId, username: r.username, avatarUrl: r.avatarUrl || null, rating: r.rating,
     text: r.text, platforms: JSON.parse(r.platforms), date: r.date,
     ...subscriberFields(r.isSubscriber, r.rankIconStyle), // suscriptor: la reseña lleva borde multicolor y el icono de rango relleno
     ...(r.hidden ? { hidden: true } : {}), // oculta por un admin: solo su autor la recibe, con este aviso
@@ -756,7 +756,7 @@ app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
 /* ---------------- character reviews (separate from game reviews) ---------------- */
 
 const listCharacterReviews = db.prepare(`
-  SELECT cr.id, cr.character_id AS "characterId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.hidden, cr.rating, cr.text, cr.updated_at AS date
+  SELECT cr.id, cr.character_id AS "characterId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.hidden, cr.rating, cr.text, cr.updated_at AS date
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
   WHERE cr.hidden = 0 OR cr.user_id = @viewer
   ORDER BY cr.updated_at DESC, cr.id ASC
@@ -768,7 +768,7 @@ const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, te
 const deleteCharReviewById = db.prepare('DELETE FROM character_reviews WHERE id = ? AND user_id = ?');
 
 function shapeCharReviewRow(r) {
-  return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
+  return { id: r.id, characterId: r.characterId, username: r.username, avatarUrl: r.avatarUrl || null, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
 }
 
 app.get('/api/character-reviews', async (req, res) => {

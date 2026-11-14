@@ -889,19 +889,28 @@ function clampLongText(p){
   new ResizeObserver(()=>{ if(p.classList.contains('clamp')) btn.hidden = !(p.scrollHeight > p.clientHeight + 1); }).observe(p);
   btn.onclick = ()=>{ btn.textContent = t(p.classList.toggle('clamp') ? 'rc_more' : 'rc_less'); };
 }
+// Foto y rol de quien escribió una reseña. De la propia persona se usan los datos de su sesión: la reseña que acaba de escribir todavía no trae los suyos hasta el próximo refresco.
+function reviewAuthor(rv){
+  const me = state.user && state.user.username===rv.username ? state.user : null;
+  return { avatarUrl: me? me.avatarUrl : rv.avatarUrl, isSubscriber: me? me.isSubscriber : rv.isSubscriber, rankIconStyle: me? me.rankIconStyle : rv.rankIconStyle };
+}
 function reviewCard(rv, opts){
   const game = findGame(rv.gameId) || {title:'(juego eliminado)', genre:'Otro', platforms:[]};
   const div=document.createElement('div');
-  div.className='card reviewcard' + (rv.isSubscriber? ' is-sub' : ''); // reseña de un suscriptor: borde multicolor fino
+  const au = reviewAuthor(rv);
+  div.className='card reviewcard' + (au.isSubscriber? ' is-sub' : ''); // reseña de un suscriptor: borde multicolor fino
   const mine = state.user && state.user.username===rv.username;
   const authorLevel = computeLevel(levelCounts(rv.username)).current;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
     <div class="rc-top">
-      <div>
+      <div class="rc-head">
+        <a class="rc-avatar" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}" aria-label="${esc(rv.username)}" tabindex="-1">${miniAvatarHTML(rv.username, au.avatarUrl, au.isSubscriber)}</a>
+        <div class="rc-head-text">
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${rankIconInline(authorLevel.icon, rv.isSubscriber, rv.rankIconStyle)} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
+        <div class="rc-meta">${rankIconInline(authorLevel.icon, au.isSubscriber, au.rankIconStyle)} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
+        </div>
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
     </div>
@@ -919,7 +928,9 @@ function reviewCard(rv, opts){
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#gauge-${rv.id}`), rv.rating);
   div.querySelector('[data-share]').onclick=(e)=> openShareMenu(e.currentTarget, rv, game);
-  div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  const openAuthor = spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  div.querySelector('.rc-author').onclick = openAuthor;
+  div.querySelector('.rc-avatar').onclick = openAuthor; // la foto también lleva al perfil
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
