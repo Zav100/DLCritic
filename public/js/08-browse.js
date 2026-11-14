@@ -372,11 +372,13 @@ function renderGameDetail(){
   }
   // De dónde se llegó decide a dónde y con qué texto vuelve el botón. Desde un personaje: «Volver a <nombre>» (si ese personaje ya no existe, a Explorar).
   const fromCharacter = state.gameOrigin==='character' ? findCharacter(state.currentCharacter) : null;
-  const origin = state.gameOrigin==='character' ? (fromCharacter? 'character' : 'browse') : (state.gameOrigin || 'browse');
+  // Desde el perfil de otra persona: «Volver al perfil de <nombre>» (state.gameOriginUser, puesto por shelfGameOrigin en 05-navigation.js).
+  const fromProfile = state.gameOrigin==='profile' ? (state.gameOriginUser || state.profileUsername) : null;
+  const origin = state.gameOrigin==='character' ? (fromCharacter? 'character' : 'browse') : state.gameOrigin==='profile' ? (fromProfile? 'profile' : 'browse') : (state.gameOrigin || 'browse');
   const backBtn = document.getElementById('gameBackBtn');
-  document.getElementById('gameBackText').textContent = origin==='character' ? t('back_to_name').replace('{name}', fromCharacter.name) : origin==='feed' ? t('back_news') : origin==='daily' ? t('back_daily') : origin==='shelf' ? t('back_shelf') : t('back_explore');
-  backBtn.href = pathForView(origin);
-  backBtn.onclick = spa(()=> goView(origin));
+  document.getElementById('gameBackText').textContent = origin==='character' ? t('back_to_name').replace('{name}', fromCharacter.name) : origin==='profile' ? t('back_to_profile').replace('{name}', fromProfile) : origin==='feed' ? t('back_news') : origin==='daily' ? t('back_daily') : origin==='shelf' ? t('back_shelf') : t('back_explore');
+  backBtn.href = origin==='profile' ? '/usuario/'+encodeURIComponent(fromProfile) : pathForView(origin);
+  backBtn.onclick = spa(()=>{ if(origin==='profile') state.profileUsername = fromProfile; goView(origin); });
   const list=document.getElementById('detailList');
   if(rvs.length===0){
     list.innerHTML = emptyState(ICONS.fileText, t('empty_reviews_t'), t('empty_reviews_s'));

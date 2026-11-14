@@ -23,6 +23,13 @@ const reviewHref = id => '/resena/' + encodeURIComponent(id);
 // Abre una reseña (de juego o de personaje) en su propia página.
 function openReview(id){ state.currentReview = id; goView('review'); }
 function isPlainClick(e){ return !e || (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey); }
+// De dónde se abre la ficha de un juego estando en una estantería: la propia («shelf», el «Volver» regresa a Mi estantería) o el perfil de OTRA persona («profile»,
+// con su nombre en state.gameOriginUser, y el «Volver» regresa a ese perfil). La vista 'profile' es siempre la de otra persona: la propia es 'shelf'.
+function shelfGameOrigin(){
+  const other = state.view==='profile' && !!state.profileUsername;
+  state.gameOrigin = other ? 'profile' : 'shelf';
+  state.gameOriginUser = other ? state.profileUsername : null;
+}
 function spa(fn){ return function(e){ if(!isPlainClick(e)) return; if(e) e.preventDefault(); return fn.call(this, e); }; }
 // El enlace que cubre toda una tarjeta (la tarjeta sigue siendo un <div> con sus botones adentro; ver .card-link en style.css).
 function cardLinkHTML(href, label){ return `<a class="card-link" href="${esc(href)}" aria-label="${esc(label)}"></a>`; }

@@ -103,7 +103,7 @@ function favPanelHTML(profile, favGame, editable, reviews){
 // Engancha el panel recién pintado: los dos enlaces a la ficha (sin recargar), la barra de la nota, la de logros y el botón de platino.
 function wireFavPanel(profile, favGame, editable, reviews){
   if(!favGame) return;
-  const open = spa(()=>{ state.currentGame = favGame.id; state.gameOrigin = 'shelf'; goView('game'); });
+  const open = spa(()=>{ state.currentGame = favGame.id; shelfGameOrigin(); goView('game'); });
   ['favCoverLink','favTitleLink'].forEach(id=>{ const a=document.getElementById(id); if(a) a.onclick = open; });
   const rv = reviews.find(r=>r.gameId===favGame.id && r.rating!=null);
   const gauge = document.getElementById('favGauge');
