@@ -644,6 +644,7 @@ const findReviewById = db.prepare('SELECT * FROM reviews WHERE id = ?');
 const insertReview = db.prepare('INSERT INTO reviews (id, game_id, user_id, rating, text, platforms, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const updateReview = db.prepare('UPDATE reviews SET rating = ?, text = ?, platforms = ?, updated_at = ? WHERE id = ?');
 const deleteReviewById = db.prepare('DELETE FROM reviews WHERE id = ? AND user_id = ?');
+const deleteReviewAny = db.prepare('DELETE FROM reviews WHERE id = ?'); // solo para admins
 const insertVote = db.prepare('INSERT INTO helpful_votes (review_id, user_id, value) VALUES (?, ?, ?)');
 const updateVote = db.prepare('UPDATE helpful_votes SET value = ? WHERE review_id = ? AND user_id = ?');
 const deleteVote = db.prepare('DELETE FROM helpful_votes WHERE review_id = ? AND user_id = ?');
@@ -728,8 +729,10 @@ app.delete('/api/reviews/:gameId/rating', requireAuth, async (req, res) => {
   res.json({ deleted: false });
 });
 
+// Cada quien borra la suya; una cuenta admin puede borrar la de cualquiera (botón «Borrar (admin)» de la tarjeta).
 app.delete('/api/reviews/id/:id', requireAuth, async (req, res) => {
-  await deleteReviewById.run(req.params.id, req.user.id);
+  if (req.user.is_admin) await deleteReviewAny.run(req.params.id);
+  else await deleteReviewById.run(req.params.id, req.user.id);
   res.json({ ok: true });
 });
 
@@ -766,6 +769,7 @@ const findCharReviewByCharAndUser = db.prepare('SELECT * FROM character_reviews 
 const insertCharReview = db.prepare('INSERT INTO character_reviews (id, character_id, user_id, rating, text, updated_at) VALUES (?, ?, ?, ?, ?, ?)');
 const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, text = ?, updated_at = ? WHERE id = ?');
 const deleteCharReviewById = db.prepare('DELETE FROM character_reviews WHERE id = ? AND user_id = ?');
+const deleteCharReviewAny = db.prepare('DELETE FROM character_reviews WHERE id = ?'); // solo para admins
 
 function shapeCharReviewRow(r) {
   return { id: r.id, characterId: r.characterId, username: r.username, avatarUrl: r.avatarUrl || null, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
@@ -835,7 +839,8 @@ app.delete('/api/character-reviews/:characterId/rating', requireAuth, async (req
 });
 
 app.delete('/api/character-reviews/id/:id', requireAuth, async (req, res) => {
-  await deleteCharReviewById.run(req.params.id, req.user.id);
+  if (req.user.is_admin) await deleteCharReviewAny.run(req.params.id);
+  else await deleteCharReviewById.run(req.params.id, req.user.id);
   res.json({ ok: true });
 });
 

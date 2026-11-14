@@ -398,6 +398,18 @@ const today = new Date().toISOString().slice(0, 10);
     const r = await a('PUT', `/api/reviews/${otherGameId}`, { rating: 4 }); ok(r);
     ok(await a('DELETE', `/api/reviews/id/${r.body.id}`));
   });
+  await step('borrar la reseña de otra persona: una cuenta común no puede, una admin sí (juegos y personajes)', async () => {
+    const r = await a('PUT', `/api/reviews/${otherGameId}`, { rating: 4 }); ok(r);
+    const c = await a('PUT', `/api/character-reviews/${charId}`, { rating: 7 }); ok(c);
+    const quedan = async () => ({ juego: (await anon('GET', '/api/reviews')).body.reviews.some(x => x.id === r.body.id), personaje: (await anon('GET', '/api/character-reviews')).body.characterReviews.some(x => x.id === c.body.id) });
+    await b('DELETE', `/api/reviews/id/${r.body.id}`); await b('DELETE', `/api/character-reviews/id/${c.body.id}`);
+    assert.deepEqual(await quedan(), { juego: true, personaje: true }, 'una cuenta común no borra la reseña de otra');
+    await db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'smoketest_b'").run();
+    try {
+      ok(await b('DELETE', `/api/reviews/id/${r.body.id}`)); ok(await b('DELETE', `/api/character-reviews/id/${c.body.id}`));
+    } finally { await db.prepare("UPDATE users SET is_admin = 0 WHERE username = 'smoketest_b'").run(); }
+    assert.deepEqual(await quedan(), { juego: false, personaje: false }, 'una cuenta admin sí');
+  });
 
   console.log('Reseñas de personajes');
   await step('crear, editar y borrar; personaje inexistente = 404', async () => {
