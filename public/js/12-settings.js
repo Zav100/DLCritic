@@ -180,6 +180,7 @@ function renderSettingsView(){
             <div style="min-width:0; flex:1 1 200px;">
               <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp${u.isSubscriber? ',image/gif' : ''}" style="max-width:100%;">
               <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t(u.isSubscriber? 'avatar_file_hint_sub' : 'avatar_file_hint'))}</p>
+              ${u.avatarReview? `<p class="hint review-note" style="margin:6px 0 0;">${esc(t(u.avatarReview==='pending'? 'avatar_review_pending' : 'avatar_review_rejected'))}</p>` : ''}
             </div>
           </div>
         </div>
@@ -318,6 +319,7 @@ function renderSettingsView(){
           const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
           state.user = r.user;
           pendingSettingsAvatarFile = null;
+          if(r.user.avatarReview==='pending') toast(t('toast_gif_pending')); // un GIF espera la aprobación de un admin
         }catch(e){
           const code = e.body && e.body.error;
           errEl.textContent = t(code==='avatar_weekly_limit' ? 'err_avatar_weekly' : code==='animated_not_allowed' ? 'err_avatar_animated' : code==='invalid_file' ? 'err_avatar_invalid' : 'err_avatar_upload');
@@ -326,7 +328,7 @@ function renderSettingsView(){
         }
       }
       const oldUsername = state.user.username;
-      const { user } = await apiPut('/profile', { username, bio, ...(state.user.isSubscriber && pendingRankIcon? { rankIconStyle: pendingRankIcon } : {}) });
+      const { user, censored } = await apiPut('/profile', { username, bio, ...(state.user.isSubscriber && pendingRankIcon? { rankIconStyle: pendingRankIcon } : {}) });
       if(user.username !== oldUsername){
         state.reviews.forEach(r=>{ if(r.username===oldUsername) r.username = user.username; });
       }
@@ -334,9 +336,10 @@ function renderSettingsView(){
       state.user = user;
       renderUserBadge();
       toast(t('toast_profile_saved'), 'good');
+      if(censored){ document.getElementById('st-bio').value = user.bio || ''; cornerNotice(t('toast_text_censored')); } // la descripción tenía palabras no permitidas: se muestra como quedó
     }catch(e){
       errEl.textContent = (e.body && e.body.error==='username_taken') ? t('err_username_taken_settings')
-        : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : t('err_save_user');
+        : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : (e.body && e.body.error==='username_not_allowed') ? t('err_username_not_allowed') : t('err_save_user');
       errEl.hidden = false;
     }
   };

@@ -1,10 +1,11 @@
 const express = require('express');
 const crypto = require('node:crypto');
 const db = require('./db');
-const { requireAuth, verifyPin, sessionToken, endOtherSessions } = require('./auth');
+const { requireAuth, verifyPin, sessionToken, endOtherSessions, endAllSessions } = require('./auth');
 const totp = require('./totp');
 const { rateLimit } = require('./rateLimit');
-const { receiveImage, saveImage } = require('./upload');
+const { receiveImage, saveImage, deleteImage } = require('./upload');
+const moderation = require('./moderation');
 
 const router = express.Router();
 
@@ -385,6 +386,115 @@ router.put('/suggestions/:id', async (req, res) => {
 
 router.delete('/suggestions/:id', async (req, res) => {
   await deleteSuggestion.run(req.params.id);
+  res.json({ ok: true });
+});
+
+/* ---------------- moderación ---------------- */
+
+// La bandeja: lo que marcó el filtro de palabras (server/moderation.js) o reportaron los usuarios, los GIF de foto de perfil que esperan aprobación, las cuentas
+// suspendidas y lo resuelto hace poco. Cada marca lleva el texto ORIGINAL (antes de censurar) y 'spans' para resaltar lo que saltó.
+const openFlags = db.prepare("SELECT f.*, u.username AS author FROM moderation_flags f LEFT JOIN users u ON u.id = f.author_id WHERE f.status = 'open' ORDER BY (f.tier = 'grave') DESC, f.created_at ASC");
+const recentFlags = db.prepare("SELECT f.*, u.username AS author FROM moderation_flags f LEFT JOIN users u ON u.id = f.author_id WHERE f.status = 'resolved' ORDER BY f.resolved_at DESC LIMIT 20");
+const pendingGifs = db.prepare("SELECT id, username, avatar_url, avatar_pending_url FROM users WHERE avatar_review_status = 'pending' AND avatar_pending_url IS NOT NULL ORDER BY username");
+const suspendedUsers = db.prepare('SELECT id, username, suspended_at FROM users WHERE suspended_at IS NOT NULL ORDER BY suspended_at DESC');
+const findFlag = db.prepare('SELECT * FROM moderation_flags WHERE id = ?');
+const reporterName = db.prepare('SELECT username FROM users WHERE id = ?');
+const resolveFlag = db.prepare("UPDATE moderation_flags SET status = 'resolved', resolution = ?, resolved_at = ? WHERE id = ?");
+const reopenFlag = db.prepare("UPDATE moderation_flags SET status = 'resolved', resolution = 'ok', resolved_at = ? WHERE id = ?");
+
+async function shapeFlag(f) {
+  return {
+    id: f.id, kind: f.kind, targetId: f.target_id, author: f.author, source: f.source, tier: f.tier, note: f.note,
+    reporter: f.reporter_id ? ((await reporterName.get(f.reporter_id)) || {}).username || null : null,
+    text: f.text || '', spans: moderation.scanText(f.text || '').spans,
+    status: f.status, resolution: f.resolution, createdAt: f.created_at, resolvedAt: f.resolved_at,
+  };
+}
+
+router.get('/moderation', async (req, res) => {
+  const flags = await Promise.all((await openFlags.all()).map(shapeFlag));
+  const recent = await Promise.all((await recentFlags.all()).map(shapeFlag));
+  const gifs = (await pendingGifs.all()).map(u => ({ userId: u.id, username: u.username, currentUrl: u.avatar_url || null, pendingUrl: u.avatar_pending_url }));
+  const suspended = (await suspendedUsers.all()).map(u => ({ userId: u.id, username: u.username, since: u.suspended_at }));
+  res.json({ flags, gifs, suspended, recent, openCount: flags.length + gifs.length });
+});
+
+// Qué se puede hacer con cada tipo de marca. 'ok' = está bien (se cierra sin tocar nada); el resto cambia el contenido o la cuenta, y suspender además oculta lo marcado.
+const FLAG_ACTIONS = {
+  review: ['ok', 'hide', 'suspend'],
+  character_review: ['ok', 'hide', 'suspend'],
+  bio: ['ok', 'clear', 'suspend'],
+  list: ['ok', 'delete', 'suspend'],
+  user: ['ok', 'clear_bio', 'remove_avatar', 'suspend'],
+};
+const hideReview = db.prepare('UPDATE reviews SET hidden = ? WHERE id = ?');
+const hideCharReview = db.prepare('UPDATE character_reviews SET hidden = ? WHERE id = ?');
+const clearBio = db.prepare('UPDATE users SET bio = NULL WHERE id = ?');
+const deleteList = db.prepare('DELETE FROM game_lists WHERE id = ?');
+const findUserRow = db.prepare('SELECT id, username, avatar_url, is_admin FROM users WHERE id = ?');
+const clearAvatar = db.prepare('UPDATE users SET avatar_url = NULL WHERE id = ?');
+const suspendUser = db.prepare('UPDATE users SET suspended_at = ? WHERE id = ?');
+
+// Aplica el cambio de contenido de una marca. Devuelve cómo quedó resuelta ('hidden', 'cleared', 'deleted', 'avatar_removed') o null si no había nada que cambiar.
+async function applyContentAction(flag, action) {
+  if (flag.kind === 'review' && (action === 'hide' || action === 'suspend')) { await hideReview.run(1, flag.target_id); return 'hidden'; }
+  if (flag.kind === 'character_review' && (action === 'hide' || action === 'suspend')) { await hideCharReview.run(1, flag.target_id); return 'hidden'; }
+  if ((flag.kind === 'bio' && (action === 'clear' || action === 'suspend')) || (flag.kind === 'user' && action === 'clear_bio')) { await clearBio.run(flag.author_id); return 'cleared'; }
+  if (flag.kind === 'list' && (action === 'delete' || action === 'suspend')) { await deleteList.run(flag.target_id); return 'deleted'; }
+  if (flag.kind === 'user' && action === 'remove_avatar') {
+    const u = await findUserRow.get(flag.author_id);
+    if (u) { await clearAvatar.run(u.id); await deleteImage(u.avatar_url); }
+    return 'avatar_removed';
+  }
+  return null;
+}
+
+router.post('/moderation/flags/:id', async (req, res) => {
+  const flag = await findFlag.get(req.params.id);
+  if (!flag) return res.status(404).json({ error: 'not_found' });
+  const action = String((req.body || {}).action || '');
+  const now = new Date().toISOString();
+  if (action === 'restore') { // deshacer un "ocultar": la reseña vuelve a verse
+    if (flag.status !== 'resolved' || flag.resolution !== 'hidden') return res.status(400).json({ error: 'cannot_restore' });
+    await (flag.kind === 'review' ? hideReview : hideCharReview).run(0, flag.target_id);
+    await reopenFlag.run(now, flag.id);
+    return res.json({ ok: true });
+  }
+  if (flag.status !== 'open') return res.status(400).json({ error: 'already_resolved' });
+  if (!(FLAG_ACTIONS[flag.kind] || []).includes(action)) return res.status(400).json({ error: 'invalid_action' });
+  if (action === 'suspend') {
+    const u = await findUserRow.get(flag.author_id);
+    if (!u) return res.status(404).json({ error: 'user_not_found' });
+    if (u.is_admin) return res.status(403).json({ error: 'admin_account' });
+    await applyContentAction(flag, 'suspend');
+    await suspendUser.run(now, u.id);
+    await endAllSessions(u.id);
+    await resolveFlag.run('suspended', now, flag.id);
+    return res.json({ ok: true });
+  }
+  const resolution = action === 'ok' ? 'ok' : await applyContentAction(flag, action);
+  await resolveFlag.run(resolution || 'ok', now, flag.id);
+  res.json({ ok: true });
+});
+
+// GIF de foto de perfil de un suscriptor: aprobarlo lo pone como foto (y borra la anterior); rechazarlo lo borra y le avisa en Ajustes.
+const findPendingGif = db.prepare("SELECT id, avatar_url, avatar_pending_url FROM users WHERE id = ? AND avatar_review_status = 'pending' AND avatar_pending_url IS NOT NULL");
+const approveGif = db.prepare('UPDATE users SET avatar_url = avatar_pending_url, avatar_pending_url = NULL, avatar_review_status = NULL WHERE id = ?');
+const rejectGif = db.prepare("UPDATE users SET avatar_pending_url = NULL, avatar_review_status = 'rejected' WHERE id = ?");
+router.post('/moderation/gifs/:userId', async (req, res) => {
+  const u = await findPendingGif.get(Number(req.params.userId));
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  const action = String((req.body || {}).action || '');
+  if (action === 'approve') { await approveGif.run(u.id); await deleteImage(u.avatar_url); }
+  else if (action === 'reject') { await rejectGif.run(u.id); await deleteImage(u.avatar_pending_url); }
+  else return res.status(400).json({ error: 'invalid_action' });
+  res.json({ ok: true });
+});
+
+router.post('/moderation/users/:userId/reactivate', async (req, res) => {
+  const u = await findUserRow.get(Number(req.params.userId));
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  await suspendUser.run(null, u.id);
   res.json({ ok: true });
 });
 

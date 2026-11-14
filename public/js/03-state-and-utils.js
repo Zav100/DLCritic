@@ -91,6 +91,35 @@ function toast(msg, tone){
   noticeQueue.push({ msg, tone });
   if(noticeQueue.length===1) showNextNotice();
 }
+// Aviso pequeño abajo a la derecha, sin ventana ni fondo oscuro: se va solo a los 4 segundos o al tocar la «x», y mientras está se puede seguir usando la página.
+// A diferencia de toast() (la tarjeta del centro con «Entendido»), no interrumpe: es para lo que solo informa, como las palabras cambiadas por asteriscos.
+// Si llegan varios se apilan; el mismo texto ya visible no se repite, solo reinicia su cuenta.
+const CORNER_NOTICE_MS = 4000;
+function cornerNotice(msg){
+  let wrap = document.getElementById('cornerNotices');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.id = 'cornerNotices'; wrap.className = 'corner-notices';
+    wrap.setAttribute('role', 'status'); wrap.setAttribute('aria-live', 'polite');
+    document.body.appendChild(wrap);
+  }
+  const dismiss = el=>{
+    clearTimeout(el._timer);
+    if(el.classList.contains('leaving')) return;
+    el.classList.add('leaving');
+    setTimeout(()=> el.remove(), 200);
+  };
+  const arm = el=>{ clearTimeout(el._timer); el._timer = setTimeout(()=> dismiss(el), CORNER_NOTICE_MS); };
+  const same = [...wrap.children].find(n=> n._msg===msg && !n.classList.contains('leaving'));
+  if(same){ arm(same); return; }
+  const el = document.createElement('div');
+  el._msg = msg;
+  el.className = 'corner-notice';
+  el.innerHTML = `<span class="corner-notice-icon">${ICONS.shield}</span><p>${esc(msg)}</p><button type="button" class="corner-notice-x" aria-label="${esc(t('close_btn'))}">${ICONS.x}</button>`;
+  el.querySelector('.corner-notice-x').onclick = ()=> dismiss(el);
+  wrap.appendChild(el);
+  arm(el);
+}
 function showNextNotice(){
   const { msg, tone } = noticeQueue[0];
   noticeDialog('', msg, '', tone).then(()=>{ noticeQueue.shift(); if(noticeQueue.length) showNextNotice(); });

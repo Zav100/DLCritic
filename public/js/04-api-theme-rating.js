@@ -219,6 +219,11 @@ function renderQuickRate(scope, gameId, currentValue){
 // Guardar es "optimista": la pantalla cambia al instante y recién después se le avisa al servidor. Si el servidor no lo acepta (sin conexión, límite de
 // intentos, sesión vencida) se avisa con un solo mensaje de error y se vuelve a pedir el estado real de las reseñas, para que la pantalla no siga
 // mostrando como guardado algo que no lo está. Devuelve true si se guardó. Lo usan también 10-lists.js y 14-characters.js.
+// Si el servidor cambió lo escrito por asteriscos (palabras no permitidas, ver server/moderation.js), la pantalla pasa a mostrar lo que quedó guardado y se avisa.
+function applyCensoredText(ok, rv, saved){
+  if(ok && saved && saved.censored){ rv.text = saved.text; cornerNotice(t('toast_text_censored')); }
+  return ok;
+}
 async function persistOrResync(request){
   try{ await request(); return true; }
   catch(e){
@@ -244,7 +249,9 @@ async function saveReviewText(gameId, text){
   let rv = state.reviews.find(r=>r.gameId===gameId && r.username===state.user.username);
   if(rv){ rv.text=text; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), gameId, username:state.user.username, rating:null, text, platforms:[], date:new Date().toISOString() }; state.reviews.push(rv); }
-  return persistOrResync(()=> apiPut('/reviews/'+encodeURIComponent(gameId), { text }));
+  let saved = null;
+  const ok = await persistOrResync(async ()=>{ saved = await apiPut('/reviews/'+encodeURIComponent(gameId), { text }); });
+  return applyCensoredText(ok, rv, saved);
 }
 // Borra solo el texto de la reseña (pide confirmación); si la reseña queda sin nota, sin texto y sin plataformas, la elimina del todo — nunca se deja un registro completamente vacío.
 async function deleteReviewText(gameId){

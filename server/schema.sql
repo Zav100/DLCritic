@@ -46,6 +46,32 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS has_password INTEGER NOT NULL DEFAULT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_subscriber INTEGER NOT NULL DEFAULT 0;
 -- Estilo del icono de rango de un suscriptor (se elige en Ajustes): invert, gold, multi o un color #rrggbb. NULL = el de por defecto (invert).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_icon_style TEXT;
+-- Moderación. suspended_at: cuenta suspendida por un admin (no puede entrar ni se ven sus sesiones); NULL = activa.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at TEXT;
+-- Foto de perfil animada (GIF) de un suscriptor: queda en avatar_pending_url hasta que un admin la aprueba (entonces pasa a avatar_url) o la rechaza.
+-- avatar_review_status: 'pending' (en revisión) o 'rejected' (la última no se aprobó); NULL si no hay nada.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_pending_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_review_status TEXT;
+-- Bandeja de moderación: lo que el filtro de palabras marca y lo que reportan los usuarios.
+-- kind: review | character_review | bio | list | user; target_id: id de la reseña o lista (en bio y user, el id de la persona); author_id: quien lo escribió.
+-- source: auto (filtro) | report; tier: grave | revisar (auto) o el motivo del reporte; text: el texto ORIGINAL (antes de censurar).
+-- resolution: ok | hidden | cleared | deleted | avatar_removed | suspended.
+CREATE TABLE IF NOT EXISTS moderation_flags (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  target_id TEXT,
+  author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  source TEXT NOT NULL,
+  tier TEXT,
+  note TEXT,
+  text TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  resolution TEXT,
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_moderation_flags_status ON moderation_flags(status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub);
 -- Enlaces para confirmar el correo: se guarda el hash del token (como en password_resets) y el correo al que se mandó, para que valga solo si sigue siendo el de la cuenta.
 CREATE TABLE IF NOT EXISTS email_verifications (
@@ -280,3 +306,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   reset_at BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits(reset_at);
+
+-- Reseñas ocultas por un admin: no se ven en el sitio (solo su autor las sigue viendo, con un aviso).
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS hidden INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE character_reviews ADD COLUMN IF NOT EXISTS hidden INTEGER NOT NULL DEFAULT 0;

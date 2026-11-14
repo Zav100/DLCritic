@@ -8,6 +8,7 @@ const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
 const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail } = require('./mail');
 const google = require('./google');
+const moderation = require('./moderation');
 const { checkSecondFactor } = require('./twofactor');
 const steam = require('./steam');
 const {
@@ -108,6 +109,8 @@ async function publicUser(u) {
     ...subscriberFields(u.is_subscriber, u.rank_icon_style), // rol de suscriptor: borde multicolor en la foto, icono de rango relleno, GIFs como foto de perfil, etc.
     twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
     avatarUrl: u.avatar_url || null,
+    avatarReview: u.avatar_review_status || null, // 'pending' (un GIF esperando que lo apruebe un admin) o 'rejected'
+    avatarPendingUrl: u.avatar_pending_url || null,
     bio: u.bio || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
   };
@@ -116,6 +119,17 @@ async function publicUser(u) {
 // Estilo del icono de rango de un suscriptor: uno de los tres de siempre o un color propio (#rrggbb). Los demás no lo tienen: el icono sigue siendo de contorno.
 const RANK_ICON_STYLE_RE = /^(invert|gold|multi|#[0-9a-f]{6})$/i;
 const subscriberFields = (isSubscriber, style) => ({ isSubscriber: !!isSubscriber, rankIconStyle: isSubscriber ? style || null : null });
+/* ---------------- moderación (filtro de palabras, bandeja y reportes) ---------------- */
+
+// Lo que el filtro (server/moderation.js) o un reporte marca se anota en moderation_flags para que un admin lo revise en el panel (pestaña Moderación).
+const insertFlag = db.prepare('INSERT INTO moderation_flags (id, kind, target_id, author_id, reporter_id, source, tier, note, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+const deleteOpenAutoFlags = db.prepare("DELETE FROM moderation_flags WHERE kind = ? AND target_id = ? AND source = 'auto' AND status = 'open'");
+const flagId = () => 'mf-' + crypto.randomBytes(8).toString('hex');
+// Anota el resultado de scanText para algo ya guardado (kind: review | character_review | bio | list; targetId: su id). Si el texto se editó y ya no marca nada, la marca vieja se borra.
+async function recordFlag(kind, targetId, authorId, original, scan) {
+  await deleteOpenAutoFlags.run(kind, String(targetId));
+  if (scan.flagged) await insertFlag.run(flagId(), kind, String(targetId), authorId, null, 'auto', scan.graves.length ? 'grave' : 'revisar', null, String(original).slice(0, 2000), new Date().toISOString());
+}
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,25}$/; // 3 a 25 caracteres: letras sin tildes ni ñ, números, punto, guion y guion bajo (el texto de ayuda dice lo que NO se permite: username_hint en 02-i18n.js)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SOCIAL_LINK_KEYS = ['instagram', 'facebook', 'x', 'youtube', 'steam', 'epic', 'playstation', 'xbox', 'nintendo'];
@@ -269,19 +283,22 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   const passwordError = passwordProblem(password);
   if (passwordError) return res.status(400).json({ error: passwordError });
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: 'invalid_username' });
+  if (moderation.badUsername(username)) return res.status(400).json({ error: 'username_not_allowed' }); // nombre ofensivo: se rechaza (la pantalla dice que no es válido)
   if (await findUserByEmail.get(email)) return res.status(409).json({ error: 'email_taken' });
   if (await findUserByNameCI.get(username)) return res.status(409).json({ error: 'username_taken' });
 
   const socialLinks = sanitizeSocialLinks(b.socialLinks);
   const joinedAt = new Date().toISOString();
+  const bioScan = bio ? moderation.scanText(bio) : null; // la descripción también pasa por el filtro
   let created;
   try {
-    created = await insertUser.get(username, email, hashPin(password), joinedAt, bio, JSON.stringify(socialLinks));
+    created = await insertUser.get(username, email, hashPin(password), joinedAt, bioScan ? bioScan.text : bio, JSON.stringify(socialLinks));
   } catch (e) {
     // Dos registros simultáneos con el mismo email/usuario: el índice único de la base gana la carrera.
     if (e.code === '23505') return res.status(409).json({ error: /email/.test(e.constraint || '') ? 'email_taken' : 'username_taken' });
     throw e;
   }
+  if (bioScan) await recordFlag('bio', created.id, created.id, bio, bioScan);
   // Al crear la cuenta la sesión se recuerda 24 horas: no se cierra apenas se cierra la pestaña, pero para los 20 días hay que iniciar sesión y marcar la casilla.
   setSessionCookie(res, await createSession(created.id, 'day'));
   const newUser = await findUserByNameCI.get(username);
@@ -306,6 +323,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (password.length > 200) return res.status(401).json({ error: 'bad_login' });
   if (!user) { spendLoginTime(password); return res.status(401).json({ error: 'bad_login' }); }
   if (!verifyPin(password, user.pin_hash)) return res.status(401).json({ error: 'bad_login' });
+  if (user.suspended_at) return res.status(403).json({ error: 'account_suspended' }); // la contraseña estaba bien: se le dice que su cuenta está suspendida
 
   // Cuenta con verificación en dos pasos: sin código se responde que falta (la contraseña ya estaba bien); con código se comprueba. No se abre ninguna sesión hasta que el código sirva.
   if (user.totp_enabled) {
@@ -428,6 +446,7 @@ const sameText = (a, b) => typeof a === 'string' && typeof b === 'string' && a.l
 async function freeUsername(seed) {
   let base = String(seed || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_.-]+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '').slice(0, 16);
   if (base.length < 3) base = (base + 'jugador').slice(0, 16);
+  if (moderation.badUsername(base)) base = 'jugador'; // el nombre de la cuenta de Google no se usa si es ofensivo
   if (!(await findUserByNameCI.get(base))) return base;
   for (let i = 0; i < 30; i++) {
     const candidate = base.slice(0, 20 - 4) + crypto.randomInt(10, 9999);
@@ -442,9 +461,10 @@ async function freeUsername(seed) {
 // Las cuentas de admin o con verificación en dos pasos no entran por aquí (saltearían el código): tienen que usar su contraseña y su código.
 async function signInWithGoogle(profile, lang) {
   const byGoogle = await findUserByGoogleSub.get(profile.sub);
-  if (byGoogle) return byGoogle.totp_enabled || byGoogle.is_admin ? { error: 'two_factor' } : { user: byGoogle };
+  if (byGoogle) return byGoogle.suspended_at ? { error: 'suspended' } : byGoogle.totp_enabled || byGoogle.is_admin ? { error: 'two_factor' } : { user: byGoogle };
   const byEmail = await findUserByEmail.get(profile.email);
   if (byEmail) {
+    if (byEmail.suspended_at) return { error: 'suspended' };
     if (byEmail.totp_enabled || byEmail.is_admin) return { error: 'two_factor' };
     const takeover = !byEmail.email_verified_at;
     await linkGoogle.run(profile.sub, new Date().toISOString(), byEmail.id);
@@ -572,15 +592,44 @@ app.post('/api/suggestions', requireAuth, suggestionLimiter, async (req, res) =>
   res.json({ ok: true });
 });
 
+/* ---------------- reportar contenido ---------------- */
+
+// Cualquier persona con cuenta puede reportar una reseña (de juego o de personaje) o un perfil ajeno: llega a la bandeja de moderación del panel junto con lo que marca
+// el filtro de palabras. 10 reportes por hora por persona, y el mismo reporte (misma persona, mismo contenido) no se repite mientras siga abierto.
+const REPORT_REASONS = new Set(['odio', 'acoso', 'inapropiado', 'spam', 'otro']);
+const reportLimiter = rateLimit({ name: 'report', windowMs: 60 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
+const findOpenReport = db.prepare("SELECT 1 FROM moderation_flags WHERE source = 'report' AND status = 'open' AND kind = ? AND target_id = ? AND reporter_id = ?");
+app.post('/api/reports', requireAuth, reportLimiter, async (req, res) => {
+  const b = req.body || {};
+  if (!REPORT_REASONS.has(b.reason)) return res.status(400).json({ error: 'invalid_reason' });
+  let targetId = String(b.targetId || ''), authorId, text;
+  if (b.kind === 'review' || b.kind === 'character_review') {
+    const row = await (b.kind === 'review' ? findReviewById : findCharacterReviewById).get(targetId);
+    if (!row || row.hidden) return res.status(404).json({ error: 'not_found' });
+    authorId = row.user_id; text = row.text;
+  } else if (b.kind === 'user') { // targetId es el nombre de usuario
+    const u = await findUserByNameCI.get(targetId);
+    if (!u) return res.status(404).json({ error: 'not_found' });
+    authorId = u.id; text = u.bio; targetId = String(u.id);
+  } else return res.status(400).json({ error: 'invalid_kind' });
+  if (authorId === req.user.id) return res.status(400).json({ error: 'own_content' });
+  if (!(await findOpenReport.get(b.kind, targetId, req.user.id))) {
+    await insertFlag.run(flagId(), b.kind, targetId, authorId, req.user.id, 'report', b.reason, b.note ? String(b.note).trim().slice(0, 300) : null, String(text || '').slice(0, 2000), new Date().toISOString());
+  }
+  res.json({ ok: true });
+});
+
 /* ---------------- reviews ---------------- */
 
 const listReviewsWithVotes = db.prepare(`
   SELECT r.id, r.game_id AS "gameId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
+    r.hidden,
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
        JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = 1), '[]') AS "helpfulByJson",
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
        JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = -1), '[]') AS "dislikedByJson"
   FROM reviews r JOIN users u ON u.id = r.user_id
+  WHERE r.hidden = 0 OR r.user_id = @viewer
   ORDER BY r.updated_at DESC, r.id ASC
 `);
 const findReviewByGameAndUser = db.prepare('SELECT * FROM reviews WHERE game_id = ? AND user_id = ?');
@@ -598,13 +647,15 @@ function shapeReviewRow(r) {
     id: r.id, gameId: r.gameId, username: r.username, rating: r.rating,
     text: r.text, platforms: JSON.parse(r.platforms), date: r.date,
     ...subscriberFields(r.isSubscriber, r.rankIconStyle), // suscriptor: la reseña lleva borde multicolor y el icono de rango relleno
+    ...(r.hidden ? { hidden: true } : {}), // oculta por un admin: solo su autor la recibe, con este aviso
     helpfulBy: JSON.parse(r.helpfulByJson || '[]').filter(Boolean), // quienes le dieron «Me gusta» (se llama así desde que era «te sirvió»)
     dislikedBy: JSON.parse(r.dislikedByJson || '[]').filter(Boolean),
   };
 }
 
 app.get('/api/reviews', async (req, res) => {
-  res.json({ reviews: (await listReviewsWithVotes.all()).map(shapeReviewRow) });
+  const me = await currentUser(req);
+  res.json({ reviews: (await listReviewsWithVotes.all({ viewer: me ? me.id : 0 })).map(shapeReviewRow) }); // las ocultas solo las ve su autor
 });
 
 app.put('/api/reviews/:gameId', requireAuth, writeLimiter, async (req, res) => {
@@ -626,13 +677,18 @@ app.put('/api/reviews/:gameId', requireAuth, writeLimiter, async (req, res) => {
       await deleteReviewById.run(existing.id, req.user.id);
       return res.json({ id: existing.id, deleted: true });
     }
-    await updateReview.run(rating, text, JSON.stringify(platforms), now, existing.id);
-    return res.json({ id: existing.id });
+    // El texto nuevo pasa por el filtro: lo grave se guarda con asteriscos y lo dudoso queda marcado en la bandeja de moderación (el texto de antes ya pasó).
+    const scan = 'text' in b && text !== existing.text ? moderation.scanText(text) : null;
+    await updateReview.run(rating, scan ? scan.text : text, JSON.stringify(platforms), now, existing.id);
+    if (scan) await recordFlag('review', existing.id, req.user.id, text, scan);
+    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored) });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
-  await insertReview.run(id, gameId, req.user.id, rating, text, JSON.stringify(platforms), now);
-  res.json({ id });
+  const scan = moderation.scanText(text);
+  await insertReview.run(id, gameId, req.user.id, rating, scan.text, JSON.stringify(platforms), now);
+  await recordFlag('review', id, req.user.id, text, scan);
+  res.json({ id, text: scan.text, censored: scan.censored });
 });
 
 app.delete('/api/reviews/:gameId/text', requireAuth, async (req, res) => {
@@ -674,7 +730,7 @@ app.delete('/api/reviews/id/:id', requireAuth, async (req, res) => {
 // Solo un «Me gusta» nuevo le avisa a la autora; no se puede votar la propia reseña.
 app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
   const review = await findReviewById.get(req.params.id);
-  if (!review) return res.status(404).json({ error: 'not_found' });
+  if (!review || review.hidden) return res.status(404).json({ error: 'not_found' });
   if (review.user_id === req.user.id) return res.status(400).json({ error: 'own_review' });
 
   const value = req.body && req.body.value === -1 ? -1 : 1;
@@ -686,15 +742,16 @@ app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
     await insertNotification.run(uid(), review.user_id, 'helpful', req.user.id, review.game_id, new Date().toISOString());
   }
 
-  const row = shapeReviewRow((await listReviewsWithVotes.all()).find(r => r.id === review.id));
+  const row = shapeReviewRow((await listReviewsWithVotes.all({ viewer: req.user.id })).find(r => r.id === review.id));
   res.json({ helpfulBy: row.helpfulBy, dislikedBy: row.dislikedBy });
 });
 
 /* ---------------- character reviews (separate from game reviews) ---------------- */
 
 const listCharacterReviews = db.prepare(`
-  SELECT cr.id, cr.character_id AS "characterId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.rating, cr.text, cr.updated_at AS date
+  SELECT cr.id, cr.character_id AS "characterId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.hidden, cr.rating, cr.text, cr.updated_at AS date
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
+  WHERE cr.hidden = 0 OR cr.user_id = @viewer
   ORDER BY cr.updated_at DESC, cr.id ASC
 `);
 const findCharacterReviewById = db.prepare('SELECT * FROM character_reviews WHERE id = ?');
@@ -704,11 +761,12 @@ const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, te
 const deleteCharReviewById = db.prepare('DELETE FROM character_reviews WHERE id = ? AND user_id = ?');
 
 function shapeCharReviewRow(r) {
-  return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle) };
+  return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
 }
 
 app.get('/api/character-reviews', async (req, res) => {
-  res.json({ characterReviews: (await listCharacterReviews.all()).map(shapeCharReviewRow) });
+  const me = await currentUser(req);
+  res.json({ characterReviews: (await listCharacterReviews.all({ viewer: me ? me.id : 0 })).map(shapeCharReviewRow) });
 });
 
 app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async (req, res) => {
@@ -730,13 +788,17 @@ app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async 
       await deleteCharReviewById.run(existing.id, req.user.id);
       return res.json({ id: existing.id, deleted: true });
     }
-    await updateCharReview.run(rating, text, now, existing.id);
-    return res.json({ id: existing.id });
+    const scan = 'text' in b && text !== existing.text ? moderation.scanText(text) : null;
+    await updateCharReview.run(rating, scan ? scan.text : text, now, existing.id);
+    if (scan) await recordFlag('character_review', existing.id, req.user.id, text, scan);
+    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored) });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
-  await insertCharReview.run(id, characterId, req.user.id, rating, text, now);
-  res.json({ id });
+  const scan = moderation.scanText(text);
+  await insertCharReview.run(id, characterId, req.user.id, rating, scan.text, now);
+  await recordFlag('character_review', id, req.user.id, text, scan);
+  res.json({ id, text: scan.text, censored: scan.censored });
 });
 
 app.delete('/api/character-reviews/:characterId/text', requireAuth, async (req, res) => {
@@ -891,8 +953,9 @@ app.post('/api/profile/activity', requireAuth, async (req, res) => {
 
 const findUserById = db.prepare('SELECT * FROM users WHERE id = ?');
 const updateProfile = db.prepare('UPDATE users SET username = ?, email = ?, bio = ?, social_links = ?, rank_icon_style = ? WHERE id = ?');
-const setAvatarUrl = db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?');
-const countReviewsForUser = db.prepare('SELECT COUNT(*) as n, AVG(rating) as avg FROM reviews WHERE user_id = ? AND rating IS NOT NULL');
+const setAvatarUrl = db.prepare('UPDATE users SET avatar_url = ?, avatar_pending_url = NULL, avatar_review_status = NULL WHERE id = ?'); // una foto fija nueva también cancela un GIF que esperaba revisión
+const setAvatarPending = db.prepare("UPDATE users SET avatar_pending_url = ?, avatar_review_status = 'pending' WHERE id = ?");
+const countReviewsForUser = db.prepare('SELECT COUNT(*) as n, AVG(rating) as avg FROM reviews WHERE user_id = ? AND rating IS NOT NULL AND hidden = 0');
 const findFollow = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followed_id = ?');
 const insertFollow = db.prepare('INSERT INTO follows (follower_id, followed_id, created_at) VALUES (?, ?, ?)');
 const deleteFollow = db.prepare('DELETE FROM follows WHERE follower_id = ? AND followed_id = ?');
@@ -943,6 +1006,7 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
     const newName = b.username.trim();
     if (newName !== req.user.username) {
       if (!USERNAME_RE.test(newName)) return res.status(400).json({ error: 'invalid_username' });
+      if (moderation.badUsername(newName)) return res.status(400).json({ error: 'username_not_allowed' });
       const existing = await findUserByNameCI.get(newName);
       if (existing && existing.id !== req.user.id) return res.status(409).json({ error: 'username_taken' });
       username = newName;
@@ -958,7 +1022,10 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
       email = newEmail;
     }
   }
-  const bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, MAX_BIO) : (req.user.bio || null);
+  let bio = typeof b.bio === 'string' ? b.bio.trim().slice(0, MAX_BIO) : (req.user.bio || null);
+  const bioOriginal = bio;
+  const bioScan = typeof b.bio === 'string' && bio !== (req.user.bio || null) ? moderation.scanText(bio) : null; // solo si la descripción cambió
+  if (bioScan) bio = bioScan.text;
   const socialLinks = (b.socialLinks && typeof b.socialLinks === 'object')
     ? sanitizeSocialLinks(b.socialLinks)
     : JSON.parse(req.user.social_links || '{}');
@@ -974,11 +1041,12 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
   } catch (e) {
     return res.status(409).json({ error: 'username_taken' });
   }
+  if (bioScan) await recordFlag('bio', req.user.id, req.user.id, bioOriginal, bioScan);
   if (email !== (req.user.email || null)) { // correo nuevo: queda sin confirmar y se le manda el enlace
     await clearEmailVerified.run(req.user.id);
     await sendVerification(await findUserById.get(req.user.id), b.lang);
   }
-  res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
+  res.json({ user: await publicUser(await findUserById.get(req.user.id)), censored: !!(bioScan && bioScan.censored) });
 });
 
 const avatarUploadLimiter = rateLimit({ name: 'avatar', windowMs: 10 * 60 * 1000, max: 10, keyFn: req => 'u:' + req.user.id });
@@ -993,9 +1061,17 @@ app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, re
   if (!file) return res.status(400).json({ error: 'invalid_file' });
   const week = await consume('avatar-week', 'u:' + req.user.id, 7 * 24 * 60 * 60 * 1000, AVATAR_CHANGES_PER_WEEK);
   if (week.limited) { res.setHeader('Retry-After', String(week.retryAfter)); return res.status(429).json({ error: 'avatar_weekly_limit', retryAfter: week.retryAfter }); }
-  const previous = req.user.avatar_url;
-  await setAvatarUrl.run(await saveImage(file), req.user.id);
-  await deleteImage(previous); // la foto anterior ya no se usa: se borra (se espera: en Vercel la función puede congelarse apenas responde)
+  const url = await saveImage(file);
+  if (file.animated) {
+    // Un GIF (o PNG/WebP animado) no se muestra hasta que un admin lo aprueba (panel > Moderación). Mientras tanto sigue la foto de antes.
+    await setAvatarPending.run(url, req.user.id);
+    await deleteImage(req.user.avatar_pending_url); // el GIF pendiente anterior, si había
+  } else {
+    const previous = req.user.avatar_url, pending = req.user.avatar_pending_url;
+    await setAvatarUrl.run(url, req.user.id);
+    await deleteImage(previous); // la foto anterior ya no se usa: se borra (se espera: en Vercel la función puede congelarse apenas responde)
+    await deleteImage(pending);
+  }
   res.json({ user: await publicUser(await findUserById.get(req.user.id)) });
 });
 
@@ -1042,6 +1118,7 @@ app.delete('/api/account', requireAuth, deleteAccountLimiter, async (req, res) =
       await tx.prepare('DELETE FROM users WHERE id = ?').run(user.id); // por ON DELETE CASCADE se va también su código de eliminación
     });
     await deleteImage(user.avatar_url); // la foto de perfil (se espera: en Vercel la función puede congelarse apenas responde)
+    await deleteImage(user.avatar_pending_url); // y el GIF que esperaba revisión, si había
     clearSessionCookie(res);
     res.json({ deleted: true });
   };
@@ -1196,8 +1273,10 @@ app.post('/api/lists', requireAuth, writeLimiter, async (req, res) => {
   const isPublic = req.body && req.body.isPublic === false ? 0 : 1;
   const id = 'list-' + uid();
   const now = new Date().toISOString();
-  await insertList.run(id, req.user.id, title, isPublic, now, now);
-  res.json({ list: await shapeList(await findListById.get(id)) });
+  const scan = moderation.scanText(title);
+  await insertList.run(id, req.user.id, scan.text, isPublic, now, now);
+  await recordFlag('list', id, req.user.id, title, scan);
+  res.json({ list: await shapeList(await findListById.get(id)), censored: scan.censored });
 });
 
 app.put('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
@@ -1207,8 +1286,10 @@ app.put('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
   const b = req.body || {};
   const title = typeof b.title === 'string' ? b.title.trim().slice(0, 60) || list.title : list.title;
   const isPublic = typeof b.isPublic === 'boolean' ? (b.isPublic ? 1 : 0) : list.is_public;
-  await updateListMeta.run(title, isPublic, new Date().toISOString(), list.id);
-  res.json({ list: await shapeList(await findListById.get(list.id)) });
+  const scan = title !== list.title ? moderation.scanText(title) : null;
+  await updateListMeta.run(scan ? scan.text : title, isPublic, new Date().toISOString(), list.id);
+  if (scan) await recordFlag('list', list.id, req.user.id, title, scan);
+  res.json({ list: await shapeList(await findListById.get(list.id)), censored: !!(scan && scan.censored) });
 });
 
 app.delete('/api/lists/:id', requireAuth, writeLimiter, async (req, res) => {
@@ -1392,7 +1473,7 @@ app.get('/resena/:id', async (req, res) => {
   const rv = await findReviewById.get(req.params.id);
   const crv = rv ? null : await findCharacterReviewById.get(req.params.id);
   const row = rv || crv;
-  if (!row) return res.type('html').send(getIndexTemplate());
+  if (!row || row.hidden) return res.type('html').send(getIndexTemplate()); // una reseña oculta por moderación tampoco sale en los enlaces compartidos
 
   const user = await findUserById.get(row.user_id);
   const target = rv ? await findAnyGame(rv.game_id) : await findAnyCharacter(crv.character_id);

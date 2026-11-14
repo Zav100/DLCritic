@@ -8330,3 +8330,121 @@ a.btn-ghost {
     animation: none;
   }
 }
+
+/* ---------- moderación: aviso de reseña oculta y estado del GIF en revisión ---------- */
+.rc-hidden-note {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pink) 14%, var(--paper));
+  color: var(--ink);
+  font-family: 'Lexend', sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hint.review-note {
+  color: var(--gold-dim);
+}
+
+/* ---------- aviso pequeño abajo a la derecha (cornerNotice en 03-state-and-utils.js) ----------
+   Sin fondo oscuro ni ventana: el contenedor no recibe clics, solo cada aviso, así que se puede seguir navegando mientras está. */
+.corner-notices {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 350;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.corner-notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 10px 12px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line-dark);
+  border-radius: 14px;
+  box-shadow: 0 6px 14px var(--shadow-soft), 0 14px 32px var(--shadow-strong);
+  animation: corner-notice-in .25s var(--spring);
+}
+
+.corner-notice.leaving {
+  opacity: 0;
+  transform: translateX(16px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.corner-notice p {
+  flex: 1;
+  margin: 0;
+  font-family: 'Lexend', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.corner-notice-icon {
+  flex-shrink: 0;
+  display: flex;
+  margin-top: 1px;
+  color: var(--gold-dim);
+}
+
+.corner-notice-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.corner-notice-x {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.corner-notice-x:hover {
+  background: var(--paper-alt);
+  color: var(--ink);
+}
+
+.corner-notice-x svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes corner-notice-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* en pantallas chicas va encima de la barra de abajo */
+@media (max-width: 860px) {
+  .corner-notices {
+    right: 12px;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .corner-notice {
+    animation: none;
+  }
+
+  .corner-notice.leaving {
+    transition: none;
+  }
+}

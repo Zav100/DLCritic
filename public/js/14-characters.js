@@ -434,7 +434,9 @@ async function saveCharReviewText(characterId, text){
   let rv = state.characterReviews.find(r=>r.characterId===characterId && r.username===state.user.username);
   if(rv){ rv.text=text; rv.date=new Date().toISOString(); }
   else { rv = { id:uid(), characterId, username:state.user.username, rating:null, text, date:new Date().toISOString() }; state.characterReviews.push(rv); }
-  return persistOrResync(()=> apiPut('/character-reviews/'+encodeURIComponent(characterId), { text }));
+  let saved = null;
+  const ok = await persistOrResync(async ()=>{ saved = await apiPut('/character-reviews/'+encodeURIComponent(characterId), { text }); });
+  return applyCensoredText(ok, rv, saved);
 }
 async function deleteCharReviewText(characterId){
   if(!await confirmDialog(t('confirm_delete_review_only'))) return;
@@ -514,10 +516,12 @@ function characterReviewCard(rv, opts){
         <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
       </div>
     </div>
+    ${rv.hidden? `<p class="rc-hidden-note">${esc(t('review_hidden_note'))}</p>` : ''}
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
     <div class="cardfoot">
       <div id="char-gauge-${rv.id}">${rv.rating==null? `<span class="no-rating-tag">${t('no_rating_yet')}</span>` : ''}</div>
-      ${mine? `<div class="rc-actions"><button class="icon-btn" data-del-char-review="${rv.id}">${t('delete_btn')}</button></div>` : ''}
+      ${mine? `<div class="rc-actions"><button class="icon-btn" data-del-char-review="${rv.id}">${t('delete_btn')}</button></div>`
+        : `<div class="rc-actions"><button class="icon-btn" data-report="${rv.id}" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button></div>`}
     </div>
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#char-gauge-${rv.id}`), rv.rating);
@@ -525,5 +529,6 @@ function characterReviewCard(rv, opts){
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
+  else div.querySelector('[data-report]').onclick=()=> openReportModal('character_review', rv.id);
   return div;
 }

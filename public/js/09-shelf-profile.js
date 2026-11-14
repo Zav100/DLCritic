@@ -151,6 +151,7 @@ function renderProfileBody(el, username, profile, editable){
     : (state.user ? `
         <button class="wishlist-btn ${profile.isFollowing?'active':''}" id="followBtn">${ICONS.heart} ${profile.isFollowing? t('following_label') : t('follow_btn')}</button>
         ${profile.isFriend? `<span class="first-badge">${esc(t('friends_badge'))}</span>` : ''}
+        <button type="button" class="wishlist-btn" id="reportUserBtn" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button>
       ` : '');
 
   // Progreso hacia el siguiente rango (0 a 100 %) y qué falta para llegar (ver levelProgress y levelMissingText en 07-stats-share-modals.js).
@@ -271,6 +272,7 @@ function renderProfileBody(el, username, profile, editable){
     document.getElementById('editProfileBtn').onclick = spa(()=> goView('settings'));
   } else if(state.user){
     document.getElementById('followBtn').onclick = ()=> toggleFollow(username);
+    document.getElementById('reportUserBtn').onclick = ()=> openReportModal('user', username);
   }
   el.querySelectorAll('[data-follow-list]').forEach(b=>{ b.onclick = ()=> openFollowListModal(username, b.dataset.followList, editable); });
   makeZoomable(el.querySelector('.profile-avatar .avatar-img'), profile.avatarUrl, username); // la foto de perfil se abre en grande (sin foto, la letra no hace nada)

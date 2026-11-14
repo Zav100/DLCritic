@@ -82,7 +82,7 @@ function showGoogleReturn(){
   history.replaceState(null, '', location.pathname);
   setAuthTab('login');
   const errEl = document.getElementById('authError');
-  errEl.textContent = t({ denied:'auth_google_denied', expired:'auth_google_expired', unverified_email:'auth_google_unverified', two_factor:'auth_google_two_factor', not_configured:'auth_google_not_configured' }[q.get('reason')] || 'auth_google_failed');
+  errEl.textContent = t({ denied:'auth_google_denied', expired:'auth_google_expired', unverified_email:'auth_google_unverified', two_factor:'auth_google_two_factor', suspended:'auth_google_suspended', not_configured:'auth_google_not_configured' }[q.get('reason')] || 'auth_google_failed');
   errEl.hidden = false;
 }
 // Reenvía el enlace para confirmar el correo (desde el aviso de arriba y desde Ajustes); el servidor deja 3 por hora.
@@ -171,7 +171,7 @@ async function handleLogin(){
   const identifier = document.getElementById('a-identifier').value.trim();
   const password = document.getElementById('a-password').value;
   if(!identifier || !password){ errEl.textContent=t('err_bad_login'); errEl.hidden=false; return; }
-  const ERR_MSG = { bad_login:'err_bad_login', bad_code:'err_bad_code', too_many_requests:'err_too_many' };
+  const ERR_MSG = { bad_login:'err_bad_login', bad_code:'err_bad_code', too_many_requests:'err_too_many', account_suspended:'err_account_suspended' };
   const codeField = document.getElementById('aCodeField');
   let user;
   try{
@@ -219,7 +219,7 @@ async function handleRegisterSubmit(){
   SOCIAL_KEYS.forEach(k=>{ const el=document.getElementById('r-social-'+k); const v=el?el.value.trim():''; if(v) socialLinks[k]=v; });
   if(hasBadSocialLink(socialLinks)){ errEl.textContent=t('err_social_link'); errEl.hidden=false; return; }
 
-  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', common_password:'err_common_password', invalid_username:'err_invalid_username', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
+  const ERR_MSG = { username_taken:'err_username_taken', email_taken:'err_email_taken', invalid_email:'err_invalid_email', weak_password:'err_weak_password', password_emoji:'err_password_emoji', common_password:'err_common_password', invalid_username:'err_invalid_username', username_not_allowed:'err_username_not_allowed', terms_required:'err_terms_required', too_many_requests:'err_too_many' };
   let user;
   try{
     ({ user } = await apiPost('/auth/register', { email, password, username, bio, socialLinks, acceptTerms: true, lang: state.lang }));

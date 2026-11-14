@@ -117,7 +117,7 @@ function inspectImage(buf) {
   return null;
 }
 
-// Lee el campo "image" de un multipart/form-data. Devuelve { buffer, ext }, o null si no llegó un archivo válido (no es una imagen de verdad o el formato no está
+// Lee el campo "image" de un multipart/form-data. Devuelve { buffer, ext, animated }, o null si no llegó un archivo válido (no es una imagen de verdad o el formato no está
 // permitido). Lanza si multer falla (por ejemplo, archivo demasiado grande) o, con error.code === 'animated_not_allowed', si es animada y animated no es true.
 function receiveImage(req, res, { animated = true } = {}) {
   return new Promise((resolve, reject) => {
@@ -127,7 +127,7 @@ function receiveImage(req, res, { animated = true } = {}) {
       const img = inspectImage(req.file.buffer);
       if (!img) return resolve(null);
       if (img.animated && !animated) return reject(Object.assign(new Error('Las imágenes animadas son solo para suscriptores'), { code: 'animated_not_allowed' }));
-      resolve({ buffer: img.buffer, ext: img.ext });
+      resolve({ buffer: img.buffer, ext: img.ext, animated: img.animated });
     });
   });
 }

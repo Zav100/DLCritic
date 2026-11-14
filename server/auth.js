@@ -107,7 +107,7 @@ async function currentUser(req) {
   if (!token) return null; // visitante sin sesión: ni siquiera se consulta la base
   await purgeExpiredSessions();
   const row = await findSessionUser.get(sha256(token));
-  if (!row) return null;
+  if (!row || row.suspended_at) return null; // una cuenta suspendida no tiene sesión, aunque la cookie siga viva
   const { session_expires_at, ...user } = row;
   if (new Date(session_expires_at) < new Date()) {
     await endSession(token);
