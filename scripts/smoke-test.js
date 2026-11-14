@@ -1106,6 +1106,8 @@ const today = new Date().toISOString().slice(0, 10);
     ok(await admin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'reject' }));
     const me2 = (await u('GET', '/api/auth/me')).body.user; assert.deepEqual([me2.avatarUrl, me2.avatarReview, me2.avatarPendingUrl], [gifA, 'rejected', null]);
     ok(await admin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'approve' }), 404); // ya no hay nada pendiente
+    ok(await admin('POST', '/api/admin/moderation/gifs/abc', { action: 'approve' }), 404); // un id que no es número no existe: 404, no un error de la base
+    ok(await admin('POST', '/api/admin/moderation/users/abc/reactivate'), 404);
     if (!REMOTE) assert.ok(!fs.existsSync(files(gifB)), 'el GIF rechazado se borró');
     // un tercero queda pendiente; al perder el rol, subir una foto fija lo cancela y reemplaza al GIF aprobado (cuyo archivo se borra)
     const gC = await u('POST', '/api/profile/avatar', form(gif, 'tercero.gif')); ok(gC);
@@ -1319,6 +1321,13 @@ const today = new Date().toISOString().slice(0, 10);
     }
     assert.ok((await admin('GET', '/admin')).headers.get('content-security-policy'), 'también en el panel');
     assert.ok((await anon('GET', '/api/games')).headers.get('content-security-policy'));
+  });
+
+  console.log('Peticiones raras');
+  await step('un %00 o un %ff%fe en la dirección y un \\u0000 en el cuerpo dan 400, no un error 500', async () => {
+    for (const url of ['/api/users/%00', '/juego/%00', '/api/games?q=%00', '/usuario/%ff%fe', '/api/users/%ff%fe']) ok(await anon('GET', url), 400);
+    ok(await a('PUT', `/api/reviews/${gameId}`, { text: 'hola\u0000mundo' }), 400);
+    ok(await anon('POST', '/api/auth/login', { identifier: 'x\u0000y', password: 'z' }), 400);
   });
 
   console.log('Archivos estáticos');

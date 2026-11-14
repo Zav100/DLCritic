@@ -16,7 +16,7 @@ const platformGrid = document.getElementById('platformGrid');
 platformGrid.innerHTML = PLATFORMS.map(p=>`
   <div class="platform-row">
     <label><input type="checkbox" data-plat="${p.key}"> ${esc(p.name)}</label>
-    <input type="url" placeholder="Link directo al producto (opcional)" data-plat-url="${p.key}" disabled>
+    <input type="url" placeholder="Link directo al producto (opcional)" aria-label="Link directo a ${esc(p.name)} (opcional)" data-plat-url="${p.key}" disabled>
   </div>
 `).join('');
 platformGrid.querySelectorAll('[data-plat]').forEach(cb=>{
@@ -29,14 +29,14 @@ document.getElementById('f-cover-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{ document.getElementById('coverPreview').innerHTML = `<img src="${reader.result}">`; };
+  reader.onload = ()=>{ document.getElementById('coverPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
 document.getElementById('f-card-cover-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{ document.getElementById('cardCoverPreview').innerHTML = `<img src="${reader.result}">`; };
+  reader.onload = ()=>{ document.getElementById('cardCoverPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
 
@@ -75,8 +75,8 @@ function fillFormForEdit(g){
   document.getElementById('f-mode').value = g.gameMode || '';
   document.getElementById('f-steam-appid').value = g.steamAppId || '';
   document.getElementById('f-description').value = g.description || '';
-  document.getElementById('coverPreview').innerHTML = g.coverUrl ? `<img src="${esc(g.coverUrl)}">` : ICON_SVG.gamepad;
-  document.getElementById('cardCoverPreview').innerHTML = g.cardCoverUrl ? `<img src="${esc(g.cardCoverUrl)}">` : ICON_SVG.gamepad;
+  document.getElementById('coverPreview').innerHTML = g.coverUrl ? `<img alt="" src="${esc(g.coverUrl)}">` : ICON_SVG.gamepad;
+  document.getElementById('cardCoverPreview').innerHTML = g.cardCoverUrl ? `<img alt="" src="${esc(g.cardCoverUrl)}">` : ICON_SVG.gamepad;
   const platforms = g.platforms || [];
   const links = g.storeLinks || {};
   platformGrid.querySelectorAll('[data-plat]').forEach(cb=>{
@@ -208,7 +208,7 @@ function renderGamesTable(){
   }
   body.innerHTML = filtered.map(g=>`
     <tr class="${g.hidden?'row-hidden':''}">
-      <td>${g.coverUrl? `<img class="row-cover" src="${esc(g.coverUrl)}">` : `<div class="row-cover row-cover-empty">${ICON_SVG.gamepad}</div>`}</td>
+      <td>${g.coverUrl? `<img alt="" class="row-cover" src="${esc(g.coverUrl)}">` : `<div class="row-cover row-cover-empty">${ICON_SVG.gamepad}</div>`}</td>
       <td>${esc(g.title)}</td>
       <td>${esc((g.genres && g.genres.length ? g.genres : [g.genre]).join(', '))}</td>
       <td>${g.releaseYear || '—'}</td>

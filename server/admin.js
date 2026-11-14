@@ -481,8 +481,9 @@ router.post('/moderation/flags/:id', async (req, res) => {
 const findPendingGif = db.prepare("SELECT id, avatar_url, avatar_pending_url FROM users WHERE id = ? AND avatar_review_status = 'pending' AND avatar_pending_url IS NOT NULL");
 const approveGif = db.prepare('UPDATE users SET avatar_url = avatar_pending_url, avatar_pending_url = NULL, avatar_review_status = NULL WHERE id = ?');
 const rejectGif = db.prepare("UPDATE users SET avatar_pending_url = NULL, avatar_review_status = 'rejected' WHERE id = ?");
+const idParam = v => (/^\d+$/.test(v) ? Number(v) : 0); // un id que no es número no existe (0): 404 en vez de un error de la base
 router.post('/moderation/gifs/:userId', async (req, res) => {
-  const u = await findPendingGif.get(Number(req.params.userId));
+  const u = await findPendingGif.get(idParam(req.params.userId));
   if (!u) return res.status(404).json({ error: 'not_found' });
   const action = String((req.body || {}).action || '');
   if (action === 'approve') { await approveGif.run(u.id); await deleteImage(u.avatar_url); }
@@ -492,7 +493,7 @@ router.post('/moderation/gifs/:userId', async (req, res) => {
 });
 
 router.post('/moderation/users/:userId/reactivate', async (req, res) => {
-  const u = await findUserRow.get(Number(req.params.userId));
+  const u = await findUserRow.get(idParam(req.params.userId));
   if (!u) return res.status(404).json({ error: 'not_found' });
   await suspendUser.run(null, u.id);
   res.json({ ok: true });

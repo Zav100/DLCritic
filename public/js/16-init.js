@@ -49,6 +49,12 @@ function setupConnectionNotice(){
   if(!navigator.onLine) goOffline();
 }
 setupConnectionNotice();
+// Todos los diálogos (.confirm-overlay, los arma cada pantalla por su cuenta) se anuncian como diálogos modales a los lectores de pantalla, con el título o el texto como nombre.
+new MutationObserver(list=> list.forEach(m=> m.addedNodes.forEach(n=>{
+  if(n.nodeType!==1 || !n.classList.contains('confirm-overlay')) return;
+  n.setAttribute('role', 'dialog'); n.setAttribute('aria-modal', 'true');
+  const label = n.querySelector('h2, h3, p'); if(label) n.setAttribute('aria-label', label.textContent.trim().slice(0, 120));
+}))).observe(document.body, { childList:true });
 document.getElementById('verifyResendBtn').onclick = resendVerification;
 document.getElementById('verifyBannerClose').onclick = ()=>{ try{ sessionStorage.setItem('dlcVerifyBannerOff', '1'); }catch(e){} document.getElementById('verifyBanner').hidden = true; };
 if('serviceWorker' in navigator) window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{ /* sin service worker no hay pantalla sin conexión propia: no pasa nada más */ }); });
