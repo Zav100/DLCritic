@@ -112,6 +112,7 @@
       <button class="tabbtn" data-tab="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg> Noticias</button>
       <button class="tabbtn" data-tab="inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg> Buzón<span class="tag tag-hidden" id="inboxUnreadBadge" style="margin-left:6px;" hidden>0</span></button>
       <button class="tabbtn" data-tab="moderation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Moderación<span class="tag tag-hidden" id="moderationBadge" style="margin-left:6px;" hidden>0</span></button>
+      <button class="tabbtn" data-tab="words"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Palabras</button>
     </div>
 
     <div id="tabGames">
@@ -438,7 +439,21 @@
       <div class="card">
         <h2 class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Moderación</h2>
         <p class="hint" style="margin:0 0 14px;">Lo que el filtro de palabras marcó (lo grave ya se publicó con asteriscos; aquí ves el texto original), lo que reportaron los usuarios y los GIF de foto de perfil que esperan tu aprobación.</p>
+        <div style="margin:0 0 6px;"><button type="button" class="chip" id="moderationRefreshBtn">Actualizar</button></div>
         <div id="moderationBody"></div>
+      </div>
+    </div>
+
+    <div id="tabWords" hidden>
+      <div class="card">
+        <h2 class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Palabras censurables</h2>
+        <p class="hint" style="margin:0 0 14px;">Las palabras y frases que el filtro censura o marca. Lo que agregues o quites vale para lo que se escriba desde ahora; las reseñas ya publicadas no cambian. Se leen sin mayúsculas ni tildes, con plural, y con números o símbolos por letras (r4c1sta).</p>
+        <div class="words-test">
+          <input type="text" id="wordsTestInput" maxlength="300" placeholder="Probar un texto con la lista de ahora" autocomplete="off" aria-label="Probar un texto">
+          <button type="button" class="chip" id="wordsTestBtn">Probar</button>
+        </div>
+        <div id="wordsTestResult" class="words-test-result"></div>
+        <div id="wordsBody"></div>
       </div>
     </div>
   </div>
@@ -452,6 +467,7 @@
 <script src="/admin/assets/js/07-characters.js"></script>
 <script src="/admin/assets/js/05-news.js"></script>
 <script src="/admin/assets/js/08-moderation.js"></script>
+<script src="/admin/assets/js/09-moderation-words.js"></script>
 <script src="/admin/assets/js/06-suggestions-and-init.js"></script>
 </body>
 </html>

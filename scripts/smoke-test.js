@@ -1248,6 +1248,51 @@ const today = new Date().toISOString().slice(0, 10);
     const noAdmin = await admin('POST', '/api/admin/moderation/flags/mf-test-admin', { action: 'suspend' }); ok(noAdmin, 403); assert.equal(noAdmin.body.error, 'admin_account');
     ok(await admin('POST', '/api/admin/moderation/flags/mf-test-admin', { action: 'ok' }));
   });
+  await step('lista de palabras desde el panel: agregar, quitar una original, restaurar y probar; vale enseguida', async () => {
+    const tiers = async () => (await admin('GET', '/api/admin/moderation/words')).body.tiers;
+    const tier = async t => (await tiers()).find(x => x.tier === t);
+    const test = async text => (await admin('POST', '/api/admin/moderation/words/test', { text })).body;
+    ok(await aOnAdmin('GET', '/api/admin/moderation/words'), 403);
+    assert.ok((await tier('grave')).items.some(i => i.term === 'negrata' && i.builtin), 'trae la lista original');
+    // agregar una frase (se guarda normalizada: sin mayúsculas ni tildes, números por letras) y se censura al instante
+    ok(await admin('POST', '/api/admin/moderation/words', { tier: 'grave', term: 'Frase R4RA de Prueba' }));
+    assert.ok((await tier('grave')).items.some(i => i.term === 'frase rara de prueba' && !i.builtin));
+    const t1 = await test('Dijo una frase rara de prueba ayer'); assert.deepEqual([t1.censored, t1.text], [true, 'Dijo una f**** **** ** ****** ayer']);
+    const r = await a('PUT', `/api/reviews/${gameId}`, { text: 'Una frase rara de prueba' }); ok(r); assert.equal(r.body.censored, true, 'también en una reseña de verdad');
+    // duplicados, términos que no sirven, listas que no existen y permisos
+    assert.equal((await admin('POST', '/api/admin/moderation/words', { tier: 'grave', term: 'frase rara de prueba' })).body.error, 'exists');
+    for (const mala of ['', 'ab', 'x'.repeat(61), '!!!']) { const m = await admin('POST', '/api/admin/moderation/words', { tier: 'grave', term: mala }); ok(m, 400); assert.equal(m.body.error, 'invalid_term', JSON.stringify(mala)); }
+    ok(await admin('POST', '/api/admin/moderation/words', { tier: 'otra', term: 'palabra' }), 400);
+    ok(await aOnAdmin('POST', '/api/admin/moderation/words', { tier: 'grave', term: 'palabra' }), 403);
+    // quitarla: deja de censurarse
+    ok(await admin('POST', '/api/admin/moderation/words/remove', { tier: 'grave', term: 'frase rara de prueba' }));
+    assert.equal((await test('una frase rara de prueba')).censored, false);
+    ok(await admin('POST', '/api/admin/moderation/words/remove', { tier: 'grave', term: 'frase rara de prueba' }), 404);
+    // quitar una palabra de la lista original (queda en "quitadas") y restaurarla
+    ok(await admin('POST', '/api/admin/moderation/words/remove', { tier: 'grave', term: 'negrata' }));
+    const g1 = await tier('grave'); assert.ok(!g1.items.some(i => i.term === 'negrata') && g1.removed.includes('negrata'));
+    assert.equal((await test('un negrata')).censored, false);
+    ok(await admin('POST', '/api/admin/moderation/words/remove', { tier: 'grave', term: 'negrata' }), 404);
+    ok(await admin('POST', '/api/admin/moderation/words', { tier: 'grave', term: 'negrata' })); // restaurar
+    assert.equal((await test('un negrata')).censored, true);
+    assert.equal((await admin('POST', '/api/admin/moderation/words', { tier: 'grave', term: 'negrata' })).body.error, 'exists');
+    // una palabra "solo se marca": no se censura pero la detecta
+    ok(await admin('POST', '/api/admin/moderation/words', { tier: 'revisar', term: 'palabra dudosa zzz' }));
+    const t2 = await test('una Palabra Dudosa Zzz'); assert.deepEqual([t2.censored, t2.revisar.length], [false, 1]);
+    ok(await admin('POST', '/api/admin/moderation/words/remove', { tier: 'revisar', term: 'palabra dudosa zzz' }));
+    assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM moderation_words').get()).n, 0, 'al terminar no queda nada guardado');
+  });
+  if (!REMOTE) await step('si la bandeja no se puede escribir (tabla ausente), guardar una reseña no falla: se censura igual y el error queda en el registro', async () => {
+    await db.prepare('ALTER TABLE moderation_flags RENAME TO moderation_flags_off').run();
+    const quiet = console.error; console.error = () => {};
+    try {
+      const r = await b('PUT', `/api/reviews/${gameId}`, { text: 'otro negrata más' });
+      ok(r); assert.deepEqual([r.body.censored, r.body.text], [true, 'otro n****** más']);
+    } finally {
+      console.error = quiet;
+      await db.prepare('ALTER TABLE moderation_flags_off RENAME TO moderation_flags').run();
+    }
+  });
   await step('Content-Security-Policy: está en el sitio y el panel, cubre cada script en línea y las páginas no llevan onclick=""', async () => {
     const csp = (await anon('GET', '/')).headers.get('content-security-policy');
     assert.ok(csp, 'falta la cabecera');

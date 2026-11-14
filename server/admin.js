@@ -498,4 +498,69 @@ router.post('/moderation/users/:userId/reactivate', async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------------- lista de palabras de moderación ---------------- */
+
+// Pestaña Palabras: ver, agregar y quitar las palabras y frases del filtro (server/moderation.js). Lo que se cambia vale para lo que se escriba desde ahora; lo ya publicado no cambia.
+const readWordRows = db.prepare('SELECT tier, term, removed FROM moderation_words');
+const findWordRow = db.prepare('SELECT removed FROM moderation_words WHERE tier = ? AND term = ?');
+const insertWord = db.prepare('INSERT INTO moderation_words (tier, term, removed, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (tier, term) DO UPDATE SET removed = EXCLUDED.removed');
+const deleteWord = db.prepare('DELETE FROM moderation_words WHERE tier = ? AND term = ?');
+const countCustomWords = db.prepare('SELECT COUNT(*) AS n FROM moderation_words WHERE removed = 0');
+const MAX_CUSTOM_WORDS = 500;
+
+// Valida { tier, term } del cuerpo y devuelve { tier, term, key } (o responde el error y devuelve null).
+function readWordBody(req, res) {
+  const tier = String((req.body || {}).tier || '');
+  const key = moderation.TIER_KEY[tier];
+  const term = moderation.normTerm((req.body || {}).term);
+  if (!key) { res.status(400).json({ error: 'invalid_tier' }); return null; }
+  if (!term) { res.status(400).json({ error: 'invalid_term' }); return null; }
+  return { tier, term, key };
+}
+const wordsResponse = async () => ({ tiers: moderation.describe(await readWordRows.all()) });
+
+router.get('/moderation/words', async (req, res) => {
+  res.json(await wordsResponse());
+});
+
+// Agregar una palabra o frase (o restaurar una de la lista original que se había quitado).
+router.post('/moderation/words', async (req, res) => {
+  const w = readWordBody(req, res);
+  if (!w) return;
+  const row = await findWordRow.get(w.tier, w.term);
+  const builtin = moderation.DEFAULTS[w.key].includes(w.term);
+  if (builtin) {
+    if (!row || !row.removed) return res.status(409).json({ error: 'exists' });
+    await deleteWord.run(w.tier, w.term); // era de la lista original y estaba quitada: se restaura
+  } else {
+    if (row) return res.status(409).json({ error: 'exists' });
+    if ((await countCustomWords.get()).n >= MAX_CUSTOM_WORDS) return res.status(400).json({ error: 'too_many_words' });
+    await insertWord.run(w.tier, w.term, 0, new Date().toISOString());
+  }
+  await moderation.reload();
+  res.json(await wordsResponse());
+});
+
+// Quitar una palabra o frase: una agregada se borra; una de la lista original queda anotada como quitada (se puede restaurar).
+router.post('/moderation/words/remove', async (req, res) => {
+  const w = readWordBody(req, res);
+  if (!w) return;
+  const row = await findWordRow.get(w.tier, w.term);
+  if (moderation.DEFAULTS[w.key].includes(w.term)) {
+    if (row && row.removed) return res.status(404).json({ error: 'not_found' });
+    await insertWord.run(w.tier, w.term, 1, new Date().toISOString());
+  } else {
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    await deleteWord.run(w.tier, w.term);
+  }
+  await moderation.reload();
+  res.json(await wordsResponse());
+});
+
+// Probar un texto con la lista de ahora: cómo quedaría y qué se marcaría (no guarda nada).
+router.post('/moderation/words/test', async (req, res) => {
+  const r = moderation.scanText(String((req.body || {}).text || '').slice(0, 2000));
+  res.json({ text: r.text, censored: r.censored, graves: r.graves, revisar: r.revisar, links: r.links });
+});
+
 module.exports = router;

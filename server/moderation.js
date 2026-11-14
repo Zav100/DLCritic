@@ -7,8 +7,12 @@
 // Cómo lee el texto (para que los trucos comunes no sirvan): minúsculas y sin tildes; símbolos y números dentro de una palabra valen como letras (r4c1sta, @ a, 3 e,
 // 1 i, 0 o, $ s, 5 s, 7 t); los separadores entre letras se ignoran (r.a.c.i.s.t.a); las letras repetidas valen igual (racissssta); y se busca cada término como
 // palabra completa, con plural, para no marcar palabras inocentes que lo contienen ("tycoon" no activa "coon").
+// La lista: server/moderation-words.json es la lista ORIGINAL. Desde el panel (pestaña Palabras) un admin puede agregar palabras o frases y quitar las originales; eso se guarda en la
+// tabla moderation_words y se junta con la original (ver effective()). Cada instancia vuelve a leer la tabla como mucho una vez por minuto (ensureFresh) y, si la base no responde
+// o la tabla todavía no existe, sigue con la última lista que tenía (al arrancar, la original): el filtro nunca deja de funcionar.
 // Límites que se conocen: letras separadas por espacios (r a c i s t a), el contexto (la lista no entiende ironía ni citas) y otros idiomas distintos de español e inglés.
 const words = require('./moderation-words.json');
+const db = require('./db');
 
 const LEET = { 4: 'a', 3: 'e', 1: 'i', 0: 'o', 5: 's', 7: 't' };
 const SYMBOL_LEET = { '@': 'a', $: 's', '!': 'i', '|': 'i', '+': 't' };
@@ -63,8 +67,61 @@ function buildRegex(alone, cross) {
   if (cross) parts.push('(?:' + alternatives(cross[0]).join('|') + ') (?:' + alternatives(cross[1]).join('|') + ')');
   return parts.length ? new RegExp('(?<![a-z0-9])(?:' + parts.join('|') + ')(?![a-z0-9])', 'g') : null;
 }
-const GRAVE = buildRegex(words.grave, [words.grupos, words.insultos]);
-const REVISAR = buildRegex(words.revisar);
+// tier en la base -> clave en el JSON. grave: se censura; revisar: solo se marca; grupo + insulto: una frase grave ("negros de mierda").
+const TIER_KEY = { grave: 'grave', revisar: 'revisar', grupo: 'grupos', insulto: 'insultos' };
+const DEFAULTS = Object.fromEntries(Object.values(TIER_KEY).map(k => [k, [...new Set(words[k].map(norm).filter(Boolean))]]));
+let GRAVE = null, REVISAR = null, SINGLE_LONG = [];
+// Reconstruye las expresiones con estas listas ({ grave, revisar, grupos, insultos }).
+function applyLists(lists) {
+  GRAVE = buildRegex(lists.grave, lists.grupos.length && lists.insultos.length ? [lists.grupos, lists.insultos] : null);
+  REVISAR = buildRegex(lists.revisar);
+  SINGLE_LONG = [...new Set(lists.grave.map(norm).filter(t => !t.includes(' ') && t.length >= 7))]; // para los nombres de usuario (ver badUsername)
+}
+// La lista efectiva: la original menos lo que un admin quitó, más lo que agregó. rows = filas de moderation_words ({ tier, term, removed }).
+function effective(rows) {
+  const out = {};
+  for (const [tier, key] of Object.entries(TIER_KEY)) {
+    const mine = rows.filter(r => r.tier === tier);
+    const removed = new Set(mine.filter(r => r.removed).map(r => r.term));
+    const added = mine.filter(r => !r.removed).map(r => r.term);
+    out[key] = [...DEFAULTS[key].filter(t => !removed.has(t)), ...added.filter(t => !DEFAULTS[key].includes(t))];
+  }
+  return out;
+}
+// Lo que ve el panel: por cada lista, sus términos (builtin = de la lista original) y las originales que se quitaron (se pueden restaurar).
+function describe(rows) {
+  return Object.entries(TIER_KEY).map(([tier, key]) => {
+    const mine = rows.filter(r => r.tier === tier);
+    const removed = new Set(mine.filter(r => r.removed).map(r => r.term));
+    const custom = mine.filter(r => !r.removed).map(r => r.term).filter(t => !DEFAULTS[key].includes(t));
+    return {
+      tier,
+      items: [...DEFAULTS[key].filter(t => !removed.has(t)).map(term => ({ term, builtin: true })), ...custom.map(term => ({ term, builtin: false }))],
+      removed: DEFAULTS[key].filter(t => removed.has(t)),
+    };
+  });
+}
+// Un término como se guarda: minúsculas, sin tildes, números y símbolos por letras. null si no sirve (vacío, muy corto o largo, o con caracteres raros).
+function normTerm(raw) {
+  const t = norm(String(raw || ''));
+  return /^[a-z0-9]+( [a-z0-9]+)*$/.test(t) && t.length >= 3 && t.length <= 60 ? t : null;
+}
+applyLists(effective([]));
+
+const readWords = db.prepare('SELECT tier, term, removed FROM moderation_words');
+let loadedAt = 0, loading = null;
+// Vuelve a leer la lista de la base (ya mismo). Si falla, se queda con la anterior.
+function reload() {
+  loading ||= readWords.all()
+    .then(rows => applyLists(effective(rows)))
+    .catch(e => console.error('Moderación: no se pudo leer la lista de palabras, se sigue con la anterior:', e.message))
+    .finally(() => { loadedAt = Date.now(); loading = null; });
+  return loading;
+}
+// La relee solo si pasó más de un minuto desde la última vez (las rutas lo llaman antes de revisar un texto).
+function ensureFresh(maxAgeMs = 60 * 1000) {
+  return Date.now() - loadedAt < maxAgeMs ? Promise.resolve() : reload();
+}
 const LINK = /https?:\/\/|www\.|\b[a-z0-9-]+\.(?:com|net|org|io|gg|tv|ly|me|xyz|ru|cc)\b/i;
 
 function matches(regex, n) {
@@ -106,7 +163,6 @@ function scanText(original) {
 
 // ¿El nombre de usuario trae una palabra grave? Se mira entero y por partes (separadas por _ . - y números), y los términos largos y de una sola palabra
 // también dentro del nombre pegado ("xxnegratayy"); los cortos solo como palabra, para no rechazar nombres inocentes.
-const SINGLE_LONG = [...new Set(words.grave.map(norm).filter(t => !t.includes(' ') && t.length >= 7))];
 function badUsername(name) {
   const text = String(name || '');
   if (GRAVE) {
@@ -117,4 +173,4 @@ function badUsername(name) {
   return SINGLE_LONG.some(t => flat.includes(t));
 }
 
-module.exports = { scanText, badUsername, normalize };
+module.exports = { scanText, badUsername, normalize, normTerm, effective, describe, reload, ensureFresh, DEFAULTS, TIER_KEY };
