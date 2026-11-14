@@ -41,6 +41,11 @@
         setTimeout(function () { document.documentElement.classList.remove('splash-on'); }, 8000);
       }
     } catch (e) { /* sin sessionStorage o matchMedia: sin pantalla de bienvenida */ }
+    // Aviso «Confirma tu correo»: si la cuenta lo tenía la última vez (y no se cerró en esta sesión), se le deja su lugar desde el primer dibujo. El aviso de verdad llega
+    // con los datos de la sesión; sin esto, todo lo de abajo (incluido el esqueleto de carga) bajaba de golpe al aparecer. Ver renderVerifyBanner() (05-navigation.js).
+    try {
+      if (localStorage.getItem('dlcVerifyBanner') === '1' && sessionStorage.getItem('dlcVerifyBannerOff') !== '1') document.documentElement.classList.add('verify-pending');
+    } catch (e) { /* sin almacenamiento: el aviso aparece cuando llegan los datos */ }
   </script>
   <script>
     // Al recargar en cualquier dirección que no sea el inicio, el HTML trae el inicio a la vista hasta que llegan los datos y la app decide qué vista

@@ -8472,3 +8472,27 @@ a.btn-ghost {
   height: 40px;
   font-size: 17px;
 }
+
+/* ---------- aviso «Confirma tu correo»: su lugar reservado ----------
+   El aviso mide lo mismo con o sin texto (un renglón; dos o tres en celulares angostos), y mientras llegan los datos de la sesión se deja su espacio vacío
+   (html.verify-pending, puesto por el <head> si la cuenta lo tenía la última vez) para que lo de abajo no se corra de lugar. */
+#verifyBanner {
+  min-height: 47px;
+}
+
+html.verify-pending #verifyBanner[hidden] {
+  display: flex !important;
+  visibility: hidden;
+}
+
+@media (max-width: 640px) {
+  #verifyBanner {
+    min-height: 68px;
+  }
+}
+
+@media (max-width: 440px) {
+  #verifyBanner {
+    min-height: 85px;
+  }
+}
