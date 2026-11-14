@@ -8448,3 +8448,27 @@ a.btn-ghost {
     transition: none;
   }
 }
+
+/* ---------- foto de quien escribió, dentro de la reseña ---------- */
+.rc-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rc-head-text {
+  min-width: 0;
+}
+
+.rc-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-top: 1px;
+}
+
+.rc-avatar .mini-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}

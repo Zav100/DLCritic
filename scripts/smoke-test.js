@@ -1173,6 +1173,7 @@ const today = new Date().toISOString().slice(0, 10);
     const r1 = await a('PUT', `/api/reviews/${gameId}`, { text: 'Qué juego de negrata de mierda' }); ok(r1);
     assert.deepEqual([r1.body.censored, r1.body.text], [true, 'Qué juego de n****** de mierda']);
     assert.equal((await mine()).text, 'Qué juego de n****** de mierda');
+    assert.match((await mine()).avatarUrl, /\.png$/, 'cada reseña trae la foto de quien la escribió');
     const fl = (await flagsOf('review')).find(f => f.author === 'smoketest_a');
     assert.deepEqual([fl.tier, fl.source, fl.text, fl.spans], ['grave', 'auto', 'Qué juego de negrata de mierda', [[13, 20, 'grave']]]);
     // editarla con un texto limpio borra la marca; con una palabra dudosa queda marcada pero sin censurar

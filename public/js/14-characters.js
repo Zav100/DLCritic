@@ -506,14 +506,18 @@ function renderCharReviewBlock(characterId, myReview){
 function characterReviewCard(rv, opts){
   const c = findCharacter(rv.characterId) || {name:'(personaje eliminado)'};
   const div=document.createElement('div');
-  div.className='card reviewcard' + (rv.isSubscriber? ' is-sub' : '');
+  const au = reviewAuthor(rv);
+  div.className='card reviewcard' + (au.isSubscriber? ' is-sub' : '');
   const mine = state.user && state.user.username===rv.username;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
     <div class="rc-top">
-      <div>
+      <div class="rc-head">
+        <a class="rc-avatar" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}" aria-label="${esc(rv.username)}" tabindex="-1">${miniAvatarHTML(rv.username, au.avatarUrl, au.isSubscriber)}</a>
+        <div class="rc-head-text">
         <div class="rc-game">${esc(c.name)}</div>
         <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
+        </div>
       </div>
     </div>
     ${rv.hidden? `<p class="rc-hidden-note">${esc(t('review_hidden_note'))}</p>` : ''}
@@ -525,7 +529,9 @@ function characterReviewCard(rv, opts){
     </div>
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#char-gauge-${rv.id}`), rv.rating);
-  div.querySelector('.rc-author').onclick=spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  const openAuthor = spa(()=>{ state.profileUsername = rv.username; goView('profile'); });
+  div.querySelector('.rc-author').onclick = openAuthor;
+  div.querySelector('.rc-avatar').onclick = openAuthor; // la foto también lleva al perfil
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
