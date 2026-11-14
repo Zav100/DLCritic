@@ -310,3 +310,14 @@ CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits(reset_at);
 -- Reseñas ocultas por un admin: no se ven en el sitio (solo su autor las sigue viendo, con un aviso).
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS hidden INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE character_reviews ADD COLUMN IF NOT EXISTS hidden INTEGER NOT NULL DEFAULT 0;
+
+-- Palabras de moderación que un admin cambia desde el panel (pestaña Palabras). La lista original está en server/moderation-words.json; aquí solo hay lo que cambió:
+-- removed = 0: una palabra o frase AGREGADA; removed = 1: una de la lista original que se QUITÓ. tier: grave (se censura) | revisar (solo se marca) | grupo + insulto (frase grave).
+-- term va normalizado (minúsculas, sin tildes).
+CREATE TABLE IF NOT EXISTS moderation_words (
+  tier TEXT NOT NULL,
+  term TEXT NOT NULL,
+  removed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (tier, term)
+);

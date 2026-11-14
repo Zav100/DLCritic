@@ -32,6 +32,10 @@ async function loadModeration(){
   renderModeration();
 }
 
+// La bandeja se actualiza sola cada minuto (el numerito de la pestaña Moderación se actualiza aunque estés en otra), con el botón «Actualizar» y al abrir la pestaña.
+setInterval(()=>{ if(state.user && state.user.isAdmin && !document.hidden) loadModeration().catch(()=>{}); }, 60 * 1000);
+document.getElementById('moderationRefreshBtn').onclick = ()=> loadModeration().catch(()=>{});
+
 function modFlagHTML(f){
   const who = f.source === 'report'
     ? `Reportado por <b>${esc(f.reporter || 'alguien')}</b>${f.note ? `: «${esc(f.note)}»` : ''}`

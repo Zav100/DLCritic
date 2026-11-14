@@ -14,6 +14,9 @@ document.querySelectorAll('.tabbtn').forEach(b=>{
     document.getElementById('tabNews').hidden = b.dataset.tab!=='news';
     document.getElementById('tabInbox').hidden = b.dataset.tab!=='inbox';
     document.getElementById('tabModeration').hidden = b.dataset.tab!=='moderation';
+    document.getElementById('tabWords').hidden = b.dataset.tab!=='words';
+    // la bandeja se vuelve a pedir cada vez que se abre: lo marcado después de entrar al panel aparece sin recargar la página
+    if(b.dataset.tab==='moderation' && typeof loadModeration==='function') loadModeration().catch(()=>{});
   });
 });
 document.querySelector('.tabbtn[data-tab="games"]').classList.add('active');
@@ -175,6 +178,7 @@ async function afterLogin(){
   await loadNews();
   await loadSuggestions();
   await loadModeration();
+  await loadWords();
 }
 
 // Checkbox "Destacar en Juegos nuevos" del formulario de juego: muestra/esconde el campo de fecha de lanzamiento que solo tiene sentido si está tildado.

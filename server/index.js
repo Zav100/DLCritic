@@ -62,6 +62,8 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '256kb' })); // el tope por defecto (100 kb) se quedaba corto para una reseña de 20 000 caracteres con emojis
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
+// La lista de palabras de moderación se puede cambiar desde el panel: cada instancia la vuelve a leer como mucho una vez por minuto (server/moderation.js).
+app.use('/api', (req, res, next) => { moderation.ensureFresh().then(() => next(), next); });
 
 /* ---------------- dos dominios, un mismo servidor ---------------- */
 
@@ -126,9 +128,14 @@ const insertFlag = db.prepare('INSERT INTO moderation_flags (id, kind, target_id
 const deleteOpenAutoFlags = db.prepare("DELETE FROM moderation_flags WHERE kind = ? AND target_id = ? AND source = 'auto' AND status = 'open'");
 const flagId = () => 'mf-' + crypto.randomBytes(8).toString('hex');
 // Anota el resultado de scanText para algo ya guardado (kind: review | character_review | bio | list; targetId: su id). Si el texto se editó y ya no marca nada, la marca vieja se borra.
+// Si la marca no se puede guardar (por ejemplo, la base no tiene todavía la tabla), se anota en el registro y lo que la persona escribió se guarda igual: no se le da un error por esto.
 async function recordFlag(kind, targetId, authorId, original, scan) {
-  await deleteOpenAutoFlags.run(kind, String(targetId));
-  if (scan.flagged) await insertFlag.run(flagId(), kind, String(targetId), authorId, null, 'auto', scan.graves.length ? 'grave' : 'revisar', null, String(original).slice(0, 2000), new Date().toISOString());
+  try {
+    await deleteOpenAutoFlags.run(kind, String(targetId));
+    if (scan.flagged) await insertFlag.run(flagId(), kind, String(targetId), authorId, null, 'auto', scan.graves.length ? 'grave' : 'revisar', null, String(original).slice(0, 2000), new Date().toISOString());
+  } catch (e) {
+    console.error('Moderación: no se pudo guardar la marca de', kind, targetId + ':', e.message);
+  }
 }
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,25}$/; // 3 a 25 caracteres: letras sin tildes ni ñ, números, punto, guion y guion bajo (el texto de ayuda dice lo que NO se permite: username_hint en 02-i18n.js)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
