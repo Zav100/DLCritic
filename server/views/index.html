@@ -63,6 +63,11 @@
       s.id = 'bootView';
       document.documentElement.dataset.bootView = id; // la app lo lee para pintar el esqueleto de esa vista (renderViewSkeleton en 03-state-and-utils.js)
       s.textContent = '#view-feed{display:none}#view-' + id + '{display:block!important}'; // !important: las secciones llevan hidden, y [hidden] en style.css lo usa
+      // Mi estantería, Acerca de, Iniciar sesión y una reseña suelta no llevan la columna de tips (NO_TIPS_VIEWS en 15-side-panels.js, que lo decide al mostrar la vista). Sin esto
+      // el esqueleto se dibujaba con el hueco de esa columna (corrido ~164 px a la izquierda en pantallas anchas) y saltaba a su lugar al llegar los datos. Mismas reglas que .no-rail en style.css.
+      if (p === '/mi-estanteria' || p === '/acerca-de' || p === '/cuenta' || id === 'review') {
+        s.textContent += '@media(min-width:1400px){#view-' + id + ' .layout-rail{display:block;width:auto;margin-left:0}#view-' + id + ' .layout-rail>[data-tips-rail]{display:none}}';
+      }
       document.head.appendChild(s);
       setTimeout(function () { s.remove(); }, 8000);
     })();

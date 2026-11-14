@@ -176,7 +176,7 @@ function skeletonFeedCardHTML(){
 }
 // Juego del catálogo (Explorar): card gamecard.
 function skeletonGameCardHTML(){
-  return `<div class="card gamecard skeleton-card"><div class="gc-cover skel"></div><div class="gc-title" style="min-height:2.6em;"><div class="skel" style="height:13px; width:75%;"></div></div><div class="gc-sub" style="min-height:3em;"><div class="skel" style="height:10px; width:90%;"></div></div><div class="platbadges"><div class="skel" style="height:19px; width:46px;"></div><div class="skel" style="height:19px; width:58px;"></div></div></div>`;
+  return `<div class="card gamecard skeleton-card"><div class="gc-cover skel"></div><div class="gc-title" style="min-height:2.6em;"><div class="skel" style="height:13px; width:75%;"></div></div><div class="gc-sub" style="min-height:3em;"><div class="skel" style="height:10px; width:90%;"></div></div><div class="platbadges" style="min-height:22px;"><div class="skel" style="height:19px; width:46px;"></div><div class="skel" style="height:19px; width:58px;"></div></div></div>`;
 }
 // Noticia (vista Noticias): card newsitem.
 function skeletonNewsItemHTML(){
@@ -202,6 +202,22 @@ function renderSkeletonGrids(){
 // Cada render real reemplaza el contenido del contenedor, así que el esqueleto desaparece solo.
 const skelRow = `<div class="card skeleton-card" style="margin-bottom:10px;"><div style="display:flex; gap:12px; align-items:center;"><div class="skel skel-avatar" style="width:38px; height:38px; margin:0;"></div><div style="flex:1;"><div class="skel skel-title" style="width:60%;"></div><div class="skel skel-line"></div></div></div></div>`;
 const skelBlock = `<div class="card skeleton-card"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`;
+// Perfil y Mi estantería (los dos son #profileContent): los mismos bloques y clases que renderProfileBody (09-shelf-profile.js) — tarjeta de identidad, franja de números,
+// píldoras de gustos y «Juego favorito»; en /mi-estanteria, además, la biblioteca (8 juegos, la primera tanda). Lo de más abajo depende de cada cuenta (descripción, favorito, biblioteca,
+// horas de Steam), así que el esqueleto muestra lo más común y la página puede seguir creciendo o achicándose un poco al llegar los datos.
+function profileSkeletonHTML(){
+  const own = location.pathname === '/mi-estanteria';
+  const head = w => `<div class="sectionhead"><h2><span class="skel" style="display:inline-block; vertical-align:middle; width:${w}px; height:20px;"></span></h2></div>`;
+  const cell = `<div class="statscell"><div class="skel" style="width:38px; height:26px;"></div><div class="skel skel-line" style="width:70%; margin-top:8px;"></div></div>`;
+  const ring = `<div class="statscell ring" style="min-height:84px;"><div class="skel" style="width:58px; height:58px; border-radius:50%;"></div><div class="skel skel-line" style="flex:1 1 72px;"></div></div>`;
+  const pill = w => `<span class="skel" style="display:block; width:${w}px; height:33px; border-radius:20px;"></span>`;
+  return `<div class="profile-card skeleton-card" style="min-height:153px;"><div class="skel" style="width:88px; height:88px; border-radius:26px; flex-shrink:0;"></div><div class="profile-card-main"><div class="skel skel-title" style="width:40%; height:22px;"></div><div class="skel skel-line" style="width:28%;"></div><div class="skel skel-line" style="width:65%; margin-top:20px;"></div><div class="skel skel-line" style="width:45%; margin-top:10px;"></div></div></div>`
+    + `<div class="statsstrip skeleton-card">${cell.repeat(4)}${own? ring : ''}</div>`
+    + `<div class="taste-row">${pill(210)}${pill(150)}</div>`
+    + head(190)
+    + `<div class="card fav-panel skeleton-card"><div class="fav-cover-link"><div class="gc-cover skel"></div></div><div class="fav-info" style="min-height:217px; align-self:stretch;"><div class="skel" style="height:24px; width:55%;"></div><div class="skel skel-line" style="width:20%;"></div><div class="skel skel-line" style="width:35%;"></div><div class="skel skel-line" style="width:30%;"></div></div></div>`
+    + (own? head(170) + `<div class="library-actions" style="min-height:30px;"><div class="skel skel-line" style="width:260px;"></div><div class="skel" style="width:140px; height:30px; border-radius:15px;"></div></div><div class="grid wishlist-grid">${skeletonGameCardHTML().repeat(8)}</div>` : '');
+}
 const VIEW_SKELETONS = {
   browse: ['browseGrid', ()=> skeletonGameCardHTML().repeat(8)],
   news: ['newsViewList', ()=> skeletonNewsItemHTML().repeat(8)],
@@ -210,7 +226,7 @@ const VIEW_SKELETONS = {
   settings: ['settingsContent', ()=> `<div class="card skeleton-card" style="min-height:487px;"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`],
   daily: ['guessCard', ()=> `<div style="min-height:241px;"><div class="skel skel-title"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:75%; margin-top:10px;"></div></div>`],
   game: ['gameDetail', ()=> `<div class="layout-rail"><div class="rail-main"><div class="game-hero"><div class="game-hero-bg"></div><div class="card game-hero-card skeleton-card"><div style="display:flex; gap:16px; align-items:center;"><div class="skel" style="width:64px; height:64px; border-radius:14px;"></div><div style="flex:1;"><div class="skel skel-title"></div><div class="skel skel-line"></div></div></div><div class="skel skel-line" style="width:90%; margin-top:18px;"></div><div class="skel skel-line" style="width:70%; margin-top:10px;"></div></div></div></div></div>`],
-  profile: ['profileContent', ()=> `<div class="profile-card skeleton-card" style="min-height:153px;"><div class="skel" style="width:88px; height:88px; border-radius:26px; flex-shrink:0;"></div><div class="profile-card-main"><div class="skel skel-title" style="width:40%; height:22px;"></div><div class="skel skel-line" style="width:28%;"></div><div class="skel skel-line" style="width:65%; margin-top:20px;"></div><div class="skel skel-line" style="width:45%; margin-top:10px;"></div></div></div><div class="statsstrip skeleton-card">${'<div class="statscell"><div class="skel" style="width:38px; height:26px;"></div><div class="skel skel-line" style="width:70%; margin-top:8px;"></div></div>'.repeat(3)}</div>`],
+  profile: ['profileContent', profileSkeletonHTML],
 };
 function renderViewSkeleton(){
   const entry = VIEW_SKELETONS[document.documentElement.dataset.bootView];
