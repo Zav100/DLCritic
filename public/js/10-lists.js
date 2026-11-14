@@ -159,7 +159,7 @@ function openListDetailModal(listId){
       `;
       card.onclick=spa((e)=>{
         if(e.target.closest('[data-remove]')) return;
-        state.currentGame=g.id; state.gameOrigin='shelf'; cleanup(); goView('game');
+        state.currentGame=g.id; shelfGameOrigin(); cleanup(); goView('game');
       });
       if(editable){
         card.querySelector('[data-remove]').onclick = async (e)=>{
@@ -422,7 +422,7 @@ function ratingRowsCard(rvs){
     </a>`;
   }).join('');
   card.querySelectorAll('.rating-row').forEach(a=>{
-    a.onclick = spa(()=>{ state.currentGame = a.dataset.gameId; state.gameOrigin = state.shelfReviewsEditable ? 'shelf' : 'browse'; goView('game'); });
+    a.onclick = spa(()=>{ state.currentGame = a.dataset.gameId; shelfGameOrigin(); goView('game'); });
   });
   enhanceCovers();
   return card;
@@ -556,7 +556,7 @@ function libraryCard(g, minutes){
     <div class="platbadges">${platBadges(g.platforms)}</div>
     ${minutes>0 ? `<div class="hours-tag" title="${esc(t('steam_hours_title'))}">${ICONS.clock} ${esc(fmtHours(minutes))}</div>` : ''}
   `;
-  card.onclick = spa(()=>{ state.currentGame=g.id; state.gameOrigin='shelf'; goView('game'); });
+  card.onclick = spa(()=>{ state.currentGame=g.id; shelfGameOrigin(); goView('game'); });
   return card;
 }
 async function loadSteamHours(){
@@ -734,7 +734,7 @@ function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCode
 // Atajo "Calificar este juego" (botón que aparece en cards sin abrir la ficha entera primero): va directo a la ficha del juego, recordando desde qué vista se vino para que el botón "Volver" funcione bien.
 function jumpToRate(gameId){
   state.currentGame = gameId;
-  state.gameOrigin = (state.view==='game') ? state.gameOrigin : state.view;
+  if(state.view!=='game'){ if(state.view==='shelf' || state.view==='profile') shelfGameOrigin(); else state.gameOrigin = state.view; }
   goView('game');
 }
 // Borra tu reseña de un juego por completo (nota + texto + plataformas). Pide confirmación.
