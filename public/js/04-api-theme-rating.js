@@ -221,7 +221,7 @@ function renderQuickRate(scope, gameId, currentValue){
 // mostrando como guardado algo que no lo está. Devuelve true si se guardó. Lo usan también 10-lists.js y 14-characters.js.
 // Si el servidor cambió lo escrito por asteriscos (palabras no permitidas, ver server/moderation.js), la pantalla pasa a mostrar lo que quedó guardado y se avisa.
 function applyCensoredText(ok, rv, saved){
-  if(ok && saved && saved.censored){ rv.text = saved.text; toast(t('toast_text_censored')); }
+  if(ok && saved && saved.censored){ rv.text = saved.text; cornerNotice(t('toast_text_censored')); }
   return ok;
 }
 async function persistOrResync(request){

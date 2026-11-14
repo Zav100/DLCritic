@@ -20,7 +20,7 @@ function openCreateListModal(){
     try{
       const created = await apiPost('/lists', { title: result.title.trim(), isPublic: result.isPublic });
       toast(t('toast_list_created'), 'good');
-      if(created.censored) toast(t('toast_text_censored'));
+      if(created.censored) cornerNotice(t('toast_text_censored'));
       const rt = state.listsRenderTarget || {};
       renderProfileLists(state.user.username, true, rt.gridId);
     }catch(e){ toast(t('err_save_user'), 'bad'); }
@@ -211,7 +211,7 @@ function openListDetailModal(listId){
       try{ ({ list: updated } = await apiPut('/lists/'+list.id, { title: title.trim() })); }
       catch(err){ toastListError(err); return; }
       list.title = updated.title;
-      if(updated.title !== title.trim()) toast(t('toast_text_censored'));
+      if(updated.title !== title.trim()) cornerNotice(t('toast_text_censored'));
       overlay.querySelector('h3').textContent = list.title;
       syncListCard(list);
     };

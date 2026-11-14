@@ -336,7 +336,7 @@ function renderSettingsView(){
       state.user = user;
       renderUserBadge();
       toast(t('toast_profile_saved'), 'good');
-      if(censored){ document.getElementById('st-bio').value = user.bio || ''; toast(t('toast_text_censored')); } // la descripción tenía palabras no permitidas: se muestra como quedó
+      if(censored){ document.getElementById('st-bio').value = user.bio || ''; cornerNotice(t('toast_text_censored')); } // la descripción tenía palabras no permitidas: se muestra como quedó
     }catch(e){
       errEl.textContent = (e.body && e.body.error==='username_taken') ? t('err_username_taken_settings')
         : (e.body && e.body.error==='invalid_username') ? t('err_invalid_username') : (e.body && e.body.error==='username_not_allowed') ? t('err_username_not_allowed') : t('err_save_user');
