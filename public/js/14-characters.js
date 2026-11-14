@@ -347,6 +347,7 @@ function openVersusModal(presetId){
 /* ---------- sugerir un personaje ---------- */
 // Mismo formulario simple que "Sugerir un juego" (openSuggestModal, 07-stats-share-modals.js) y misma bandeja del admin: manda a /api/suggestions con kind:'character'.
 function openSuggestCharacterModal(){
+  if(!state.user){ goView('auth'); toast(t('suggest_login_needed')); return; } // solo con cuenta, igual que las sugerencias de juegos
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = `
@@ -396,7 +397,7 @@ function openSuggestCharacterModal(){
       });
       toast(t('toast_suggestion_sent'), 'good');
       cleanup();
-    }catch(e){ errEl.textContent = t('err_send_suggestion'); errEl.hidden = false; }
+    }catch(e){ errEl.textContent = t(e.body && e.body.error==='too_many_requests' ? 'err_suggest_limit' : 'err_send_suggestion'); errEl.hidden = false; }
   };
   overlay.querySelector('#sc-name').focus();
 }
@@ -503,7 +504,7 @@ function renderCharReviewBlock(characterId, myReview){
 function characterReviewCard(rv, opts){
   const c = findCharacter(rv.characterId) || {name:'(personaje eliminado)'};
   const div=document.createElement('div');
-  div.className='card reviewcard';
+  div.className='card reviewcard' + (rv.isSubscriber? ' is-sub' : '');
   const mine = state.user && state.user.username===rv.username;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `

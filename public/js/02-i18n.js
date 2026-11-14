@@ -169,7 +169,8 @@ const I18N = {
     settings_legacy_password_hint:"Todavía inicias sesión con tu PIN de 4 dígitos. Puedes establecer una contraseña segura aquí si quieres, pero no es obligatorio.",
     profile_not_found_t:"No se encontró el usuario", profile_not_found_s:"Puede que no exista o haya cambiado de nombre.",
     profile_avatar_label:"Foto de perfil", profile_username_label:"Nombre de usuario", profile_bio_label:"Descripción",
-    avatar_file_hint:"JPG, PNG o WEBP: si es muy grande, se achica sola. GIF: máximo 4MB.",
+    avatar_file_hint:"JPG, PNG o WEBP, máximo 4MB (si es muy grande, se achica sola). Puedes cambiarla hasta 5 veces por semana. Los GIF son solo para suscriptores.", avatar_file_hint_sub:"JPG, PNG, WEBP o GIF, máximo 4MB (los que no son GIF se achican solos si son muy grandes). Puedes cambiarla hasta 5 veces por semana.",
+    err_avatar_weekly:"Ya cambiaste tu foto 5 veces esta semana. Podrás volver a cambiarla más adelante.", ri_label:"Icono de rango", ri_invert:"Invertido", ri_gold:"Dorado", ri_multi:"Multicolor", ri_custom:"Mi color", ri_hint:"Así se ve tu icono de rango en tu perfil y en tus reseñas. Elige uno de los estilos o un color propio.", err_avatar_animated:"Los GIF y las imágenes animadas como foto de perfil son solo para suscriptores.", err_avatar_invalid:"Ese archivo no es una imagen válida. Prueba con un JPG, PNG o WEBP.", err_avatar_upload:"No se pudo subir la foto. Revisa que pese menos de 4MB e intenta de nuevo.",
     profile_social_label:"Redes y plataformas de juego (opcional)",
     follow_btn:"Seguir", following_label:"Siguiendo", friends_badge:"Amigos",
     followers_label:"seguidores", following_count_label:"siguiendo",
@@ -322,7 +323,7 @@ const I18N = {
     suggest_genre_label:"Género (opcional)", suggest_year_label:"Año de salida (opcional)",
     suggest_note_label:"¿Algo más para agregar? (opcional)", suggest_note_ph:"Desarrollador, por qué te gusta, etc.",
     suggest_submit_btn:"Enviar sugerencia", suggest_err_title:"Escribe el nombre del juego (mínimo 2 caracteres).",
-    toast_suggestion_sent:"¡Gracias! Tu sugerencia fue enviada.", err_send_suggestion:"No se pudo enviar la sugerencia. Prueba de nuevo."
+    toast_suggestion_sent:"¡Gracias! Tu sugerencia fue enviada.", suggest_login_needed:"Inicia sesión o crea una cuenta para enviar sugerencias.", err_suggest_limit:"Ya enviaste 10 sugerencias hoy. Vuelve a intentarlo mañana.", err_send_suggestion:"No se pudo enviar la sugerencia. Prueba de nuevo."
   },
   en: {
     tagline:"Every opinion is a DLC", tagline_html:"Every opinion is a <b>DLC</b>",
@@ -477,7 +478,8 @@ const I18N = {
     settings_legacy_password_hint:"You're still logging in with your 4-digit PIN. You can set a secure password here if you'd like, but it's optional.",
     profile_not_found_t:"User not found", profile_not_found_s:"They may not exist or changed their username.",
     profile_avatar_label:"Profile picture", profile_username_label:"Username", profile_bio_label:"Bio",
-    avatar_file_hint:"JPG, PNG or WEBP: large ones are shrunk automatically. GIF: max 4MB.",
+    avatar_file_hint:"JPG, PNG or WEBP, max 4MB (large ones are shrunk automatically). You can change it up to 5 times a week. GIFs are for subscribers only.", avatar_file_hint_sub:"JPG, PNG, WEBP or GIF, max 4MB (non-GIF files are shrunk automatically if large). You can change it up to 5 times a week.",
+    err_avatar_weekly:"You already changed your photo 5 times this week. You can change it again later.", ri_label:"Rank icon", ri_invert:"Inverted", ri_gold:"Gold", ri_multi:"Multicolor", ri_custom:"My color", ri_hint:"This is how your rank icon looks on your profile and in your reviews. Pick a style or your own color.", err_avatar_animated:"GIFs and animated images as a profile photo are for subscribers only.", err_avatar_invalid:"That file is not a valid image. Try a JPG, PNG or WEBP.", err_avatar_upload:"The photo could not be uploaded. Check that it is under 4MB and try again.",
     profile_social_label:"Social & gaming platform links (optional)",
     follow_btn:"Follow", following_label:"Following", friends_badge:"Friends",
     followers_label:"followers", following_count_label:"following",
@@ -630,7 +632,7 @@ const I18N = {
     suggest_genre_label:"Genre (optional)", suggest_year_label:"Release year (optional)",
     suggest_note_label:"Anything else to add? (optional)", suggest_note_ph:"Developer, why you like it, etc.",
     suggest_submit_btn:"Send suggestion", suggest_err_title:"Type the game's name (minimum 2 characters).",
-    toast_suggestion_sent:"Thanks! Your suggestion was sent.", err_send_suggestion:"Couldn't send the suggestion. Try again."
+    toast_suggestion_sent:"Thanks! Your suggestion was sent.", suggest_login_needed:"Log in or create an account to send suggestions.", err_suggest_limit:"You already sent 10 suggestions today. Try again tomorrow.", err_send_suggestion:"Couldn't send the suggestion. Try again."
   }
 };
 // Traduce una clave al idioma actual; si falta en ese idioma cae a español, y si no existe en ningún lado devuelve la clave tal cual (para notar el faltante).

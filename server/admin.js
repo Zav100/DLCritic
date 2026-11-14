@@ -27,7 +27,10 @@ router.post('/2fa/setup', twoFactorLimiter, async (req, res) => {
   if (req.user.totp_enabled) return res.status(409).json({ error: 'already_enabled' });
   if (!verifyPin(String(req.body.currentPassword || ''), req.user.pin_hash)) return res.status(401).json({ error: 'bad_current_password' });
   const secret = totp.newSecret();
-  await startTwoFactor.run(secret, req.user.id);
+  let sealed;
+  try { sealed = totp.sealSecret(secret); }
+  catch (e) { console.error('No se puede cifrar el secreto del segundo paso:', e.message); return res.status(500).json({ error: 'encryption_not_configured' }); }
+  await startTwoFactor.run(sealed, req.user.id);
   res.json({ secret, otpauthUri: totp.otpauthUri(secret, req.user.username) });
 });
 
@@ -35,7 +38,7 @@ router.post('/2fa/setup', twoFactorLimiter, async (req, res) => {
 router.post('/2fa/enable', twoFactorLimiter, async (req, res) => {
   if (req.user.totp_enabled) return res.status(409).json({ error: 'already_enabled' });
   if (!req.user.totp_secret) return res.status(400).json({ error: 'not_started' });
-  const step = totp.verifyCode(req.user.totp_secret, String(req.body.code || '').replace(/\s/g, ''));
+  const step = totp.verifyCode(totp.openSecret(req.user.totp_secret), String(req.body.code || '').replace(/\s/g, ''));
   if (step === null) return res.status(401).json({ error: 'bad_code' });
   const recoveryCodes = totp.newRecoveryCodes();
   await finishTwoFactor.run(step, JSON.stringify(recoveryCodes.map(totp.hashRecoveryCode)), req.user.id);

@@ -136,6 +136,23 @@ function wireSettingsTabs(){
 }
 // Arma Ajustes: una tarjeta con las pestañas Perfil (foto, nombre, descripción), Privacidad y seguridad (correo, contraseña y cerrar sesión en todos los dispositivos) y Conexiones
 // (redes y plataformas de juego, y Steam y biblioteca con su guía), y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.
+// Selector del estilo del icono de rango (solo suscriptores): tres estilos hechos y un color propio. Se guarda con «Guardar cambios» del perfil.
+function rankIconPickerHTML(u){
+  const icon = computeLevel(levelCounts(u.username)).current.icon;
+  const cur = u.rankIconStyle || 'invert', isCustom = /^#/.test(cur), sample = isCustom? cur : '#2e9e6b';
+  const presets = ['invert', 'gold', 'multi'].map(k=>{
+    const a = rankIconAttrs(true, k);
+    return `<button type="button" class="ri-opt${cur===k? ' active' : ''}" data-ri="${k}" aria-pressed="${cur===k}"><span class="ri-badge${a.cls}"${a.style}>${icon}</span><span>${esc(t('ri_'+k))}</span></button>`;
+  }).join('');
+  const ca = rankIconAttrs(true, sample);
+  return `<div class="field">
+    <label>${esc(t('ri_label'))}</label>
+    <div class="ri-picker" id="stRiPicker">${presets}
+      <div class="ri-opt${isCustom? ' active' : ''}"><span class="ri-badge${ca.cls}"${ca.style} id="stRiCustomBadge">${icon}</span><span>${esc(t('ri_custom'))}</span><input type="color" id="st-ri-color" value="${sample}" aria-label="${esc(t('ri_custom'))}"></div>
+    </div>
+    <p class="hint hint-tip">${esc(t('ri_hint'))}</p>
+  </div>`;
+}
 function renderSettingsView(){
   if(!state.user){ goView('auth'); return; }
   const u = state.user;
@@ -161,11 +178,12 @@ function renderSettingsView(){
           <div class="cover-picker" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
             <div class="cover-preview" id="settingsAvatarPreview" style="border-radius:50%;">${avatarHTML}</div>
             <div style="min-width:0; flex:1 1 200px;">
-              <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:100%;">
-              <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t('avatar_file_hint'))}</p>
+              <input type="file" id="st-avatar-file" accept="image/png,image/jpeg,image/webp${u.isSubscriber? ',image/gif' : ''}" style="max-width:100%;">
+              <p class="hint hint-tip" style="margin:6px 0 0;">${esc(t(u.isSubscriber? 'avatar_file_hint_sub' : 'avatar_file_hint'))}</p>
             </div>
           </div>
         </div>
+        ${u.isSubscriber? rankIconPickerHTML(u) : ''}
         <div class="field">
           <label for="st-username">${esc(t('profile_username_label'))}</label>
           <input type="text" id="st-username" maxlength="25" value="${esc(u.username)}">
@@ -250,10 +268,36 @@ function renderSettingsView(){
   wireSettingsTabs();
   wireSteamCard();
 
+  let pendingRankIcon = u.isSubscriber ? (u.rankIconStyle || 'invert') : undefined; // solo suscriptores: invert, gold, multi o #rrggbb
+  const setRankIcon = style=>{
+    pendingRankIcon = style;
+    document.querySelectorAll('#stRiPicker .ri-opt').forEach(o=>{
+      const on = o.dataset.ri ? o.dataset.ri===style : /^#/.test(style);
+      o.classList.toggle('active', on);
+      if(o.dataset.ri) o.setAttribute('aria-pressed', String(on));
+    });
+  };
+  document.querySelectorAll('#stRiPicker button[data-ri]').forEach(b=>{ b.onclick = ()=> setRankIcon(b.dataset.ri); });
+  const riColor = document.getElementById('st-ri-color');
+  if(riColor) riColor.oninput = ()=>{
+    const c = rankIconColors(riColor.value);
+    const badge = document.getElementById('stRiCustomBadge');
+    badge.style.setProperty('--ri-bg', c.bg); badge.style.setProperty('--ri-fg', c.fg);
+    setRankIcon(riColor.value);
+  };
+
   let pendingSettingsAvatarFile = null;
   document.getElementById('st-avatar-file').onchange = (e)=>{
     const file = e.target.files[0];
     if(!file) return;
+    // Los GIF (y las imágenes animadas) son solo de los suscriptores; el servidor lo vuelve a comprobar, esto solo avisa antes de subir.
+    if(file.type==='image/gif' && !state.user.isSubscriber){
+      e.target.value = '';
+      const errEl = document.getElementById('stProfileError');
+      errEl.textContent = t('err_avatar_animated'); errEl.hidden = false;
+      return;
+    }
+    document.getElementById('stProfileError').hidden = true;
     pendingSettingsAvatarFile = file;
     const reader = new FileReader();
     reader.onload = ()=>{ document.getElementById('settingsAvatarPreview').innerHTML = `<img src="${reader.result}">`; };
@@ -270,15 +314,23 @@ function renderSettingsView(){
       if(pendingSettingsAvatarFile){
         const fd = new FormData();
         fd.append('image', await shrinkImage(pendingSettingsAvatarFile, 1000));
-        const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
-        state.user = r.user;
-        pendingSettingsAvatarFile = null;
+        try{
+          const r = await api('/profile/avatar', { method:'POST', body: fd, isForm:true });
+          state.user = r.user;
+          pendingSettingsAvatarFile = null;
+        }catch(e){
+          const code = e.body && e.body.error;
+          errEl.textContent = t(code==='avatar_weekly_limit' ? 'err_avatar_weekly' : code==='animated_not_allowed' ? 'err_avatar_animated' : code==='invalid_file' ? 'err_avatar_invalid' : 'err_avatar_upload');
+          errEl.hidden = false;
+          return;
+        }
       }
       const oldUsername = state.user.username;
-      const { user } = await apiPut('/profile', { username, bio });
+      const { user } = await apiPut('/profile', { username, bio, ...(state.user.isSubscriber && pendingRankIcon? { rankIconStyle: pendingRankIcon } : {}) });
       if(user.username !== oldUsername){
         state.reviews.forEach(r=>{ if(r.username===oldUsername) r.username = user.username; });
       }
+      state.reviews.forEach(r=>{ if(r.username===user.username) r.rankIconStyle = user.rankIconStyle; }); // su icono de rango en sus reseñas ya cargadas
       state.user = user;
       renderUserBadge();
       toast(t('toast_profile_saved'), 'good');

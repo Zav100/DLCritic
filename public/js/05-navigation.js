@@ -214,9 +214,9 @@ function renderUserBadge(){
   if(state.user){
     const u = state.user;
     const color = AVATAR_COLORS[Math.abs(hashStr(u.username))%AVATAR_COLORS.length];
-    const avatarHTML = u.avatarUrl
+    const avatarHTML = subRing(u.avatarUrl
       ? `<img class="user-menu-avatar-img" src="${esc(u.avatarUrl)}" alt="">`
-      : `<span class="user-menu-avatar" style="background:${color}">${esc(u.username[0].toUpperCase())}</span>`;
+      : `<span class="user-menu-avatar" style="background:${color}">${esc(u.username[0].toUpperCase())}</span>`, u.isSubscriber);
     const dotHTML = unreadNotifCount()>0 ? `<span class="unread-dot"></span>` : '';
     el.innerHTML = `
       <button class="user-menu-trigger" id="userMenuTrigger" type="button" aria-label="${esc(u.username)}" title="${esc(u.username)}" aria-haspopup="true" aria-expanded="false">
@@ -267,7 +267,7 @@ function initUserSearch(){
       html += head('search_games_head') + games.map(g=>`<li role="presentation"><a role="option" id="userSearchOpt${n++}" href="${gameHref(g.id)}" data-game="${esc(g.id)}"><span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}"></span><span class="us-main"><span class="us-name">${esc(g.title)}</span><span class="us-sub">${esc(genreLabelList(g))}${g.releaseYear? ' · '+g.releaseYear : ''}</span></span></a></li>`).join('');
     }
     if(users && users.length){
-      html += head('search_people_head') + users.map(u=>`<li role="presentation"><a role="option" id="userSearchOpt${n++}" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl)}<span class="us-main"><span class="us-name">${esc(u.username)}</span></span></a></li>`).join('');
+      html += head('search_people_head') + users.map(u=>`<li role="presentation"><a role="option" id="userSearchOpt${n++}" href="/usuario/${encodeURIComponent(u.username)}" data-user="${esc(u.username)}">${miniAvatarHTML(u.username, u.avatarUrl, u.isSubscriber)}<span class="us-main"><span class="us-name">${esc(u.username)}</span></span></a></li>`).join('');
     }
     if(!users) html += note(t('user_search_error'));
     else if(!games.length && !users.length) html += note(t('search_empty'));

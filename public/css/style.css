@@ -8210,3 +8210,123 @@ a.btn-ghost {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ---------- rol de suscriptor: borde multicolor alrededor de la foto de perfil ----------
+   Mismo degradado animado que el anillo de progreso de la biblioteca (.wishlist-ring-fill), pero más angosto. Lo pone subRing() (03-state-and-utils.js)
+   en el perfil, el menú de la cuenta y las listas de personas. No lleva etiqueta ni texto: solo el borde. */
+.sub-ring {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--pink), var(--teal), var(--gold));
+  background-size: 300% 300%;
+  animation: gradient-border-spin 5s linear infinite;
+}
+
+.profile-avatar .sub-ring {
+  display: flex;
+  padding: 3px;
+  border-radius: 29px; /* los 26px de la foto del perfil + el grosor del borde */
+}
+
+@media (max-width: 560px) {
+  .profile-avatar .sub-ring {
+    border-radius: 23px; /* 20px de la foto en pantallas chicas + el borde */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sub-ring {
+    animation: none;
+  }
+}
+
+/* ---------- suscriptor: icono de rango relleno y reseñas con borde multicolor ----------
+   Los colores del icono llegan en --ri-bg y --ri-fg (los pone rankIconAttrs(), 03-state-and-utils.js); --ri-bg puede ser un degradado. */
+.profile-level-badge.is-filled {
+  background: var(--ri-bg);
+  color: var(--ri-fg);
+}
+
+.ri-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  vertical-align: -6px;
+  background: var(--paper-alt);
+  color: var(--gold-dim);
+}
+
+.ri-badge.is-filled {
+  background: var(--ri-bg);
+  color: var(--ri-fg);
+}
+
+.ri-badge svg,
+.rc-meta .ri-badge svg {
+  width: 13px;
+  height: 13px;
+  vertical-align: 0;
+}
+
+.ri-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ri-opt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 7px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-dark);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Lexend', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.ri-opt:hover {
+  border-color: var(--gold);
+}
+
+.ri-opt.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.ri-opt input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Reseña de un suscriptor (opción 1 que se eligió): borde multicolor fino, el mismo degradado de la foto. El borde pasa de 1px a 1,5px y el relleno baja
+   medio píxel para que la tarjeta mida exactamente lo mismo que una común. */
+.card.reviewcard.is-sub {
+  border: 1.5px solid transparent;
+  padding: 17.5px 19.5px 15.5px;
+  background: linear-gradient(var(--paper), var(--paper)) padding-box,
+    linear-gradient(135deg, var(--gold), var(--pink), var(--teal), var(--gold)) border-box;
+  background-size: auto, 300% 300%;
+  animation: char-border-spin 5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.reviewcard.is-sub {
+    animation: none;
+  }
+}

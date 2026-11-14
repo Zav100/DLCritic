@@ -312,6 +312,8 @@ function noticeDialog(title, message, icon, tone){
 // manda la sugerencia a /api/suggestions (la revisa un admin desde el
 // panel de administración, ver admin-ui/assets/js/06-suggestions-and-init.js).
 function openSuggestModal(){
+  // Solo con cuenta (el servidor también lo exige): sin sesión, lleva a iniciar sesión.
+  if(!state.user){ goView('auth'); toast(t('suggest_login_needed')); return; }
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   const platSet = new Set();
@@ -378,7 +380,7 @@ function openSuggestModal(){
       });
       toast(t('toast_suggestion_sent'), 'good');
       cleanup();
-    }catch(e){ errEl.textContent = t('err_send_suggestion'); errEl.hidden=false; }
+    }catch(e){ errEl.textContent = t(e.body && e.body.error==='too_many_requests' ? 'err_suggest_limit' : 'err_send_suggestion'); errEl.hidden=false; }
   };
   document.getElementById('sg-title').focus();
 }
@@ -847,7 +849,7 @@ function clampLongText(p){
 function reviewCard(rv, opts){
   const game = findGame(rv.gameId) || {title:'(juego eliminado)', genre:'Otro', platforms:[]};
   const div=document.createElement('div');
-  div.className='card reviewcard';
+  div.className='card reviewcard' + (rv.isSubscriber? ' is-sub' : ''); // reseña de un suscriptor: borde multicolor fino
   const mine = state.user && state.user.username===rv.username;
   const authorLevel = computeLevel(levelCounts(rv.username)).current;
   const hasText = rv.text && rv.text.trim().length>0;
@@ -855,7 +857,7 @@ function reviewCard(rv, opts){
     <div class="rc-top">
       <div>
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${authorLevel.icon} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
+        <div class="rc-meta">${rankIconInline(authorLevel.icon, rv.isSubscriber, rv.rankIconStyle)} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>

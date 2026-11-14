@@ -23,7 +23,7 @@ if (!REMOTE) { // en proceso se simulan dos dominios (la app lee ADMIN_HOST al c
 }
 const db = require('../server/db');
 const totp = require('../server/totp');
-const { uploadsDir } = require('../server/upload');
+const { uploadsDir, inspectImage } = require('../server/upload');
 const server = REMOTE ? null : require('../server/index.js').listen(0);
 const publicBase = REMOTE ? process.env.BASE_URL : `http://localhost:${server.address().port}`;
 const adminBase = REMOTE ? (process.env.ADMIN_URL || process.env.BASE_URL) : publicBase;
@@ -612,7 +612,7 @@ const today = new Date().toISOString().slice(0, 10);
     const f2 = (await b('POST', '/api/users/smoketest_a/follow')).body; assert.deepEqual([f2.isFollowing, f2.isFriend], [true, true]);
     assert.ok((await b('GET', '/api/notifications')).body.notifications.some(n => n.type === 'follow' && n.actorUsername === 'smoketest_a'));
     // Las listas son públicas (sin sesión), con total y solo nombre y foto; el contador propio viaja con la sesión.
-    const lf = (await anon('GET', '/api/users/SMOKETEST_B/followers')).body; assert.deepEqual([lf.total, lf.users], [1, [{ username: 'smoketest_a', avatarUrl: null }]]);
+    const lf = (await anon('GET', '/api/users/SMOKETEST_B/followers')).body; assert.deepEqual([lf.total, lf.users], [1, [{ username: 'smoketest_a', avatarUrl: null, isSubscriber: false }]]);
     const lg = (await anon('GET', '/api/users/smoketest_b/following')).body; assert.deepEqual([lg.total, lg.users.map(u => u.username)], [1, ['smoketest_a']]);
     ok(await anon('GET', '/api/users/no_existe_nadie/followers'), 404); ok(await anon('GET', '/api/users/no_existe_nadie/following'), 404);
     const me = (await a('GET', '/api/auth/me')).body.user; assert.deepEqual([me.followerCount, me.followingCount], [1, 1]);
@@ -621,7 +621,7 @@ const today = new Date().toISOString().slice(0, 10);
     assert.deepEqual(await sq('s'), []); assert.deepEqual(await sq(''), []);
     const many = (await sq('SMOKETEST_')).map(u => u.username); // la prueba crea más cuentas smoketest_*: tope de 8, todas con ese comienzo, en orden alfabético
     assert.ok(many.length <= 8 && many.every(n => n.startsWith('smoketest_')) && many[0] === 'smoketest_a' && many.join() === [...many].sort().join());
-    assert.deepEqual(await sq('smoketest_b'), [{ username: 'smoketest_b', avatarUrl: null }]);
+    assert.deepEqual(await sq('smoketest_b'), [{ username: 'smoketest_b', avatarUrl: null, isSubscriber: false }]);
     assert.deepEqual(await sq('smoketest%'), []); assert.deepEqual(await sq('smoke_est_a'), []);
     assert.ok((await sq('etest_b')).some(u => u.username === 'smoketest_b'), 'también busca en medio del nombre');
     ok(await a('POST', '/api/users/smoketest_a/follow'), 400);
@@ -841,10 +841,18 @@ const today = new Date().toISOString().slice(0, 10);
   });
 
   console.log('Sugerencias, páginas y portadas');
-  await step('sugerencias de juego y de personaje', async () => {
-    ok(await anon('POST', '/api/suggestions', { title: 'smoketest juego nuevo', platforms: ['steam'], genre: 'Acción', releaseYear: 2024, note: 'prueba' }));
+  await step('sugerencias de juego y de personaje: solo con cuenta, solo plataformas conocidas y 10 por día por IP', async () => {
+    ok(await anon('POST', '/api/suggestions', { title: 'smoketest juego anonimo' }), 401); // sin cuenta ya no se puede
+    ok(await a('POST', '/api/suggestions', { title: 'smoketest juego nuevo', platforms: ['steam', 'inventada', 'steam'], genre: 'Acción', releaseYear: 2024, note: 'prueba' }));
+    const sg = await db.prepare("SELECT platforms, submitted_by FROM game_suggestions WHERE title = 'smoketest juego nuevo'").get();
+    assert.deepEqual([JSON.parse(sg.platforms), sg.submitted_by], [['steam'], 'smoketest_a']); // sin repetidas ni inventadas, y siempre con el nombre de quien la mandó
     ok(await a('POST', '/api/suggestions', { kind: 'character', title: 'smoketest personaje', relatedGame: 'Hades', categories: ['villain', 'inventada'] }));
-    assert.equal((await anon('POST', '/api/suggestions', { title: 'x' })).body.error, 'title_too_short');
+    assert.equal((await a('POST', '/api/suggestions', { title: 'x' })).body.error, 'title_too_short');
+    // el tope son 10 por día por IP (esta IP lleva 3: también cuenta la del título corto)
+    for (let i = 0; i < 7; i++) ok(await a('POST', '/api/suggestions', { title: 'smoketest relleno ' + i }));
+    const tope = await a('POST', '/api/suggestions', { title: 'smoketest relleno 8' });
+    ok(tope, 429); assert.equal(tope.body.error, 'too_many_requests'); assert.ok(tope.headers.get('retry-after'));
+    await db.prepare("DELETE FROM game_suggestions WHERE title LIKE 'smoketest relleno%'").run(); // para que el buzón de más abajo vea solo las 2 de arriba
   });
   await step('páginas con meta Open Graph (juego, personaje, usuario, reseña) y rutas del SPA', async () => {
     const title = (await anon('GET', '/api/games')).body.games.find(g => g.id === gameId).title;
@@ -941,6 +949,19 @@ const today = new Date().toISOString().slice(0, 10);
     await nuevoPaso();
     ok(await login(client('admin'), { code: codeNow() }), 429);
   });
+  await step('2FA: el secreto se guarda cifrado; uno en claro (de antes) sigue sirviendo y se cifra al entrar con un código', async () => {
+    const { secret } = adminTwoFactor;
+    const stored = () => db.prepare("SELECT totp_secret FROM users WHERE lower(username) = 'smoketest_admin'").get().then(r => r.totp_secret);
+    const sealed = await stored();
+    assert.match(sealed, /^enc1:/); assert.ok(!sealed.includes(secret), 'en la base no está la clave en claro'); assert.equal(totp.openSecret(sealed), secret);
+    assert.notEqual(totp.sealSecret(secret), totp.sealSecret(secret), 'cada cifrado usa un valor al azar distinto');
+    assert.throws(() => totp.openSecret(sealed.slice(0, -4) + 'AAAA'), 'un valor alterado no se acepta (GCM)');
+    assert.equal(totp.openSecret('JBSWY3DPEHPK3PXP'), 'JBSWY3DPEHPK3PXP', 'un secreto sin cifrar se lee tal cual');
+    await db.prepare("DELETE FROM rate_limits WHERE key LIKE '2fa:%'").run(); // el paso anterior agotó el tope de intentos
+    await db.prepare("UPDATE users SET totp_secret = ?, totp_last_step = 0 WHERE lower(username) = 'smoketest_admin'").run(secret); // como estaba antes del cifrado
+    const r = await client('admin')('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass, code: totp.codeForStep(secret, Math.floor(Date.now() / 30000)) }); ok(r);
+    const now = await stored(); assert.match(now, /^enc1:/); assert.equal(totp.openSecret(now), secret);
+  });
   await step('juegos: crear, editar, ocultar y borrar', async () => {
     const c = await admin('POST', '/api/admin/games', { title: 'Smoketest Game', genres: ['Acción', 'Indie'], platforms: ['steam'], releaseYear: '2025', description: 'd', isNewRelease: true, newReleaseDate: '2025-05-05' }); ok(c);
     const id = c.body.game.id; assert.deepEqual([c.body.game.genre, c.body.game.releaseYear, c.body.game.isNewRelease, c.body.game.builtin], ['Acción', 2025, true, false]);
@@ -994,14 +1015,131 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await anon('GET', '/api/users/smoketest_a')).body.user.avatarUrl, avUrl);
 
     const up = await admin('POST', '/api/admin/upload', form(png, 'portada.jpg', 'image/jpeg')); ok(up);
-    created.push(up.body.url); assert.match(up.body.url, /\/uploads\/[0-9a-f]{32}\.jpg$/);
+    created.push(up.body.url); assert.match(up.body.url, /\/uploads\/[0-9a-f]{32}\.png$/); // el archivo se llamaba .jpg pero es un PNG: la extensión sale del contenido
     assert.equal((await fetchable(up.body.url)).status, 200);
 
     assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.from('<script>alert(1)</script>'), 'x.html', 'text/html'))).body.error, 'invalid_file');
+    assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.from('<script>alert(1)</script>'), 'disfrazado.png'))).body.error, 'invalid_file'); // buena extensión, contenido que no es una imagen
     assert.equal((await a('POST', '/api/profile/avatar', form(Buffer.alloc(4 * 1024 * 1024 + 1), 'enorme.png'))).body.error, 'upload_failed');
     ok(await a('POST', '/api/profile/avatar', new FormData()), 400); // sin archivo
     ok(await anon('POST', '/api/profile/avatar', form(png, 'x.png')), 401);
     ok(await aOnAdmin('POST', '/api/admin/upload', form(png, 'x.png')), 403); // usuario común en el dominio del dashboard
+  });
+  await step('imágenes: se reconoce el formato por los bytes y se quitan los metadatos (GPS, comentarios) sin tocar lo demás', async () => {
+    const be16 = n => { const b = Buffer.alloc(2); b.writeUInt16BE(n); return b; }, be32 = n => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b; };
+    const le32 = n => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+    // JPEG (solo la estructura): JFIF, un EXIF con orientación 6 y la marca de cámara "SECRETO-GPS", un comentario y los datos
+    const tiff = Buffer.concat([Buffer.from('MM'), be16(42), be32(8), be16(2), be16(0x0112), be16(3), be32(1), be16(6), be16(0), be16(0x010f), be16(2), be32(12), be32(38), be32(0), Buffer.from('SECRETO-GPS\0')]);
+    const app1 = Buffer.concat([Buffer.from([0xff, 0xe1]), be16(tiff.length + 8), Buffer.from('Exif\0\0'), tiff]);
+    const com = Buffer.concat([Buffer.from([0xff, 0xfe]), be16(2 + 18), Buffer.from('comentario-secreto')]);
+    const jfif = Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]);
+    const scan = Buffer.from([0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, 0xff, 0xd9]);
+    const jpg = inspectImage(Buffer.concat([Buffer.from([0xff, 0xd8]), jfif, app1, com, scan]));
+    assert.equal(jpg.ext, '.jpg'); assert.equal(jpg.animated, false);
+    assert.ok(!jpg.buffer.includes('SECRETO-GPS') && !jpg.buffer.includes('comentario-secreto'), 'el JPEG sale sin GPS ni comentarios');
+    assert.ok(jpg.buffer.includes('JFIF') && jpg.buffer.subarray(-14).equals(scan), 'se conserva lo demás (JFIF y los datos de la imagen)');
+    const exifAt = jpg.buffer.indexOf('Exif\0\0'); assert.ok(exifAt > 0 && jpg.buffer[exifAt + 6 + 19] === 6, 'solo queda la orientación (6)');
+    // PNG: un trozo tEXt con la marca; con trozo acTL es un PNG animado
+    const chunk = (type, data) => Buffer.concat([be32(data.length), Buffer.from(type), data, be32(0)]);
+    const pngSig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const pngParts = [chunk('IHDR', Buffer.alloc(13)), chunk('tEXt', Buffer.from('Location\0SECRETO-GPS')), chunk('IDAT', Buffer.from([1, 2, 3])), chunk('IEND', Buffer.alloc(0))];
+    const pngOut = inspectImage(Buffer.concat([pngSig, ...pngParts]));
+    assert.equal(pngOut.ext, '.png'); assert.equal(pngOut.animated, false); assert.ok(!pngOut.buffer.includes('SECRETO-GPS') && pngOut.buffer.includes('IDAT'));
+    assert.equal(inspectImage(Buffer.concat([pngSig, pngParts[0], chunk('acTL', Buffer.alloc(8)), pngParts[2], pngParts[3]])).animated, true, 'PNG animado');
+    // WebP: VP8X con las banderas de EXIF y transparencia, un trozo EXIF con la marca; con ANIM es una animación
+    const wchunk = (type, data) => Buffer.concat([Buffer.from(type), le32(data.length), data, Buffer.alloc(data.length & 1)]);
+    const riff = (...parts) => { const body = Buffer.concat([Buffer.from('WEBP'), ...parts]); return Buffer.concat([Buffer.from('RIFF'), le32(body.length), body]); };
+    const vp8x = flags => wchunk('VP8X', Buffer.from([flags, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+    const webp = inspectImage(riff(vp8x(0x18), wchunk('EXIF', Buffer.from('SECRETO-GPS')), wchunk('VP8 ', Buffer.from([1, 2, 3, 4]))));
+    assert.equal(webp.ext, '.webp'); assert.equal(webp.animated, false); assert.ok(!webp.buffer.includes('SECRETO-GPS') && !webp.buffer.includes('EXIF'));
+    assert.equal(webp.buffer[20] & 0x08, 0, 'sin bandera de EXIF'); assert.equal(webp.buffer[20] & 0x10, 0x10, 'conserva la transparencia');
+    assert.equal(webp.buffer.readUInt32LE(4), webp.buffer.length - 8, 'el tamaño del contenedor se recalcula');
+    assert.equal(inspectImage(riff(vp8x(0x12), wchunk('ANIM', Buffer.alloc(6)))).animated, true, 'WebP animado');
+    // GIF siempre cuenta como animado (es el formato de los suscriptores); lo cortado o inventado no es imagen
+    assert.deepEqual([inspectImage(Buffer.from('GIF89a\x01\0\x01\0\0\0\0;', 'latin1')).ext, inspectImage(Buffer.from('GIF89a\x01\0\x01\0\0\0\0;', 'latin1')).animated], ['.gif', true]);
+    assert.equal(inspectImage(Buffer.from('esto no es una imagen, aunque se llame .png')), null);
+    assert.equal(inspectImage(Buffer.concat([pngSig, pngParts[0]])), null, 'PNG cortado');
+  });
+  await step('foto de perfil: los GIF y animadas son de suscriptores, 5 cambios por semana y la foto anterior se borra', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const gif = Buffer.from('GIF89a\x01\0\x01\0\0\0\0;', 'latin1');
+    const form = (buf, name) => { const f = new FormData(); f.append('image', new Blob([buf]), name); return f; };
+    const files = url => path.join(uploadsDir, path.basename(url));
+    const u = client(); ok(await u('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_av@example.com', password: pass, username: 'smoketest_av' }));
+    // sin el rol: ni GIF, ni PNG animado ni WebP animado (aunque el archivo diga .png)
+    const gifNo = await u('POST', '/api/profile/avatar', form(gif, 'baila.gif')); ok(gifNo, 400); assert.equal(gifNo.body.error, 'animated_not_allowed');
+    const crc = Buffer.alloc(4), len = n => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b; };
+    const apng = Buffer.concat([png.subarray(0, 33), len(8), Buffer.from('acTL'), Buffer.alloc(8), crc, png.subarray(33)]); // el mismo PNG con un trozo acTL antes de IDAT
+    assert.equal((await u('POST', '/api/profile/avatar', form(apng, 'animado.png'))).body.error, 'animated_not_allowed');
+    const le = n => { const b = Buffer.alloc(4); b.writeUInt32LE(n); return b; };
+    const awebpBody = Buffer.concat([Buffer.from('WEBP'), Buffer.from('VP8X'), le(10), Buffer.from([0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0]), Buffer.from('ANIM'), le(6), Buffer.alloc(6)]);
+    assert.equal((await u('POST', '/api/profile/avatar', form(Buffer.concat([Buffer.from('RIFF'), le(awebpBody.length), awebpBody]), 'animado.webp'))).body.error, 'animated_not_allowed');
+    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, null, 'nada se guardó');
+    // con el rol: el GIF entra tal cual
+    await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_av'").run();
+    const g = await u('POST', '/api/profile/avatar', form(gif, 'baila.gif')); ok(g);
+    const gifUrl = g.body.user.avatarUrl; assert.match(gifUrl, /\.gif$/); assert.equal(g.body.user.isSubscriber, true);
+    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.isSubscriber, true);
+    // sin el rol otra vez: la foto fija siguiente reemplaza al GIF y el archivo anterior se borra
+    await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_av'").run();
+    let last = gifUrl;
+    for (let i = 0; i < 4; i++) {
+      const r = await u('POST', '/api/profile/avatar', form(png, 'foto.png')); ok(r);
+      const url = r.body.user.avatarUrl; created.push(url);
+      assert.notEqual(url, last);
+      if (!REMOTE) assert.ok(!fs.existsSync(files(last)), 'la foto anterior se borró: ' + last);
+      last = url;
+    }
+    // ya van 5 cambios válidos (el GIF y 4 fotos): el sexto, aunque sea buena, espera a la semana siguiente
+    const sexta = await u('POST', '/api/profile/avatar', form(png, 'foto.png'));
+    ok(sexta, 429); assert.equal(sexta.body.error, 'avatar_weekly_limit'); assert.ok(Number(sexta.headers.get('retry-after')) > 6 * 24 * 3600);
+    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, last, 'se queda la última foto');
+    if (!REMOTE) { assert.ok(fs.existsSync(files(last))); assert.ok(!fs.existsSync(files(gifUrl))); }
+  });
+
+  await step('perfil público: no dice quién es admin; sí dice quién es suscriptor', async () => {
+    const adm = (await anon('GET', '/api/users/smoketest_admin')).body.user;
+    assert.ok(!('isAdmin' in adm), 'la API pública no publica isAdmin'); assert.equal(adm.isSubscriber, false);
+    const me = (await admin('GET', '/api/auth/me')).body.user; assert.equal(me.isAdmin, true); // la propia persona sí lo ve
+    await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_b'").run();
+    assert.equal((await anon('GET', '/api/users/smoketest_b')).body.user.isSubscriber, true);
+    await db.prepare("INSERT INTO follows (follower_id, followed_id, created_at) SELECT x.id, y.id, ? FROM users x, users y WHERE x.username = 'smoketest_a' AND y.username = 'smoketest_b' ON CONFLICT DO NOTHING").run(new Date().toISOString());
+    const lf = (await anon('GET', '/api/users/smoketest_a/following')).body.users.find(x => x.username === 'smoketest_b'); assert.equal(lf && lf.isSubscriber, true);
+    assert.equal((await anon('GET', '/api/user-search?q=smoketest_b')).body.users[0].isSubscriber, true);
+    await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_b'").run();
+  });
+  await step('suscriptor: elige el estilo de su icono de rango; las reseñas dicen quién es suscriptor y con qué estilo', async () => {
+    const put = body => a('PUT', '/api/profile', body);
+    const r0 = await put({ rankIconStyle: 'gold' }); ok(r0, 403); assert.equal(r0.body.error, 'subscriber_only'); // sin el rol no se puede elegir
+    await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_a'").run();
+    for (const mala of ['rojo', '#12345', '#GGGGGG', 'GOLD ', 7, null, {}]) { const r = await put({ rankIconStyle: mala }); ok(r, 400); assert.equal(r.body.error, 'invalid_rank_icon', String(mala)); }
+    const g = await put({ rankIconStyle: 'gold' }); ok(g); assert.equal(g.body.user.rankIconStyle, 'gold');
+    const c = await put({ rankIconStyle: '#ABCDEF' }); ok(c); assert.equal(c.body.user.rankIconStyle, '#abcdef'); // el color propio se guarda en minúsculas
+    assert.equal((await put({ bio: 'solo la descripcion' })).body.user.rankIconStyle, '#abcdef', 'editar otra cosa no lo borra');
+    assert.equal((await anon('GET', '/api/users/smoketest_a')).body.user.rankIconStyle, '#abcdef');
+    ok(await a('PUT', `/api/reviews/${gameId}`, { rating: 8, text: 'reseña de suscriptor' }));
+    const reviews = (await anon('GET', '/api/reviews')).body.reviews;
+    const mia = reviews.find(x => x.username === 'smoketest_a'); assert.deepEqual([mia.isSubscriber, mia.rankIconStyle], [true, '#abcdef']);
+    const ajena = reviews.find(x => x.username !== 'smoketest_a'); if (ajena) assert.deepEqual([ajena.isSubscriber, ajena.rankIconStyle], [false, null]);
+    for (const x of (await anon('GET', '/api/character-reviews')).body.characterReviews) assert.ok('isSubscriber' in x && 'rankIconStyle' in x);
+    // si pierde el rol, el estilo guardado deja de publicarse (y vuelve si lo recupera)
+    await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_a'").run();
+    assert.deepEqual([(await anon('GET', '/api/users/smoketest_a')).body.user.isSubscriber, (await anon('GET', '/api/users/smoketest_a')).body.user.rankIconStyle], [false, null]);
+    assert.equal((await anon('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a').rankIconStyle, null);
+  });
+  await step('Content-Security-Policy: está en el sitio y el panel, cubre cada script en línea y las páginas no llevan onclick=""', async () => {
+    const csp = (await anon('GET', '/')).headers.get('content-security-policy');
+    assert.ok(csp, 'falta la cabecera');
+    for (const d of ["default-src 'self'", "object-src 'none'", "frame-ancestors 'none'", "base-uri 'self'", "connect-src 'self'"]) assert.ok(csp.includes(d), d);
+    assert.ok(!/script-src[^;]*unsafe-(inline|eval)/.test(csp), 'los scripts no pueden ser unsafe-inline ni unsafe-eval');
+    const pages = ['server/views/index.html', 'server/views/restablecer.html', 'server/views/verificar.html', 'server/views/404.html', 'admin-ui/admin.html'];
+    for (const file of pages) {
+      const html = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+      for (const m of html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)) assert.ok(csp.includes(`'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`), 'script en línea sin hash en ' + file); // el navegador cuenta \r\n como \n
+      assert.ok(!/\son[a-z]+\s*=\s*["']/i.test(html.replace(/<script[\s\S]*?<\/script>/gi, '')), 'atributo on…="" en ' + file);
+    }
+    assert.ok((await admin('GET', '/admin')).headers.get('content-security-policy'), 'también en el panel');
+    assert.ok((await anon('GET', '/api/games')).headers.get('content-security-policy'));
   });
 
   console.log('Archivos estáticos');
