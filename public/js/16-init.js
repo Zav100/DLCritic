@@ -26,6 +26,7 @@ document.getElementById('newsBackBtn').addEventListener('click', spa(()=> goView
 document.getElementById('heroExploreBtn').addEventListener('click', spa(()=> goView('browse')));
 document.getElementById('heroAboutBtn').addEventListener('click', spa(()=> goView('about')));
 document.getElementById('aboutBackBtn').addEventListener('click', spa(()=> goView('feed')));
+document.getElementById('settingsBackBtn').addEventListener('click', spa(()=> goView('shelf'))); // Ajustes → Mi estantería
 document.getElementById('aboutExploreBtn').addEventListener('click', spa(()=> goView('browse')));
 document.getElementById('footerYear').textContent = new Date().getFullYear();
 // Al volver a esta pestaña (o a la ventana) se refrescan los datos por si cambiaron mientras no se miraba; refreshData() ya limita la frecuencia.
