@@ -1108,6 +1108,25 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal((await anon('GET', '/api/user-search?q=smoketest_b')).body.users[0].isSubscriber, true);
     await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_b'").run();
   });
+  await step('suscriptor: elige el estilo de su icono de rango; las reseñas dicen quién es suscriptor y con qué estilo', async () => {
+    const put = body => a('PUT', '/api/profile', body);
+    const r0 = await put({ rankIconStyle: 'gold' }); ok(r0, 403); assert.equal(r0.body.error, 'subscriber_only'); // sin el rol no se puede elegir
+    await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_a'").run();
+    for (const mala of ['rojo', '#12345', '#GGGGGG', 'GOLD ', 7, null, {}]) { const r = await put({ rankIconStyle: mala }); ok(r, 400); assert.equal(r.body.error, 'invalid_rank_icon', String(mala)); }
+    const g = await put({ rankIconStyle: 'gold' }); ok(g); assert.equal(g.body.user.rankIconStyle, 'gold');
+    const c = await put({ rankIconStyle: '#ABCDEF' }); ok(c); assert.equal(c.body.user.rankIconStyle, '#abcdef'); // el color propio se guarda en minúsculas
+    assert.equal((await put({ bio: 'solo la descripcion' })).body.user.rankIconStyle, '#abcdef', 'editar otra cosa no lo borra');
+    assert.equal((await anon('GET', '/api/users/smoketest_a')).body.user.rankIconStyle, '#abcdef');
+    ok(await a('PUT', `/api/reviews/${gameId}`, { rating: 8, text: 'reseña de suscriptor' }));
+    const reviews = (await anon('GET', '/api/reviews')).body.reviews;
+    const mia = reviews.find(x => x.username === 'smoketest_a'); assert.deepEqual([mia.isSubscriber, mia.rankIconStyle], [true, '#abcdef']);
+    const ajena = reviews.find(x => x.username !== 'smoketest_a'); if (ajena) assert.deepEqual([ajena.isSubscriber, ajena.rankIconStyle], [false, null]);
+    for (const x of (await anon('GET', '/api/character-reviews')).body.characterReviews) assert.ok('isSubscriber' in x && 'rankIconStyle' in x);
+    // si pierde el rol, el estilo guardado deja de publicarse (y vuelve si lo recupera)
+    await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_a'").run();
+    assert.deepEqual([(await anon('GET', '/api/users/smoketest_a')).body.user.isSubscriber, (await anon('GET', '/api/users/smoketest_a')).body.user.rankIconStyle], [false, null]);
+    assert.equal((await anon('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a').rankIconStyle, null);
+  });
   await step('Content-Security-Policy: está en el sitio y el panel, cubre cada script en línea y las páginas no llevan onclick=""', async () => {
     const csp = (await anon('GET', '/')).headers.get('content-security-policy');
     assert.ok(csp, 'falta la cabecera');

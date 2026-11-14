@@ -53,6 +53,33 @@ function foldText(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u0
 function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Rodea la foto de perfil con el borde multicolor de los suscriptores (CSS: .sub-ring). Para las demás cuentas devuelve la foto tal cual.
 function subRing(html, isSub){ return isSub ? `<span class="sub-ring">${html}</span>` : html; }
+// Icono de rango relleno de los suscriptores. Estilos (se eligen en Ajustes y viajan como users.rank_icon_style): invert (violeta con el icono blanco, el de por defecto),
+// gold (ámbar), multi (el degradado del borde) o un color propio #rrggbb, con el icono claro u oscuro según lo claro que sea el color. Las demás cuentas lo ven de contorno, como siempre.
+const RANK_ICON_PRESETS = {
+  invert: { bg:'#6C5FC7', fg:'#fff' },
+  gold:   { bg:'#F2B01E', fg:'#4A3000' },
+  multi:  { bg:'linear-gradient(135deg,#7B61FF,#F0A8D0,#5B8DEF,#7B61FF)', fg:'#fff' },
+};
+function rankIconColors(style){
+  if(RANK_ICON_PRESETS[style]) return RANK_ICON_PRESETS[style];
+  const m = /^#([0-9a-f]{6})$/i.exec(style||'');
+  if(!m) return RANK_ICON_PRESETS.invert;
+  const n = parseInt(m[1], 16);
+  const lum = (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255)) / 255;
+  return { bg:'#'+m[1], fg: lum>0.6 ? '#1b1b1b' : '#fff' };
+}
+// Atributos (clase y style="") para el elemento que muestra el icono de rango de una cuenta: vacíos si no es suscriptora.
+function rankIconAttrs(isSub, style){
+  if(!isSub) return { cls:'', style:'' };
+  const c = rankIconColors(style);
+  return { cls:' is-filled', style:` style="--ri-bg:${c.bg};--ri-fg:${c.fg}"` };
+}
+// El icono de rango suelto (al lado del nombre en una reseña): en un círculo relleno si la cuenta es suscriptora, tal cual si no.
+function rankIconInline(iconSvg, isSub, style){
+  if(!isSub) return iconSvg;
+  const a = rankIconAttrs(true, style);
+  return `<span class="ri-badge${a.cls}"${a.style}>${iconSvg}</span>`;
+}
 // Formatea una fecha ISO al formato lindo ("04 sept 2026" / "Sep 04, 2026" según el idioma).
 function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString(state.lang==='en'?'en-US':'es-ES',{day:'2-digit',month:'short',year:'numeric'}); }
 // Avisa algo con una tarjeta en el centro de la pantalla y un botón «Entendido» (ver noticeDialog en 07-stats-share-modals.js); antes era un mensajito que se iba solo abajo.

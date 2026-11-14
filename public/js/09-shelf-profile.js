@@ -18,7 +18,7 @@
 function profileShapeFromSelf(u){
   return {
     username: u.username, joined: u.joined, favoriteGameId: u.favoriteGameId, favoritePlatinum: u.favoritePlatinum, favoriteSteam: u.favoriteSteam,
-    bio: u.bio, avatarUrl: u.avatarUrl, isSubscriber: u.isSubscriber, socialLinks: u.socialLinks,
+    bio: u.bio, avatarUrl: u.avatarUrl, isSubscriber: u.isSubscriber, rankIconStyle: u.rankIconStyle, socialLinks: u.socialLinks,
     isFollowing:false, isFriend:false, followerCount:u.followerCount||0, followingCount:u.followingCount||0,
   };
 }
@@ -141,6 +141,7 @@ function renderProfileBody(el, username, profile, editable){
   const lvl = computeLevel(counts);
   const favGame = profile.favoriteGameId ? findGame(profile.favoriteGameId) : null;
 
+  const riAttrs = rankIconAttrs(profile.isSubscriber, profile.rankIconStyle); // insignia del rango rellena si es suscriptor
   const avatarHTML = subRing(profile.avatarUrl
     ? `<img class="avatar-img" src="${esc(profile.avatarUrl)}" alt="">`
     : `<div class="avatar" style="background:${color}">${esc(username[0].toUpperCase())}</div>`, profile.isSubscriber);
@@ -167,7 +168,7 @@ function renderProfileBody(el, username, profile, editable){
   // franja de estadísticas (una sola tarjeta con celdas) y las píldoras de gustos (género y plataforma favoritos).
   el.innerHTML = `
     <div class="profile-card"${editable? ' data-own' : ''}>
-      <div class="profile-avatar">${avatarHTML}<span class="profile-level-badge" title="${esc(t(lvl.current.nameKey))}">${lvl.current.icon}</span></div>
+      <div class="profile-avatar">${avatarHTML}<span class="profile-level-badge${riAttrs.cls}"${riAttrs.style} title="${esc(t(lvl.current.nameKey))}">${lvl.current.icon}</span></div>
       <div class="profile-card-main">
         <div class="profile-card-top">
           <div class="profile-id">

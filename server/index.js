@@ -105,7 +105,7 @@ async function publicUser(u) {
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
     isAdmin: !!u.is_admin,
-    isSubscriber: !!u.is_subscriber, // rol de suscriptor: borde multicolor en la foto, GIFs como foto de perfil, etc.
+    ...subscriberFields(u.is_subscriber, u.rank_icon_style), // rol de suscriptor: borde multicolor en la foto, icono de rango relleno, GIFs como foto de perfil, etc.
     twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
     avatarUrl: u.avatar_url || null,
     bio: u.bio || null,
@@ -113,6 +113,9 @@ async function publicUser(u) {
   };
 }
 
+// Estilo del icono de rango de un suscriptor: uno de los tres de siempre o un color propio (#rrggbb). Los demás no lo tienen: el icono sigue siendo de contorno.
+const RANK_ICON_STYLE_RE = /^(invert|gold|multi|#[0-9a-f]{6})$/i;
+const subscriberFields = (isSubscriber, style) => ({ isSubscriber: !!isSubscriber, rankIconStyle: isSubscriber ? style || null : null });
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,25}$/; // 3 a 25 caracteres: letras sin tildes ni ñ, números, punto, guion y guion bajo (el texto de ayuda dice lo que NO se permite: username_hint en 02-i18n.js)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SOCIAL_LINK_KEYS = ['instagram', 'facebook', 'x', 'youtube', 'steam', 'epic', 'playstation', 'xbox', 'nintendo'];
@@ -572,7 +575,7 @@ app.post('/api/suggestions', requireAuth, suggestionLimiter, async (req, res) =>
 /* ---------------- reviews ---------------- */
 
 const listReviewsWithVotes = db.prepare(`
-  SELECT r.id, r.game_id AS "gameId", u.username, r.rating, r.text, r.platforms, r.updated_at AS date,
+  SELECT r.id, r.game_id AS "gameId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
        JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = 1), '[]') AS "helpfulByJson",
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
@@ -594,6 +597,7 @@ function shapeReviewRow(r) {
   return {
     id: r.id, gameId: r.gameId, username: r.username, rating: r.rating,
     text: r.text, platforms: JSON.parse(r.platforms), date: r.date,
+    ...subscriberFields(r.isSubscriber, r.rankIconStyle), // suscriptor: la reseña lleva borde multicolor y el icono de rango relleno
     helpfulBy: JSON.parse(r.helpfulByJson || '[]').filter(Boolean), // quienes le dieron «Me gusta» (se llama así desde que era «te sirvió»)
     dislikedBy: JSON.parse(r.dislikedByJson || '[]').filter(Boolean),
   };
@@ -689,7 +693,7 @@ app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
 /* ---------------- character reviews (separate from game reviews) ---------------- */
 
 const listCharacterReviews = db.prepare(`
-  SELECT cr.id, cr.character_id AS "characterId", u.username, cr.rating, cr.text, cr.updated_at AS date
+  SELECT cr.id, cr.character_id AS "characterId", u.username, u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.rating, cr.text, cr.updated_at AS date
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
   ORDER BY cr.updated_at DESC, cr.id ASC
 `);
@@ -700,7 +704,7 @@ const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, te
 const deleteCharReviewById = db.prepare('DELETE FROM character_reviews WHERE id = ? AND user_id = ?');
 
 function shapeCharReviewRow(r) {
-  return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date };
+  return { id: r.id, characterId: r.characterId, username: r.username, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle) };
 }
 
 app.get('/api/character-reviews', async (req, res) => {
@@ -886,7 +890,7 @@ app.post('/api/profile/activity', requireAuth, async (req, res) => {
 /* ---------------- public profiles, editing, follows ---------------- */
 
 const findUserById = db.prepare('SELECT * FROM users WHERE id = ?');
-const updateProfile = db.prepare('UPDATE users SET username = ?, email = ?, bio = ?, social_links = ? WHERE id = ?');
+const updateProfile = db.prepare('UPDATE users SET username = ?, email = ?, bio = ?, social_links = ?, rank_icon_style = ? WHERE id = ?');
 const setAvatarUrl = db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?');
 const countReviewsForUser = db.prepare('SELECT COUNT(*) as n, AVG(rating) as avg FROM reviews WHERE user_id = ? AND rating IS NOT NULL');
 const findFollow = db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND followed_id = ?');
@@ -903,7 +907,7 @@ async function shapePublicProfile(u, viewer) {
     username: u.username, joined: u.joined_at, favoriteGameId: u.favorite_game_id || null,
     ...(await steam.favoriteView(u, !!(viewer && viewer.id === u.id))), // favoritePlatinum y favoriteSteam (solo si no ocultó sus horas y logros)
     // Ya no se publica quién es admin (el perfil público no lo mostraba, pero la API sí lo devolvía).
-    isSubscriber: !!u.is_subscriber, bio: u.bio || null, avatarUrl: u.avatar_url || null,
+    ...subscriberFields(u.is_subscriber, u.rank_icon_style), bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
     followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n,
@@ -958,8 +962,15 @@ app.put('/api/profile', requireAuth, requirePasswordForEmailChange, writeLimiter
   const socialLinks = (b.socialLinks && typeof b.socialLinks === 'object')
     ? sanitizeSocialLinks(b.socialLinks)
     : JSON.parse(req.user.social_links || '{}');
+  // El estilo del icono de rango solo lo elige un suscriptor (los demás reciben 403 si lo mandan).
+  let rankIconStyle = req.user.rank_icon_style || null;
+  if (b.rankIconStyle !== undefined) {
+    if (!req.user.is_subscriber) return res.status(403).json({ error: 'subscriber_only' });
+    if (typeof b.rankIconStyle !== 'string' || !RANK_ICON_STYLE_RE.test(b.rankIconStyle)) return res.status(400).json({ error: 'invalid_rank_icon' });
+    rankIconStyle = b.rankIconStyle.toLowerCase();
+  }
   try {
-    await updateProfile.run(username, email, bio, JSON.stringify(socialLinks), req.user.id);
+    await updateProfile.run(username, email, bio, JSON.stringify(socialLinks), rankIconStyle, req.user.id);
   } catch (e) {
     return res.status(409).json({ error: 'username_taken' });
   }

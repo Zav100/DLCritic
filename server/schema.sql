@@ -44,6 +44,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS has_password INTEGER NOT NULL DEFAULT 1;
 -- Rol de suscriptor (1 = lo es): borde multicolor en la foto de perfil, GIFs como foto y las demás ventajas que se vayan sumando. Se da con npm run make-subscriber.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_subscriber INTEGER NOT NULL DEFAULT 0;
+-- Estilo del icono de rango de un suscriptor (se elige en Ajustes): invert, gold, multi o un color #rrggbb. NULL = el de por defecto (invert).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_icon_style TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub);
 -- Enlaces para confirmar el correo: se guarda el hash del token (como en password_resets) y el correo al que se mandó, para que valga solo si sigue siendo el de la cuenta.
 CREATE TABLE IF NOT EXISTS email_verifications (

@@ -504,7 +504,7 @@ function renderCharReviewBlock(characterId, myReview){
 function characterReviewCard(rv, opts){
   const c = findCharacter(rv.characterId) || {name:'(personaje eliminado)'};
   const div=document.createElement('div');
-  div.className='card reviewcard';
+  div.className='card reviewcard' + (rv.isSubscriber? ' is-sub' : '');
   const mine = state.user && state.user.username===rv.username;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
