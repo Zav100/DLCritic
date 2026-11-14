@@ -1264,6 +1264,12 @@ const today = new Date().toISOString().slice(0, 10);
   });
 
   console.log('Archivos estáticos');
+  await step('legal.css: el texto de un botón-enlace (a.btn) es blanco también en el tema oscuro (su regla va después de la de los enlaces)', async () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'legal.css'), 'utf8');
+    const links = css.indexOf('[data-theme="dark"] .legal-doc a {'), btn = css.indexOf('[data-theme="dark"] .legal-doc a.btn');
+    assert.ok(links >= 0 && btn > links, 'la regla del botón tiene que ir después de la de los enlaces del tema oscuro');
+    assert.match(css, /a\.btn, \[data-theme="dark"\] \.legal-doc a\.btn \{ color: #fff;/);
+  });
   await step('páginas: sus /js y /css llevan ?v=<hash> y cada archivo existe (así el caché de un año es seguro)', async () => {
     const pub = client();
     for (const route of ['/', '/explorar', '/terminos', '/privacidad', '/creditos', '/restablecer', '/verificar', '/esta-pagina-no-existe']) {

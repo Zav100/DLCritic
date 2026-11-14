@@ -14,8 +14,9 @@ a.logo { text-decoration: none; }
 .legal-doc li { margin: 5px 0; }
 /* --gold-dim en tema claro y --gold en oscuro: son los que dan buen contraste sobre cada fondo. */
 .legal-doc a { color: var(--gold-dim); text-decoration: underline; text-underline-offset: 2px; }
-.legal-doc a.btn { color: #fff; text-decoration: none; }
 [data-theme="dark"] .legal-doc a { color: var(--gold); }
+/* Va DESPUÉS de la regla del tema oscuro: las dos pesan igual y gana la última; al revés, el texto de un botón-enlace (p.ej. «Ir a DLCritic» en /verificar) salía violeta sobre azul. */
+.legal-doc a.btn, [data-theme="dark"] .legal-doc a.btn { color: #fff; text-decoration: none; }
 .legal-doc code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--paper-alt); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
 
 .legal-updated { font-family: 'Lexend', sans-serif; font-size: 12px; color: var(--fg-soft); margin: 0 0 24px; }
