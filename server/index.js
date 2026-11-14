@@ -62,6 +62,9 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '256kb' })); // el tope por defecto (100 kb) se quedaba corto para una reseña de 20 000 caracteres con emojis
 // Express 5 deja req.body en undefined cuando no llegó JSON; las rutas esperan siempre un objeto.
 app.use((req, res, next) => { req.body ??= {}; next(); });
+// Postgres no guarda el carácter NUL (\u0000): llegaba a la base como un error 500. Si viene en la dirección (%00) o en el cuerpo JSON, la petición no es válida.
+const hasNul = body => { let found = false; JSON.stringify(body, (k, v) => { if (k.includes('\0') || (typeof v === 'string' && v.includes('\0'))) found = true; return v; }); return found; };
+app.use((req, res, next) => (/%00/i.test(req.url) || hasNul(req.body) ? res.status(400).json({ error: 'invalid_request' }) : next()));
 // La lista de palabras de moderación se puede cambiar desde el panel: cada instancia la vuelve a leer como mucho una vez por minuto (server/moderation.js).
 app.use('/api', (req, res, next) => { moderation.ensureFresh().then(() => next(), next); });
 
@@ -1561,6 +1564,7 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'invalid_json' });
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'payload_too_large' });
+  if (err.status === 400 || err instanceof URIError) return res.status(400).json({ error: 'bad_request' }); // p. ej. una dirección con %ff%fe que no se puede decodificar
   console.error(err);
   res.status(500).json({ error: 'server_error' });
 });

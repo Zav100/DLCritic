@@ -157,7 +157,7 @@ function renderSettingsView(){
   if(!state.user){ goView('auth'); return; }
   const u = state.user;
   const el = document.getElementById('settingsContent');
-  const avatarHTML = u.avatarUrl ? `<img src="${esc(u.avatarUrl)}">` : esc(u.username[0].toUpperCase());
+  const avatarHTML = u.avatarUrl ? `<img alt="" src="${esc(u.avatarUrl)}">` : esc(u.username[0].toUpperCase());
   const emailStatusHTML = !u.email ? '' : u.emailVerified
     ? `<p class="hint email-status ok">${ICONS.checkCircle} ${esc(t('st_email_verified'))}</p>`
     : `<p class="hint email-status">${esc(t('st_email_unverified'))} <button type="button" class="linklike" id="stEmailResend">${esc(t('st_email_resend'))}</button></p>`;
@@ -301,7 +301,7 @@ function renderSettingsView(){
     document.getElementById('stProfileError').hidden = true;
     pendingSettingsAvatarFile = file;
     const reader = new FileReader();
-    reader.onload = ()=>{ document.getElementById('settingsAvatarPreview').innerHTML = `<img src="${reader.result}">`; };
+    reader.onload = ()=>{ document.getElementById('settingsAvatarPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
     reader.readAsDataURL(file);
   };
 

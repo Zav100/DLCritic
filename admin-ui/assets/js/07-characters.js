@@ -24,7 +24,7 @@ document.getElementById('c-photo-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{ document.getElementById('charPhotoPreview').innerHTML = `<img src="${reader.result}">`; };
+  reader.onload = ()=>{ document.getElementById('charPhotoPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
 // Subir una portada especial es "manual": mientras haya un archivo elegido aquí, gana por sobre el <select> de abajo (se aclara en renderCharBannerGameSelect, que se deshabilita solo si hay preview de portada propia).
@@ -32,7 +32,7 @@ document.getElementById('c-banner-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{ document.getElementById('charBannerPreview').innerHTML = `<img src="${reader.result}">`; };
+  reader.onload = ()=>{ document.getElementById('charBannerPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
 
@@ -127,8 +127,8 @@ function fillCharacterFormForEdit(c){
   charCategoryGrid.querySelectorAll('[data-category]').forEach(cb=>{ cb.checked = (c.categories||[]).includes(cb.dataset.category); });
   document.getElementById('c-game').value = '';
   document.getElementById('c-description').value = c.description || '';
-  document.getElementById('charPhotoPreview').innerHTML = c.photoUrl ? `<img src="${esc(c.photoUrl)}">` : ICON_SVG.gamepad;
-  document.getElementById('charBannerPreview').innerHTML = c.bannerUrl ? `<img src="${esc(c.bannerUrl)}">` : ICON_SVG.gamepad;
+  document.getElementById('charPhotoPreview').innerHTML = c.photoUrl ? `<img alt="" src="${esc(c.photoUrl)}">` : ICON_SVG.gamepad;
+  document.getElementById('charBannerPreview').innerHTML = c.bannerUrl ? `<img alt="" src="${esc(c.bannerUrl)}">` : ICON_SVG.gamepad;
   document.getElementById('c-hidden').checked = !!c.hidden;
   renderCharGameChips();
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -184,7 +184,7 @@ function renderCharactersTable(){
     const titles = gameIds.map(id=> (state.games.find(g=>g.id===id)||{}).title).filter(Boolean);
     return `
     <tr class="${c.hidden?'row-hidden':''}">
-      <td>${c.photoUrl? `<img class="row-cover" style="border-radius:50%;" src="${esc(c.photoUrl)}">` : `<div class="row-cover row-cover-empty" style="border-radius:50%;">${ICON_SVG.gamepad}</div>`}</td>
+      <td>${c.photoUrl? `<img alt="" class="row-cover" style="border-radius:50%;" src="${esc(c.photoUrl)}">` : `<div class="row-cover row-cover-empty" style="border-radius:50%;">${ICON_SVG.gamepad}</div>`}</td>
       <td>${esc(c.name)}</td>
       <td>${esc(charCategoriesLabel(c.categories) || '—')}</td>
       <td>${titles.length? esc(titles.join(', ')) : '—'}</td>

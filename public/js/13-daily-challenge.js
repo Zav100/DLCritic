@@ -115,7 +115,7 @@ function renderGuessCard(){
   } else {
     bodyHTML = `
       <div class="field" style="margin-top:2px; margin-bottom:10px;">
-        <input type="text" id="dailyGuessInput" placeholder="${esc(t('guess_input_ph'))}" autocomplete="off">
+        <input type="text" id="dailyGuessInput" placeholder="${esc(t('guess_input_ph'))}" aria-label="${esc(t('guess_input_ph'))}" autocomplete="off">
       </div>
       <button class="btn small" id="dailyGuessBtn">${t('guess_btn')}</button>`;
   }

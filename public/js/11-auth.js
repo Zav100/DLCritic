@@ -122,7 +122,7 @@ function renderAuthForm(){
     if(!file) return;
     registerAvatarFile = file;
     const reader = new FileReader();
-    reader.onload = ()=>{ document.getElementById('registerAvatarPreview').innerHTML = `<img src="${reader.result}">`; };
+    reader.onload = ()=>{ document.getElementById('registerAvatarPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
     reader.readAsDataURL(file);
   };
 }
