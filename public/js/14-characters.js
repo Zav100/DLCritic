@@ -509,6 +509,7 @@ function characterReviewCard(rv, opts){
   const au = reviewAuthor(rv);
   div.className='card reviewcard' + (au.isSubscriber? ' is-sub' : '');
   const mine = state.user && state.user.username===rv.username;
+  const adminDel = !mine && state.user && state.user.isAdmin; // una cuenta admin puede borrar la reseña de cualquiera (el servidor lo vuelve a comprobar)
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
     <div class="rc-top">
@@ -525,7 +526,7 @@ function characterReviewCard(rv, opts){
     <div class="cardfoot">
       <div id="char-gauge-${rv.id}">${rv.rating==null? `<span class="no-rating-tag">${t('no_rating_yet')}</span>` : ''}</div>
       ${mine? `<div class="rc-actions"><button class="icon-btn" data-del-char-review="${rv.id}">${t('delete_btn')}</button></div>`
-        : `<div class="rc-actions"><button class="icon-btn" data-report="${rv.id}" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button></div>`}
+        : `<div class="rc-actions"><button class="icon-btn" data-report="${rv.id}" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button>${adminDel? `<button class="icon-btn" data-del-char-review="${rv.id}">${t('delete_btn')} (admin)</button>` : ''}</div>`}
     </div>
   `;
   if(rv.rating!=null) renderGauge(div.querySelector(`#char-gauge-${rv.id}`), rv.rating);
@@ -534,7 +535,7 @@ function characterReviewCard(rv, opts){
   div.querySelector('.rc-avatar').onclick = openAuthor; // la foto también lleva al perfil
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
-  if(mine) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
-  else div.querySelector('[data-report]').onclick=()=> openReportModal('character_review', rv.id);
+  if(mine || adminDel) div.querySelector('[data-del-char-review]').onclick=()=> deleteCharacterReview(rv.id);
+  if(!mine) div.querySelector('[data-report]').onclick=()=> openReportModal('character_review', rv.id);
   return div;
 }

@@ -900,6 +900,7 @@ function reviewCard(rv, opts){
   const au = reviewAuthor(rv);
   div.className='card reviewcard' + (au.isSubscriber? ' is-sub' : ''); // reseña de un suscriptor: borde multicolor fino
   const mine = state.user && state.user.username===rv.username;
+  const adminDel = !mine && state.user && state.user.isAdmin; // una cuenta admin puede borrar la reseña de cualquiera (el servidor lo vuelve a comprobar)
   const authorLevel = computeLevel(levelCounts(rv.username)).current;
   const hasText = rv.text && rv.text.trim().length>0;
   div.innerHTML = `
@@ -922,7 +923,7 @@ function reviewCard(rv, opts){
       <div class="rc-actions">
         <button class="icon-btn" data-share="${rv.id}" title="${esc(t('share_btn'))}">${ICONS.link}</button>
         ${!mine? `<button class="icon-btn" data-report="${rv.id}" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button>` : ''}
-        ${mine? `<button class="icon-btn" data-del="${rv.id}">${t('delete_btn')}</button>` : ''}
+        ${mine || adminDel? `<button class="icon-btn" data-del="${rv.id}">${t('delete_btn')}${adminDel? ' (admin)' : ''}</button>` : ''}
       </div>
     </div>
   `;
@@ -933,8 +934,8 @@ function reviewCard(rv, opts){
   div.querySelector('.rc-avatar').onclick = openAuthor; // la foto también lleva al perfil
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
-  if(mine) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
-  else { div.querySelector('[data-report]').onclick=()=> openReportModal('review', rv.id); paintVoteRow(div.querySelector('.helpful-row'), rv); }
+  if(mine || adminDel) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
+  if(!mine){ div.querySelector('[data-report]').onclick=()=> openReportModal('review', rv.id); paintVoteRow(div.querySelector('.helpful-row'), rv); }
   return div;
 }
 // HTML del "estado vacío" genérico (ícono + título + texto) que se usa en TODA la app cuando una lista/grilla no tiene nada para mostrar. `title` y `sub` van sin escapar porque siempre se les pasa el resultado de t(), nunca texto de usuario.
