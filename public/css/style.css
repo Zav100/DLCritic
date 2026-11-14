@@ -8330,3 +8330,19 @@ a.btn-ghost {
     animation: none;
   }
 }
+
+/* ---------- moderación: aviso de reseña oculta y estado del GIF en revisión ---------- */
+.rc-hidden-note {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pink) 14%, var(--paper));
+  color: var(--ink);
+  font-family: 'Lexend', sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hint.review-note {
+  color: var(--gold-dim);
+}

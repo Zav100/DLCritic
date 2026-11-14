@@ -221,5 +221,24 @@
   .status-badge.unread{ background:var(--gold); color:#fff; }
   .status-badge.read{ background:var(--teal); color:#fff; }
   .status-badge.archived{ background:var(--paper); color:var(--ink-soft); border:1px solid var(--line-dark); }
+  /* ---- pestaña Moderación ---- */
+  .mod-h{ font-family:'Lexend',sans-serif; line-height:1.5; font-size:13px; font-weight:700; margin:22px 0 10px; color:var(--ink); }
+  .mod-h:first-child{ margin-top:0; }
+  .suggestion-card.mod-card{ border-left:4px solid var(--gold); }
+  .suggestion-card.mod-card.mod-grave{ border-left-color:var(--red); }
+  .kind-badge.mod{ background:var(--gold); }
+  .status-badge.mod-grave-badge{ background:var(--red); color:#fff; }
+  .mod-text{ white-space:pre-wrap; overflow-wrap:anywhere; background:var(--paper); border-radius:10px; padding:10px 12px; }
+  .mod-mark{ border-radius:4px; padding:0 3px; color:var(--ink); }
+  .mod-mark.grave{ background:rgba(224,64,91,0.28); }
+  .mod-mark.revisar{ background:rgba(255,196,64,0.4); }
+  .chip.mod-danger{ color:var(--red-dim); }
+  .mod-gifs{ display:flex; gap:18px; flex-wrap:wrap; margin:6px 0 12px; }
+  .mod-gifs figure{ margin:0; }
+  .mod-gifs figcaption{ font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
+  .mod-gifs img{ width:120px; height:120px; object-fit:cover; border-radius:14px; background:var(--paper); }
+  .mod-none{ display:flex; width:120px; height:120px; align-items:center; justify-content:center; border-radius:14px; background:var(--paper); color:var(--ink-soft); font-size:12px; }
+  .mod-line{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--line); font-size:13px; }
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   @media (prefers-reduced-motion: reduce){ *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
+  .mod-card .chip{ background:var(--paper); border:1px solid var(--line-dark); }

@@ -1060,7 +1060,7 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal(inspectImage(Buffer.from('esto no es una imagen, aunque se llame .png')), null);
     assert.equal(inspectImage(Buffer.concat([pngSig, pngParts[0]])), null, 'PNG cortado');
   });
-  await step('foto de perfil: los GIF y animadas son de suscriptores, 5 cambios por semana y la foto anterior se borra', async () => {
+  await step('foto de perfil: los GIF son de suscriptores y esperan la aprobación de un admin; 5 cambios por semana y la foto anterior se borra', async () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
     const gif = Buffer.from('GIF89a\x01\0\x01\0\0\0\0;', 'latin1');
     const form = (buf, name) => { const f = new FormData(); f.append('image', new Blob([buf]), name); return f; };
@@ -1075,26 +1075,44 @@ const today = new Date().toISOString().slice(0, 10);
     const awebpBody = Buffer.concat([Buffer.from('WEBP'), Buffer.from('VP8X'), le(10), Buffer.from([0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0]), Buffer.from('ANIM'), le(6), Buffer.alloc(6)]);
     assert.equal((await u('POST', '/api/profile/avatar', form(Buffer.concat([Buffer.from('RIFF'), le(awebpBody.length), awebpBody]), 'animado.webp'))).body.error, 'animated_not_allowed');
     assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, null, 'nada se guardó');
-    // con el rol: el GIF entra tal cual
+    // con el rol: el GIF NO se muestra todavía; queda en revisión hasta que un admin lo apruebe
     await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_av'").run();
+    const avId = (await db.prepare("SELECT id FROM users WHERE username = 'smoketest_av'").get()).id;
     const g = await u('POST', '/api/profile/avatar', form(gif, 'baila.gif')); ok(g);
-    const gifUrl = g.body.user.avatarUrl; assert.match(gifUrl, /\.gif$/); assert.equal(g.body.user.isSubscriber, true);
-    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.isSubscriber, true);
-    // sin el rol otra vez: la foto fija siguiente reemplaza al GIF y el archivo anterior se borra
+    assert.deepEqual([g.body.user.avatarUrl, g.body.user.avatarReview], [null, 'pending']); assert.match(g.body.user.avatarPendingUrl, /\.gif$/); assert.equal(g.body.user.isSubscriber, true);
+    const gifA = g.body.user.avatarPendingUrl;
+    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, null, 'nadie ve el GIF pendiente');
+    // el admin lo ve en la bandeja y lo aprueba (un usuario común no puede)
+    const mod1 = (await admin('GET', '/api/admin/moderation')).body; assert.ok(mod1.gifs.some(x => x.username === 'smoketest_av' && x.pendingUrl === gifA));
+    ok(await aOnAdmin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'approve' }), 403);
+    ok(await admin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'approve' }));
+    assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, gifA);
+    const me1 = (await u('GET', '/api/auth/me')).body.user; assert.deepEqual([me1.avatarReview, me1.avatarPendingUrl], [null, null]);
+    // otro GIF: el admin lo rechaza -> se borra, la foto sigue siendo la aprobada y la persona ve que no fue aprobado
+    const gB = await u('POST', '/api/profile/avatar', form(gif, 'otro.gif')); ok(gB);
+    const gifB = gB.body.user.avatarPendingUrl; assert.notEqual(gifB, gifA);
+    ok(await admin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'reject' }));
+    const me2 = (await u('GET', '/api/auth/me')).body.user; assert.deepEqual([me2.avatarUrl, me2.avatarReview, me2.avatarPendingUrl], [gifA, 'rejected', null]);
+    ok(await admin('POST', `/api/admin/moderation/gifs/${avId}`, { action: 'approve' }), 404); // ya no hay nada pendiente
+    if (!REMOTE) assert.ok(!fs.existsSync(files(gifB)), 'el GIF rechazado se borró');
+    // un tercero queda pendiente; al perder el rol, subir una foto fija lo cancela y reemplaza al GIF aprobado (cuyo archivo se borra)
+    const gC = await u('POST', '/api/profile/avatar', form(gif, 'tercero.gif')); ok(gC);
+    const gifC = gC.body.user.avatarPendingUrl;
     await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_av'").run();
-    let last = gifUrl;
-    for (let i = 0; i < 4; i++) {
+    let last = gifA;
+    for (let i = 0; i < 2; i++) {
       const r = await u('POST', '/api/profile/avatar', form(png, 'foto.png')); ok(r);
       const url = r.body.user.avatarUrl; created.push(url);
-      assert.notEqual(url, last);
+      assert.notEqual(url, last); assert.equal(r.body.user.avatarReview, null);
       if (!REMOTE) assert.ok(!fs.existsSync(files(last)), 'la foto anterior se borró: ' + last);
       last = url;
     }
-    // ya van 5 cambios válidos (el GIF y 4 fotos): el sexto, aunque sea buena, espera a la semana siguiente
+    if (!REMOTE) assert.ok(!fs.existsSync(files(gifC)), 'el GIF pendiente se canceló con la foto fija');
+    // ya van 5 cambios válidos (3 GIF y 2 fotos): el sexto, aunque sea bueno, espera a la semana siguiente
     const sexta = await u('POST', '/api/profile/avatar', form(png, 'foto.png'));
     ok(sexta, 429); assert.equal(sexta.body.error, 'avatar_weekly_limit'); assert.ok(Number(sexta.headers.get('retry-after')) > 6 * 24 * 3600);
     assert.equal((await anon('GET', '/api/users/smoketest_av')).body.user.avatarUrl, last, 'se queda la última foto');
-    if (!REMOTE) { assert.ok(fs.existsSync(files(last))); assert.ok(!fs.existsSync(files(gifUrl))); }
+    if (!REMOTE) { assert.ok(fs.existsSync(files(last))); assert.ok(!fs.existsSync(files(gifA))); }
   });
 
   await step('perfil público: no dice quién es admin; sí dice quién es suscriptor', async () => {
@@ -1126,6 +1144,109 @@ const today = new Date().toISOString().slice(0, 10);
     await db.prepare("UPDATE users SET is_subscriber = 0 WHERE username = 'smoketest_a'").run();
     assert.deepEqual([(await anon('GET', '/api/users/smoketest_a')).body.user.isSubscriber, (await anon('GET', '/api/users/smoketest_a')).body.user.rankIconStyle], [false, null]);
     assert.equal((await anon('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a').rankIconStyle, null);
+  });
+  console.log('Moderación');
+  await step('filtro de palabras: censura lo grave, solo marca lo dudoso y no confunde palabras inocentes', async () => {
+    const mod = require('../server/moderation');
+    const scan = t => mod.scanText(t);
+    assert.equal(scan('Qué buen juego, me encantó').flagged, false);
+    const g = scan('Eres un negrata de mierda');
+    assert.deepEqual([g.text, g.censored, g.graves], ['Eres un n****** de mierda', true, ['negrata']]);
+    assert.equal(scan('eres un n3gr4t4').text, 'eres un n******', 'números por letras');
+    assert.equal(scan('n.e.g.r.a.t.a').text, 'n************', 'separadores entre letras');
+    assert.equal(scan('NEGRATAAAA').text, 'N*********', 'letras repetidas y mayúsculas');
+    assert.equal(scan('un nigg@ cualquiera').censored, true, '@ al final de una palabra');
+    assert.equal(scan('Los negros de mierda').text, 'Los n***** ** ******', 'grupo + insulto');
+    for (const limpio of ['This tycoon and raccoon game', 'analista cocoon', 'Kike es mi amigo Enrique', 'Pakistán', 'negro como el carbón', 'Mississippi']) assert.equal(scan(limpio).censored, false, limpio);
+    const w = scan('Wolfenstein tiene nazis y hay que matar nazis');
+    assert.deepEqual([w.censored, w.revisar.length > 0, w.flagged], [false, true, true], 'lo dudoso se marca pero no se censura');
+    assert.equal(scan('visita www.spam.com').links, true);
+    assert.deepEqual(scan('Eres un negrata').spans, [[8, 15, 'grave']], 'las posiciones son las del texto original');
+    for (const mal of ['negrata_99', 'xxnegratayy', 'n1gg3r', 'soyunmaricon']) assert.equal(mod.badUsername(mal), true, mal);
+    for (const bien of ['Zav2', 'BruceWayne', 'Kike_92', 'snigger', 'Cocoon', 'Analista']) assert.equal(mod.badUsername(bien), false, bien);
+    const t0 = Date.now(); mod.scanText('Un texto normal de reseña sobre el juego. '.repeat(500)); assert.ok(Date.now() - t0 < 500, 'un texto de 20 000 caracteres se revisa rápido');
+  });
+  await step('lo que se escribe pasa por el filtro: reseñas, descripción y listas; las marcas llegan a la bandeja y el admin actúa', async () => {
+    const flagsOf = async kind => (await admin('GET', '/api/admin/moderation')).body.flags.filter(f => f.kind === kind);
+    const mine = async () => (await anon('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a');
+    // una reseña con una palabra grave se guarda censurada y el original queda en la bandeja
+    const r1 = await a('PUT', `/api/reviews/${gameId}`, { text: 'Qué juego de negrata de mierda' }); ok(r1);
+    assert.deepEqual([r1.body.censored, r1.body.text], [true, 'Qué juego de n****** de mierda']);
+    assert.equal((await mine()).text, 'Qué juego de n****** de mierda');
+    const fl = (await flagsOf('review')).find(f => f.author === 'smoketest_a');
+    assert.deepEqual([fl.tier, fl.source, fl.text, fl.spans], ['grave', 'auto', 'Qué juego de negrata de mierda', [[13, 20, 'grave']]]);
+    // editarla con un texto limpio borra la marca; con una palabra dudosa queda marcada pero sin censurar
+    const r2 = await a('PUT', `/api/reviews/${gameId}`, { text: 'Me gustó mucho' }); ok(r2); assert.equal(r2.body.censored, false);
+    assert.equal((await flagsOf('review')).filter(f => f.author === 'smoketest_a').length, 0);
+    const r3 = await a('PUT', `/api/reviews/${gameId}`, { text: 'Matar nazis es lo mejor' }); ok(r3); assert.deepEqual([r3.body.censored, r3.body.text], [false, 'Matar nazis es lo mejor']);
+    const fl3 = (await flagsOf('review')).find(f => f.author === 'smoketest_a'); assert.equal(fl3.tier, 'revisar');
+    // el admin la oculta: deja de verse para todos menos para su autora, que ve el aviso; tampoco sale en su página ni se le puede dar "me gusta"
+    const rid = (await mine()).id;
+    ok(await aOnAdmin('POST', `/api/admin/moderation/flags/${fl3.id}`, { action: 'hide' }), 403);
+    ok(await admin('POST', `/api/admin/moderation/flags/${fl3.id}`, { action: 'borrar_todo' }), 400);
+    ok(await admin('POST', `/api/admin/moderation/flags/${fl3.id}`, { action: 'hide' }));
+    assert.equal(await mine(), undefined);
+    assert.equal((await a('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a').hidden, true);
+    assert.ok(!(await anon('GET', `/resena/${rid}`)).text.includes('Matar nazis'), 'la página de la reseña no la muestra');
+    ok(await b('POST', `/api/reviews/id/${rid}/helpful`), 404);
+    ok(await admin('POST', `/api/admin/moderation/flags/${fl3.id}`, { action: 'ok' }), 400); // ya resuelta
+    assert.equal((await admin('GET', '/api/admin/moderation')).body.recent.find(f => f.id === fl3.id).resolution, 'hidden');
+    ok(await admin('POST', `/api/admin/moderation/flags/${fl3.id}`, { action: 'restore' })); // se puede deshacer
+    assert.equal((await mine()).text, 'Matar nazis es lo mejor');
+    // descripción del perfil y nombre de una lista
+    const p = await a('PUT', '/api/profile', { bio: 'Soy un negrata' }); ok(p); assert.deepEqual([p.body.censored, p.body.user.bio], [true, 'Soy un n******']);
+    assert.equal((await flagsOf('bio')).find(f => f.author === 'smoketest_a').text, 'Soy un negrata');
+    const l = await a('POST', '/api/lists', { title: 'Lista de maricones' }); ok(l); assert.deepEqual([l.body.censored, l.body.list.title], [true, 'Lista de m********']);
+    ok(await a('DELETE', `/api/lists/${l.body.list.id}`));
+    ok(await a('PUT', '/api/profile', { bio: 'Nueva bio' }));
+    assert.equal((await flagsOf('bio')).filter(f => f.author === 'smoketest_a').length, 0, 'una descripción limpia borra la marca');
+    // nombres de usuario ofensivos: se rechazan al registrarse y al cambiarlo, con un error propio
+    const bad = await client()('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_bad@example.com', password: pass, username: 'negrata_99' });
+    ok(bad, 400); assert.equal(bad.body.error, 'username_not_allowed');
+    const ren = await a('PUT', '/api/profile', { username: 'soyunmaricon' }); ok(ren, 400); assert.equal(ren.body.error, 'username_not_allowed');
+  });
+  await step('reportes: solo con cuenta, un motivo válido, no el propio, sin repetir, con tope por hora; el admin los resuelve', async () => {
+    const flagsOf = async kind => (await admin('GET', '/api/admin/moderation')).body.flags.filter(f => f.kind === kind);
+    const rid = (await anon('GET', '/api/reviews')).body.reviews.find(x => x.username === 'smoketest_a').id;
+    ok(await anon('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'odio' }), 401);
+    ok(await b('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'nada' }), 400);
+    ok(await b('POST', '/api/reports', { kind: 'otra', targetId: rid, reason: 'odio' }), 400);
+    ok(await a('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'odio' }), 400); // lo propio no se reporta
+    ok(await b('POST', '/api/reports', { kind: 'review', targetId: 'no-existe', reason: 'odio' }), 404);
+    ok(await b('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'acoso', note: 'texto agresivo' }));
+    ok(await b('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'acoso' })); // repetido: no se duplica
+    const rep = (await flagsOf('review')).filter(f => f.source === 'report');
+    assert.equal(rep.length, 1); assert.deepEqual([rep[0].reporter, rep[0].tier, rep[0].note, rep[0].author], ['smoketest_b', 'acoso', 'texto agresivo', 'smoketest_a']);
+    ok(await admin('POST', `/api/admin/moderation/flags/${rep[0].id}`, { action: 'ok' }));
+    // reportar un perfil: el admin puede quitar la descripción o la foto, pero no ocultar (eso es de las reseñas)
+    ok(await b('POST', '/api/reports', { kind: 'user', targetId: 'SMOKETEST_A', reason: 'inapropiado' }));
+    const up = (await flagsOf('user'))[0]; assert.equal(up.author, 'smoketest_a');
+    ok(await admin('POST', `/api/admin/moderation/flags/${up.id}`, { action: 'hide' }), 400);
+    ok(await admin('POST', `/api/admin/moderation/flags/${up.id}`, { action: 'clear_bio' }));
+    assert.equal((await anon('GET', '/api/users/smoketest_a')).body.user.bio, null);
+    // tope: 10 reportes por hora por persona
+    let limitado = false;
+    for (let i = 0; i < 12 && !limitado; i++) limitado = (await b('POST', '/api/reports', { kind: 'review', targetId: rid, reason: 'spam' })).status === 429;
+    assert.ok(limitado, 'el reporte número 11 de la hora se frena');
+  });
+  await step('suspender una cuenta: no entra, pierde su sesión, se oculta lo marcado, no vale con admins y se puede reactivar', async () => {
+    const sus = client();
+    ok(await sus('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_sus@example.com', password: pass, username: 'smoketest_sus' }));
+    ok(await sus('PUT', `/api/reviews/${gameId}`, { text: 'otro negrata más' }));
+    const flag = (await admin('GET', '/api/admin/moderation')).body.flags.find(f => f.author === 'smoketest_sus'); assert.ok(flag);
+    ok(await admin('POST', `/api/admin/moderation/flags/${flag.id}`, { action: 'suspend' }));
+    assert.equal((await sus('GET', '/api/auth/me')).body.user, null, 'la sesión que tenía ya no vale');
+    const login = await client()('POST', '/api/auth/login', { identifier: 'smoketest_sus', password: pass }); ok(login, 403); assert.equal(login.body.error, 'account_suspended');
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_sus', password: 'incorrecta1!' }), 401); // con la contraseña mala no se revela nada
+    assert.ok(!(await anon('GET', '/api/reviews')).body.reviews.some(x => x.username === 'smoketest_sus'), 'su reseña marcada se ocultó');
+    const lista = (await admin('GET', '/api/admin/moderation')).body.suspended.find(x => x.username === 'smoketest_sus'); assert.ok(lista);
+    ok(await aOnAdmin('POST', `/api/admin/moderation/users/${lista.userId}/reactivate`), 403);
+    ok(await admin('POST', `/api/admin/moderation/users/${lista.userId}/reactivate`));
+    ok(await client()('POST', '/api/auth/login', { identifier: 'smoketest_sus', password: pass }));
+    // una cuenta de admin no se puede suspender
+    await db.prepare("INSERT INTO moderation_flags (id, kind, target_id, author_id, source, tier, text, created_at) SELECT 'mf-test-admin', 'bio', CAST(id AS TEXT), id, 'auto', 'revisar', 'x', ? FROM users WHERE username = 'smoketest_admin'").run(new Date().toISOString());
+    const noAdmin = await admin('POST', '/api/admin/moderation/flags/mf-test-admin', { action: 'suspend' }); ok(noAdmin, 403); assert.equal(noAdmin.body.error, 'admin_account');
+    ok(await admin('POST', '/api/admin/moderation/flags/mf-test-admin', { action: 'ok' }));
   });
   await step('Content-Security-Policy: está en el sitio y el panel, cubre cada script en línea y las páginas no llevan onclick=""', async () => {
     const csp = (await anon('GET', '/')).headers.get('content-security-policy');

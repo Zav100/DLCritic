@@ -1,0 +1,28 @@
+{
+  "_nota": "Lista de moderación (la usa server/moderation.js). Se escribe en minúsculas y sin tildes; el filtro ya reconoce plurales (s, es), letras repetidas, números y símbolos en lugar de letras (r4c1sta) y separadores (r.a.c.i.s.t.a). 'grave': insultos de odio inequívocos, se CENSURAN con asteriscos y van a la bandeja de revisión. 'revisar': palabras que en un sitio de videojuegos pueden ser legítimas ('nazi' en Wolfenstein, 'matar'...): NO se censuran, solo se marcan para que un admin las vea. 'grupos' x 'insultos': cada combinación es una frase grave ('negros de mierda'). Para sumar una palabra, agrégala aquí; no hace falta tocar código.",
+  "grave": [
+    "negrata", "negrato", "sudaca", "maricon", "joto", "trolo", "travelo", "tortillera", "sidoso", "sidosa",
+    "mongolo", "mongola", "mongolico", "mongolica",
+    "heil hitler", "sieg heil", "white power", "poder blanco", "1488",
+    "nigger", "nigga", "faggot", "tranny", "kikes", "chink", "spic", "wetback", "gook", "coon", "pakis",
+    "towelhead", "raghead", "beaner", "go back to africa", "gas the jews"
+  ],
+  "revisar": [
+    "nazi", "hitler", "esvastica", "holocausto", "swastika", "holocaust",
+    "te voy a matar", "los voy a matar", "ojala te mueras", "ojala se mueran", "mueranse", "suicidate", "matate",
+    "kill yourself", "kill yourselves", "kys", "i will kill you", "i hope you die",
+    "retrasado", "retrasada", "subnormal", "retard", "retarded", "marica", "fag", "dyke",
+    "porno", "pornografia", "xxx", "hentai", "onlyfans", "pack de fotos", "porn",
+    "go back to your country", "vuelvete a tu pais", "vete a tu pais"
+  ],
+  "grupos": [
+    "negro", "negra", "moro", "mora", "gitano", "gitana", "judio", "judia", "chino", "china", "indio", "india", "cholo", "chola",
+    "latino", "latina", "musulman", "musulmana", "arabe", "boliviano", "peruano", "venezolano", "colombiano", "ecuatoriano",
+    "paraguayo", "dominicano", "haitiano", "marroqui", "rumano", "inmigrante", "migrante", "gay", "lesbiana", "trans", "homosexual",
+    "black", "jew", "muslim", "mexican", "asian", "arab", "immigrant", "indian", "gypsy", "lesbian", "transgender"
+  ],
+  "insultos": [
+    "de mierda", "asqueroso", "asquerosa", "sucio", "sucia", "inferior", "subhumano", "subhumana", "basura", "plaga",
+    "are animals", "are subhuman", "are filthy", "are vermin", "are inferior", "are trash", "are a disease"
+  ]
+}

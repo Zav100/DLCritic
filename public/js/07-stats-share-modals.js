@@ -385,6 +385,49 @@ function openSuggestModal(){
   document.getElementById('sg-title').focus();
 }
 
+/* ---------- reportar contenido ---------- */
+// Ventana para reportar una reseña (kind 'review' o 'character_review', targetId = id de la reseña) o un perfil (kind 'user', targetId = nombre de usuario). Va a la bandeja de
+// moderación del panel (POST /api/reports). Hace falta tener sesión; sin ella lleva a iniciar sesión.
+function openReportModal(kind, targetId){
+  if(!state.user){ goView('auth'); toast(t('report_login_needed')); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  const reasons = ['odio', 'acoso', 'inapropiado', 'spam', 'otro'];
+  overlay.innerHTML = `
+    <div class="confirm-box suggest-modal">
+      <h3>${esc(t('report_title'))}</h3>
+      <div class="field">
+        <label for="rp-reason">${esc(t('report_reason_label'))}</label>
+        <select id="rp-reason">${reasons.map(r=>`<option value="${r}">${esc(t('report_'+r))}</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label for="rp-note">${esc(t('report_note_label'))}</label>
+        <textarea id="rp-note" maxlength="300" style="min-height:70px;"></textarea>
+      </div>
+      <div class="error" id="rpError" role="alert" hidden></div>
+      <div class="confirm-actions">
+        <button class="btn-ghost" data-act="cancel">${esc(t('cancel_btn'))}</button>
+        <button class="btn gold" data-act="send">${esc(t('report_send'))}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  function onKey(e){ if(e.key==='Escape') cleanup(); }
+  function cleanup(){ overlay.remove(); document.removeEventListener('keydown', onKey); }
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
+  overlay.querySelector('[data-act="cancel"]').onclick = cleanup;
+  overlay.querySelector('[data-act="send"]').onclick = async ()=>{
+    const errEl = document.getElementById('rpError');
+    errEl.hidden = true;
+    try{
+      await apiPost('/reports', { kind, targetId, reason: document.getElementById('rp-reason').value, note: document.getElementById('rp-note').value.trim() || undefined });
+      cleanup();
+      toast(t('toast_report_sent'), 'good');
+    }catch(e){ errEl.textContent = t(e.body && e.body.error==='too_many_requests' ? 'err_too_many' : 'err_report'); errEl.hidden = false; }
+  };
+  document.getElementById('rp-reason').focus();
+}
+
 /* ---------- compartir reseña/calificación ---------- */
 // Lo que se comparte es la reseña en su propia página (no la ficha del juego, donde con muchas reseñas sería difícil encontrarla).
 function shareUrlForReview(rv){ return location.origin + reviewHref(rv.id); }
@@ -862,12 +905,14 @@ function reviewCard(rv, opts){
       </div>
       <div class="rc-genre ${genreTint(primaryGenre(game))}" title="${esc(genreLabelList(game))}">${GENRE_EMOJI[primaryGenre(game)]||ICONS.gamepad}</div>
     </div>
+    ${rv.hidden? `<p class="rc-hidden-note">${esc(t('review_hidden_note'))}</p>` : ''}
     ${hasText? `<p class="rc-text">${esc(rv.text)}</p>` : `<p class="rc-text" style="color:var(--ink-soft); font-style:italic;">${esc(t('no_written_review'))}</p>`}
     ${!mine? `<div class="helpful-row" data-review="${esc(rv.id)}"></div>` : ''}
     <div class="cardfoot">
       <div id="gauge-${rv.id}">${rv.rating==null? `<span class="no-rating-tag">${t('no_rating_yet')}</span>` : ''}</div>
       <div class="rc-actions">
         <button class="icon-btn" data-share="${rv.id}" title="${esc(t('share_btn'))}">${ICONS.link}</button>
+        ${!mine? `<button class="icon-btn" data-report="${rv.id}" title="${esc(t('report_btn'))}" aria-label="${esc(t('report_btn'))}">${ICONS.flag}</button>` : ''}
         ${mine? `<button class="icon-btn" data-del="${rv.id}">${t('delete_btn')}</button>` : ''}
       </div>
     </div>
@@ -878,7 +923,7 @@ function reviewCard(rv, opts){
   div.querySelector('.rc-permalink').onclick=spa(()=> openReview(rv.id));
   if(hasText && !(opts && opts.full)) clampLongText(div.querySelector('.rc-text'));
   if(mine) div.querySelector('[data-del]').onclick=()=> deleteReview(rv.id);
-  else paintVoteRow(div.querySelector('.helpful-row'), rv);
+  else { div.querySelector('[data-report]').onclick=()=> openReportModal('review', rv.id); paintVoteRow(div.querySelector('.helpful-row'), rv); }
   return div;
 }
 // HTML del "estado vacío" genérico (ícono + título + texto) que se usa en TODA la app cuando una lista/grilla no tiene nada para mostrar. `title` y `sub` van sin escapar porque siempre se les pasa el resultado de t(), nunca texto de usuario.
