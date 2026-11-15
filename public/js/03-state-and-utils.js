@@ -333,7 +333,17 @@ function gameDetails(g){
 }
 
 // Paleta de colores para el avatar por-defecto de un usuario (cuando no subió foto); se elige uno según el nombre de usuario (ver hashStr en 10-lists.js).
-const AVATAR_COLORS = ["#8B7FE8","#5B8DEF","#E88FC0","#6C5FC7","#4C7DF0","#B06AC9"];
+// Todos dan al menos 4,5:1 con las iniciales en blanco. Para un color que viene de los datos (la insignia de una noticia) se usa onColor().
+const AVATAR_COLORS = ["#7062E3","#2E6EEB","#D42E89","#5B4CC0","#0E7FA3","#A352C0"];
+// Texto blanco u oscuro, el que se lea mejor sobre un color de fondo #rrggbb.
+function onColor(hex){
+  const c = /^#([0-9a-f]{6})$/i.exec(hex||'');
+  if(!c) return '#fff';
+  const lin = v=>{ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+  const n = parseInt(c[1], 16);
+  const L = 0.2126*lin(n>>16) + 0.7152*lin((n>>8)&255) + 0.0722*lin(n&255);
+  return 1.05/(L+0.05) >= (L+0.05)/0.06 ? '#fff' : '#14131F'; // contraste con blanco frente a contraste con el oscuro (luminancia ~0.01)
+}
 // Texto del "estado de ánimo" según la nota (1-10): "Un desastre" ... "¡Obra maestra!".
 function MOOD(r){ return r<=2? t('mood1') : r<=4? t('mood3') : r<=6? t('mood5') : r<=8? t('mood7') : t('mood9'); }
 // Igual que MOOD, pero con palabras pensadas para calificar un PERSONAJE en vez de un juego entero (ver 14-characters.js) — mismos 5 tramos de nota, texto distinto.

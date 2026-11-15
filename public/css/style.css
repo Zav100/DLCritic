@@ -34,21 +34,23 @@
   --paper: #E9E6F7;
   --paper-alt: #DCD7F0;
   --ink: #211E3D;
-  --ink-soft: #615C8E;
+  --ink-soft: #5E5989;
   --fg: #E9E6F7;
   --fg-soft: #ABA4D1;
   --gold: #8B7FE8;
-  --gold-dim: #6C5FC7;
+  --btn-gold: #7062E3;
+  --gold-dim: #5B4CC0;
   --teal: #5B8DEF;
-  --teal-dim: #3D68C4;
+  --btn-teal: #2E6EEB; /* relleno de botones con texto blanco (4.6:1); --teal / --gold siguen siendo los de siempre para lo demás */
+  --teal-dim: #355BAE;
   --red: #DB5A5A;
-  --red-dim: #A63F3F;
+  --red-dim: #A13D3D;
   --pink: #F0A8D0;
-  --pink-dim: #B85A96;
+  --pink-dim: #944076;
   --orange: #F5B27A;
-  --orange-dim: #B3591B;
+  --orange-dim: #944A16;
   --success: #4CC38A;
-  --success-dim: #2E8A5F;
+  --success-dim: #246B49;
   --success-tint: rgba(76, 195, 138, 0.18);
   --line: rgba(233, 230, 247, 0.10);
   --line-dark: rgba(33, 30, 61, 0.16);
@@ -69,12 +71,14 @@
   --paper: #FFFFFF;
   --paper-alt: #F5F5F9;
   --ink: #1C1B24;
-  --ink-soft: #7B7A88;
+  --ink-soft: #686874;
   --fg: #1C1B24;
-  --fg-soft: #7B7A88;
+  --fg-soft: #686874;
   --gold: #7B61FF;
+  --btn-gold: #7257FF;
   --gold-dim: #5A3DC2;
   --teal: #4C7DF0;
+  --btn-teal: #356DEE;
   --teal-dim: #2E52A8;
   --red: #E0405B;
   --red-dim: #96233D;
@@ -446,7 +450,7 @@ nav {
 .btn-edit-profile:hover {
   background: var(--hover-tint);
   border-color: transparent;
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .btn-edit-profile svg {
@@ -575,7 +579,7 @@ main {
 }
 
 .footer-link:hover {
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .footer-suggest {
@@ -1334,7 +1338,7 @@ main {
 }
 
 .vote-btn.like.voted {
-  background: var(--teal);
+  background: var(--btn-teal);
   border-color: var(--teal-dim);
   color: #fff;
 }
@@ -1382,7 +1386,7 @@ main {
 }
 
 .icon-btn:hover {
-  color: var(--red);
+  color: var(--red-dim);
 }
 
 .icon-btn svg {
@@ -2463,11 +2467,11 @@ main {
 
 .chip:hover {
   background: var(--hover-tint);
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .chip.active {
-  background: var(--gold);
+  background: var(--btn-gold);
   box-shadow: none;
   color: #fff;
   font-weight: 700;
@@ -2588,6 +2592,13 @@ textarea {
   font-size: 14px;
 }
 
+/* El texto de ejemplo (placeholder) viene gris #757575 del navegador: 4,2:1 sobre --paper-alt (3,2:1 en el tema oscuro). Con el tono suave del sitio llega a 4,5:1 en los dos temas. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
 /* No se estira a mano: crece con lo que se escribe (field-sizing; 03-state-and-utils.js lo respalda en navegadores sin soporte) entre 2 y 5 renglones, y pasado el tope aparece el scroll.
    22px = padding (10 + 10) + borde (1 + 1). */
 textarea {
@@ -2612,7 +2623,7 @@ input[type=search]::-webkit-search-cancel-button {
 .btn {
   font-weight: 700;
   font-size: 14px;
-  background: var(--teal);
+  background: var(--btn-teal);
   color: #fff;
   border: none;
   padding: 11px 20px;
@@ -2645,7 +2656,7 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .btn.gold {
-  background: var(--gold);
+  background: var(--btn-gold);
   box-shadow: 0 4px 14px rgba(123, 97, 255, 0.34);
   color: #fff;
 }
@@ -2773,8 +2784,7 @@ input[type=search]::-webkit-search-cancel-button {
 .empty {
   text-align: center;
   padding: 50px 20px;
-  color: var(--fg-soft);
-  opacity: 0.75;
+  color: var(--fg-soft); /* ya es el tono suave: sin opacity encima, que lo dejaba por debajo de 4,5:1 */
   grid-column: 1 / -1;
 }
 
@@ -2836,7 +2846,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .backlink:hover {
   background: var(--paper);
-  color: var(--gold);
+  color: var(--gold-dim);
   transform: translateX(-3px);
   box-shadow: 0 0 0 1px var(--line-dark), 0 5px 14px var(--shadow-strong);
 }
@@ -3400,7 +3410,12 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .clue-row.locked {
-  opacity: 0.4;
+  opacity: 1;
+}
+
+.clue-row.locked .clue-value {
+  font-weight: 400;
+  color: var(--ink-soft);
 }
 
 .clue-label {
@@ -3652,7 +3667,7 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .wishlist-btn.active {
-  background: var(--gold);
+  background: var(--btn-gold);
   border-color: var(--gold-dim);
   color: #fff;
 }
@@ -3783,9 +3798,13 @@ input[type=search]::-webkit-search-cancel-button {
   padding: 12px;
   border-radius: 10px;
   background: var(--paper-alt);
-  opacity: 0.4;
   filter: grayscale(1);
   transition: opacity .25s, filter .25s, transform .15s;
+}
+
+/* el icono se apaga; el texto no (se lee igual que el de un logro conseguido, solo en gris) */
+.badge-row:not(.unlocked) .bi {
+  opacity: 0.4;
 }
 
 .badge-row:hover {
@@ -3793,7 +3812,6 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .badge-row.unlocked {
-  opacity: 1;
   filter: none;
   background: linear-gradient(160deg, var(--paper-alt), var(--paper));
   box-shadow: 0 2px 8px var(--shadow-soft);
@@ -4435,7 +4453,7 @@ input[type=search]::-webkit-search-cancel-button {
 
 .cal-nav:hover {
   background: var(--hover-tint);
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .cal-nav svg {
@@ -4511,7 +4529,7 @@ input[type=search]::-webkit-search-cancel-button {
 }
 
 .evcal-cell.today .cal-daynum {
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .evcal-cell.has-event .cal-daynum {
@@ -5425,7 +5443,7 @@ input[type="file"]::file-selector-button {
   font-weight: 700;
   font-size: 12px;
   color: #fff;
-  background-color: var(--gold);
+  background-color: var(--btn-gold);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='19' x2='12' y2='5'/%3E%3Cpolyline points='5 12 12 5 19 12'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: 10px center;
@@ -5957,7 +5975,7 @@ a.rc-author:hover {
 
 .settings-tab.active {
   background: var(--paper);
-  color: var(--gold);
+  color: var(--gold-dim);
   box-shadow: 0 1px 4px var(--shadow-strong);
 }
 
@@ -6211,7 +6229,7 @@ a.btn-ghost {
 .user-search-toggle:hover,
 .user-search.open .user-search-toggle {
   background: var(--paper);
-  color: var(--gold);
+  color: var(--gold-dim);
 }
 
 .user-search-panel {
@@ -6364,7 +6382,7 @@ a.btn-ghost {
 
 .list-detail-actions .chip-danger,
 .list-detail-actions .chip-danger:hover {
-  color: var(--red);
+  color: var(--red-dim);
 }
 
 .list-detail-actions .chip-danger:hover {
@@ -6468,7 +6486,7 @@ a.btn-ghost {
 
 .list-remove-btn:hover,
 .list-remove-btn:focus-visible {
-  color: var(--red);
+  color: var(--red-dim);
   background: color-mix(in srgb, var(--red) 8%, transparent);
   border-color: color-mix(in srgb, var(--red) 55%, transparent);
 }
@@ -7442,7 +7460,7 @@ a.btn-ghost {
 
 .vis-option.active {
   color: #fff;
-  background: var(--gold);
+  background: var(--btn-gold);
   border-color: var(--gold-dim);
 }
 
@@ -7740,7 +7758,7 @@ a.btn-ghost {
 }
 
 .rc-permalink:hover {
-  color: var(--gold);
+  color: var(--gold-dim);
   text-decoration: underline;
 }
 
@@ -7958,7 +7976,7 @@ a.btn-ghost {
 }
 
 .dd-list li.on .dd-check {
-  background: var(--gold);
+  background: var(--btn-gold);
   box-shadow: none;
   color: #fff;
 }
