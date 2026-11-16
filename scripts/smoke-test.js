@@ -1331,6 +1331,25 @@ const today = new Date().toISOString().slice(0, 10);
   });
 
   console.log('Archivos estáticos');
+  await step('contraste (WCAG AA, 4,5:1): textos suaves y -dim sobre las superficies claras, rellenos de botón con texto blanco y paleta de avatares, en los dos temas', async () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'style.css'), 'utf8');
+    const themes = { oscuro: css.match(/:root,\s*\[data-theme="dark"\]\s*\{([^}]*)\}/)[1], claro: css.match(/\[data-theme="light"\]\s*\{([^}]*)\}/)[1] };
+    const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    const lum = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+    const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const must = (fg, bg, label) => assert.ok(ratio(fg, bg) >= 4.5, `${label}: ${fg} sobre ${bg} da ${ratio(fg, bg).toFixed(2)}:1`);
+    for (const [tema, block] of Object.entries(themes)) {
+      const tok = n => { const m = block.match(new RegExp('--' + n + ':\\s*(#[0-9A-Fa-f]{6})')); assert.ok(m, `falta --${n} en el tema ${tema}`); return m[1]; };
+      const surfaces = tema === 'claro' ? ['paper', 'paper-alt', 'bg'] : ['paper', 'paper-alt']; // en el oscuro la página es oscura y las tarjetas claras
+      for (const s of surfaces) for (const t of ['ink-soft', 'gold-dim', 'teal-dim', 'pink-dim', 'red-dim', 'success-dim', 'orange-dim']) must(tok(t), tok(s), `${tema}: --${t} sobre --${s}`);
+      must(tok('fg-soft'), tok('bg'), `${tema}: --fg-soft sobre --bg`);
+      for (const t of ['btn-gold', 'btn-teal']) must('#FFFFFF', tok(t), `${tema}: texto blanco sobre --${t}`);
+    }
+    const palette = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-state-and-utils.js'), 'utf8').match(/const AVATAR_COLORS = \[([^\]]*)\]/)[1].match(/#[0-9A-Fa-f]{6}/g);
+    assert.ok(palette.length >= 6);
+    for (const c of palette) must('#FFFFFF', c, `avatar ${c} con iniciales blancas`);
+  });
   await step('legal.css: el texto de un botón-enlace (a.btn) es blanco también en el tema oscuro (su regla va después de la de los enlaces)', async () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'legal.css'), 'utf8');
     const links = css.indexOf('[data-theme="dark"] .legal-doc a {'), btn = css.indexOf('[data-theme="dark"] .legal-doc a.btn');

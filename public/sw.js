@@ -1,7 +1,7 @@
 // Service worker de DLCritic. Hace UNA cosa: si al abrir o recargar una página del sitio no hay conexión, muestra la pantalla «sin conexión» (public/offline.html) en vez
 // de la pantalla de error del navegador. No guarda nada más (ni páginas, ni scripts, ni datos): todo lo demás pasa directo a la red, así nunca se ve una versión vieja del
 // sitio. Lo registra public/js/16-init.js. Si cambias offline.html, sube el número de CACHE para que los dispositivos la actualicen.
-const CACHE = 'dlcritic-offline-v1';
+const CACHE = 'dlcritic-offline-v2';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', event => {

@@ -7,8 +7,8 @@
  */
   :root{
     --bg:#F2F2F7; --paper:#FFFFFF; --paper-alt:#F5F5F9; --paper-glass: rgba(255,255,255,0.70);
-    --ink:#1C1B24; --ink-soft:#7B7A88; --fg:#1C1B24; --fg-soft:#7B7A88;
-    --gold:#7B61FF; --gold-dim:#5A3DC2; --teal:#4C7DF0; --teal-dim:#2E52A8; --pink:#E85FA6;
+    --ink:#1C1B24; --ink-soft:#686874; --fg:#1C1B24; --fg-soft:#686874;
+    --gold:#7B61FF; --gold-dim:#5A3DC2; --teal:#4C7DF0; --teal-dim:#2E52A8; --btn-gold:#7257FF; --btn-teal:#356DEE; /* rellenos con texto blanco (4,6:1) */ --pink:#E85FA6;
     --red:#E0405B; --red-dim:#96233D; --line:rgba(28,27,36,0.07); --line-dark:rgba(28,27,36,0.09);
     --shadow-soft:rgba(28,27,36,0.06); --shadow-strong:rgba(28,27,36,0.10);
     --glow-1:rgba(91,141,239,0.05); --glow-2:rgba(232,143,192,0.05); --glow-hover:rgba(123,97,255,0.22);
@@ -59,20 +59,20 @@
   textarea{ resize:none; line-height:1.4; field-sizing:content; min-height:calc(2 * 1.4em + 22px); max-height:calc(5 * 1.4em + 22px); overflow-y:auto; }
 
   .btn{
-    font-weight:700; font-size:13px; background:var(--teal); color:#fff; border:none; padding:11px 20px;
+    font-weight:700; font-size:13px; background:var(--btn-teal); color:#fff; border:none; padding:11px 20px;
     border-radius:14px; cursor:pointer; box-shadow:0 4px 14px rgba(76,125,240,0.32); font-family:inherit;
     transition:transform .25s var(--spring), box-shadow .25s var(--spring), filter .2s ease;
   }
   .btn:hover{ filter:brightness(1.07); transform:translateY(-1px); box-shadow:0 6px 18px rgba(76,125,240,0.4); }
   .btn:active{ transform:scale(0.96); box-shadow:0 2px 8px rgba(76,125,240,0.32); }
-  .btn.gold{ background:var(--gold); box-shadow:0 4px 14px rgba(123,97,255,0.34); color:#fff; }
+  .btn.gold{ background:var(--btn-gold); box-shadow:0 4px 14px rgba(123,97,255,0.34); color:#fff; }
   .btn.gold:hover{ box-shadow:0 6px 18px rgba(123,97,255,0.42); }
   .btn.red{ background:var(--red); box-shadow:0 4px 14px rgba(224,64,91,0.34); }
   .btn.red:hover{ box-shadow:0 6px 18px rgba(224,64,91,0.42); }
   /* Selector de archivos (portadas y fotos): el botón del navegador con el estilo de los botones violetas del panel (.btn.gold), chico y con una flecha de subida. */
   input[type=file]{ font-family:inherit; font-size:12px; color:var(--ink-soft); max-width:100%; }
   input[type=file]::file-selector-button{
-    font-family:inherit; font-weight:700; font-size:12px; color:#fff; background-color:var(--gold);
+    font-family:inherit; font-weight:700; font-size:12px; color:#fff; background-color:var(--btn-gold);
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='19' x2='12' y2='5'/%3E%3Cpolyline points='5 12 12 5 19 12'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:10px center; background-size:12px;
     border:none; border-radius:11px; padding:6px 12px 6px 28px; margin-right:8px; cursor:pointer;
     box-shadow:0 3px 10px rgba(123,97,255,0.32);
@@ -175,7 +175,7 @@
   }
   .tabbtn svg{ width:15px; height:15px; flex-shrink:0; }
   .tabbtn:hover{ color:var(--ink); }
-  .tabbtn.active{ background:var(--paper); color:var(--gold); box-shadow:0 1px 4px var(--shadow-strong); }
+  .tabbtn.active{ background:var(--paper); color:var(--gold-dim); box-shadow:0 1px 4px var(--shadow-strong); }
 
   .checkbox-row{ display:flex; align-items:center; gap:8px; padding:10px 0; }
   .checkbox-row label{ margin:0; text-transform:none; letter-spacing:0; font-size:13.5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
@@ -193,7 +193,7 @@
   }
   .chip svg{ width:13px; height:13px; flex-shrink:0; }
   .chip:hover{ background:var(--hover-tint); color:var(--ink); }
-  .chip.active{ background:var(--teal); color:#fff; }
+  .chip.active{ background:var(--btn-teal); color:#fff; }
   .sort-select{ width:auto; min-width:200px; height:38px; padding:0 12px; font-weight:700; font-size:12.5px; cursor:pointer; }
 
   .row-hidden{ opacity:0.5; }

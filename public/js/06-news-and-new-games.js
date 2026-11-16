@@ -13,7 +13,7 @@ function newsCard(n){
     <div class="rc-game" style="font-size:15px;">${esc(n.title)}</div>
     <p class="rc-text">${esc(n.summary)}</p>
     <div class="news-source">
-      <div class="source-badge" style="background:${n.color}">${esc(n.initials)}</div>
+      <div class="source-badge" style="background:${n.color}; color:${onColor(n.color)}">${esc(n.initials)}</div>
       <span class="source-name">${esc(n.source)}</span>
       <a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer" class="news-link">${esc(t('read_more'))}</a>
     </div>

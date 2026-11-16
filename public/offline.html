@@ -9,8 +9,8 @@
   <!-- La pantalla que sirve el service worker (public/sw.js) cuando no hay internet. Se guarda en el dispositivo la primera vez que se visita el sitio, así que no
        puede depender de nada más: el CSS, el logo y el script van aquí adentro (sin conexión no se podría cargar nada de afuera). -->
   <style>
-    :root { --bg: #F2F2F7; --card: #FFFFFF; --ink: #1C1B24; --soft: #7B7A88; --accent: #7B61FF; --mark: #8B7FE8; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #12111F; --card: #E9E6F7; --ink: #211E3D; --soft: #615C8E; --accent: #7B61FF; --mark: #8B7FE8; } }
+    :root { --bg: #F2F2F7; --card: #FFFFFF; --ink: #1C1B24; --soft: #686874; --accent: #7257FF; --mark: #8B7FE8; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #12111F; --card: #E9E6F7; --ink: #211E3D; --soft: #5E5989; --accent: #7257FF; --mark: #8B7FE8; } }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
     main { width: 100%; max-width: 420px; padding: 36px 28px 30px; text-align: center; background: var(--card); border-radius: 22px; box-shadow: 0 1px 2px rgba(28, 27, 36, .06), 0 14px 32px rgba(28, 27, 36, .1); }
