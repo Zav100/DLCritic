@@ -210,7 +210,7 @@ function streakRailCardHTML(){
   if(!state.user){
     return railCardHTML(title, `<p class="rail-text">${esc(t('rail_streak_guest'))}</p><button type="button" class="btn small" data-go-view="auth">${esc(t('login_btn'))}</button>`);
   }
-  const streak = computeStreak(state.user.username);
+  const info = streakInfo(state.user.username), streak = info.streak;
   const active = new Set(userActivityDays(state.user.username));
   const dots = [];
   for(let i=6; i>=0; i--){
@@ -218,7 +218,16 @@ function streakRailCardHTML(){
     dots.push(`<span class="rail-dot ${active.has(localDateKey(day))?'used':''}" title="${esc(fmtDate(day.toISOString()))}"></span>`);
   }
   const label = state.lang==='en' ? t('rail_streak_days') : t(streak===1 ? 'rail_streak_day' : 'rail_streak_days');
-  return railCardHTML(title, `<div class="streak-row"><span class="streak-num">${streak}</span><span class="streak-label">${esc(label)}</span></div><div class="rail-dots">${dots.join('')}</div>${streak? '' : `<p class="rail-text">${esc(t('rail_streak_empty'))}</p>`}`);
+  // La próxima meta («Faltan 3 días para Semana perfecta»), la mejor racha y los días de gracia de esta semana (ver streak-core.js).
+  const next = StreakCore.nextMilestone(streak);
+  const nextText = next ? t(next-streak===1 ? 'rail_streak_next_one' : 'rail_streak_next').replace('{n}', next-streak).replace('{name}', t('ach_streak'+next+'_t')) : t('rail_streak_done');
+  const grace = state.user.isSubscriber ? StreakCore.GRACE.subscriber : StreakCore.GRACE.member;
+  const notes = [
+    streak? `<p class="rail-text streak-note">${esc(nextText)}</p>` : '',
+    info.best? `<p class="rail-text streak-note">${esc(t('rail_streak_best').replace('{n}', info.best))}</p>` : '',
+    `<p class="rail-text streak-note" title="${esc(t('rail_streak_grace_hint'))}">${esc(t('rail_streak_grace').replace('{left}', info.graceLeft).replace('{total}', grace))}</p>`,
+  ].join('');
+  return railCardHTML(title, `<div class="streak-row"><span class="streak-num">${streak}</span><span class="streak-label">${esc(label)}</span></div><div class="rail-dots">${dots.join('')}</div>${streak? '' : `<p class="rail-text">${esc(t('rail_streak_empty'))}</p>`}${notes}`);
 }
 // Próximos eventos del calendario de "fechas importantes" (se repiten cada año).
 function upcomingDates(limit=4){

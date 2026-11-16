@@ -90,24 +90,35 @@ async function recordActivity(username, dateStr){
     try{ await apiPost('/profile/activity', { date: dateStr }); }catch(e){}
   }
 }
-// Racha de días consecutivos con actividad, contando hacia atrás desde hoy (o desde ayer, si hoy todavía no hubo actividad — así la racha no se corta de golpe a la medianoche).
-function computeStreak(username){
-  const days = new Set(userActivityDays(username));
-  if(days.size===0) return 0;
-  let cursor = new Date();
-  let key = localDateKey(cursor);
-  if(!days.has(key)){
-    cursor.setDate(cursor.getDate()-1);
-    key = localDateKey(cursor);
-    if(!days.has(key)) return 0;
-  }
-  let streak=0;
-  while(days.has(key)){
-    streak++;
-    cursor.setDate(cursor.getDate()-1);
-    key = localDateKey(cursor);
-  }
-  return streak;
+// La racha de una persona: { streak, best, todayDone, atRisk, graceLeft, graceUsed }. La cuenta (días consecutivos con actividad, con días de gracia: 1 por semana y 1 más para los suscriptores)
+// está en public/js/streak-core.js, el mismo archivo que usa el servidor. Para la propia cuenta se usa lo que hay en pantalla (reseñas cargadas + días guardados) y su mejor racha guardada;
+// la de otras personas la manda el servidor (profile.streak, review.streak), aquí solo se calcula con lo que se ve de ellas (sus reseñas).
+function streakInfo(username){
+  const own = state.user && state.user.username===username ? state.user : null;
+  const a = StreakCore.analyze(userActivityDays(username), localDateKey(), own && own.isSubscriber ? StreakCore.GRACE.subscriber : StreakCore.GRACE.member);
+  if(own) a.best = Math.max(a.best, own.bestStreak||0);
+  return a;
+}
+function computeStreak(username){ return streakInfo(username).streak; }
+// Llama con los días de racha junto al nombre, desde STREAK_FLAME_MIN días (cambia de color a los 30 y a los 100). La ven los demás: en el perfil y en cada reseña.
+const STREAK_FLAME_MIN = 7;
+function streakFlameHTML(days){
+  if(!days || days<STREAK_FLAME_MIN) return '';
+  const tier = days>=100 ? 't100' : days>=30 ? 't30' : 't7';
+  const label = t('streak_flame_title').replace('{n}', days);
+  return `<span class="streak-flame ${tier}" title="${esc(label)}" aria-label="${esc(label)}">${ICONS.flame}${days}</span>`;
+}
+// La racha que se muestra de quien escribió una reseña: la propia, con lo que hay en pantalla; la de los demás, la que mandó el servidor (solo viene desde 7 días).
+function reviewStreak(rv){ return state.user && state.user.username===rv.username ? computeStreak(rv.username) : (rv.streak||0); }
+// Meta de racha alcanzada hoy (la avisa el servidor al guardar): aviso con confeti. La notificación queda además en la lista de notificaciones.
+function celebrateStreak(days){
+  toast(t('streak_milestone_toast').replace('{n}', days), 'good');
+  const anchor = document.createElement('div');
+  anchor.style.cssText = 'position:fixed; left:50%; top:38%; width:1px; height:1px; pointer-events:none;';
+  document.body.appendChild(anchor);
+  celebrateFavorite(anchor);
+  setTimeout(()=> anchor.remove(), 100);
+  if(state.user) apiGet('/notifications').then(r=>{ state.notifications = r.notifications; renderUserBadge(); }).catch(()=>{});
 }
 // Cuántos juegos de "Mi biblioteca" el usuario ya calificó, y qué porcentaje representa (para el anillo de progreso del perfil).
 function wishlistPlayedStats(){
@@ -165,6 +176,7 @@ function userStats(username){
     tens: reviews.filter(r=>r.rating===10).length,
     hasLow: reviews.some(r=>r.rating!=null && r.rating<=3),
     streak: computeStreak(username),
+    bestStreak: streakInfo(username).best,
     favGenre: favGenre? favGenre[0] : null,
     favPlatform: favPlatform? PLATFORM_NAMES[favPlatform[0]] : null,
     topReview
@@ -181,13 +193,17 @@ const ACHIEVEMENTS = [
   { id:'legend',     icon:ICONS.crown, titleKey:'ach_legend_t',    descKey:'ach_legend_d',    check:s=>s.count>=25 },
   { id:'genres5',    icon:ICONS.layers, titleKey:'ach_genres5_t',   descKey:'ach_genres5_d',   check:s=>s.genres>=5 },
   { id:'platforms3', icon:ICONS.gamepad, titleKey:'ach_plat3_t',     descKey:'ach_plat3_d',     check:s=>s.platforms>=3 },
-  { id:'streak3',    icon:ICONS.flame, titleKey:'ach_streak3_t',   descKey:'ach_streak3_d',   check:s=>s.streak>=3 },
+  { id:'streak3',    icon:ICONS.flame, titleKey:'ach_streak3_t',   descKey:'ach_streak3_d',   check:s=>s.bestStreak>=3 }, // los logros de racha cuentan la MEJOR racha: no se pierden al romperla
   { id:'harsh',      icon:ICONS.zap, titleKey:'ach_harsh_t',     descKey:'ach_harsh_d',     check:s=>s.hasLow },
   { id:'fan',        icon:ICONS.heart, titleKey:'ach_fan_t',       descKey:'ach_fan_d',       check:s=>s.tens>=3 },
   { id:'fifty',       icon:ICONS.trophy,   titleKey:'ach_fifty_t',       descKey:'ach_fifty_d',       check:s=>s.count>=50 },
   { id:'genres8',     icon:ICONS.sparkles, titleKey:'ach_genres8_t',     descKey:'ach_genres8_d',     check:s=>s.genres>=8 },
   { id:'platforms5',  icon:ICONS.globe,    titleKey:'ach_platforms5_t',  descKey:'ach_platforms5_d',  check:s=>s.platforms>=5 },
-  { id:'streak7',     icon:ICONS.calendar, titleKey:'ach_streak7_t',     descKey:'ach_streak7_d',     check:s=>s.streak>=7 },
+  { id:'streak7',     icon:ICONS.calendar, titleKey:'ach_streak7_t',     descKey:'ach_streak7_d',     check:s=>s.bestStreak>=7 },
+  { id:'streak14',    icon:ICONS.flame,    titleKey:'ach_streak14_t',    descKey:'ach_streak14_d',    check:s=>s.bestStreak>=14 },
+  { id:'streak30',    icon:ICONS.calendar, titleKey:'ach_streak30_t',    descKey:'ach_streak30_d',    check:s=>s.bestStreak>=30 },
+  { id:'streak100',   icon:ICONS.trophy,   titleKey:'ach_streak100_t',   descKey:'ach_streak100_d',   check:s=>s.bestStreak>=100 },
+  { id:'streak365',   icon:ICONS.sparkles, titleKey:'ach_streak365_t',   descKey:'ach_streak365_d',   check:s=>s.bestStreak>=365 },
   { id:'wordsmith',   icon:ICONS.fileText, titleKey:'ach_wordsmith_t',   descKey:'ach_wordsmith_d',   check:s=>s.reviews.some(r=>r.text && r.text.trim().length>=300) },
   { id:'polarized',   icon:ICONS.dice,     titleKey:'ach_polarized_t',   descKey:'ach_polarized_d',   check:s=>s.tens>=1 && s.hasLow },
   { id:'helpful5',    icon:ICONS.thumbsUp, titleKey:'ach_helpful5_t',    descKey:'ach_helpful5_d',    check:s=>s.reviews.reduce((sum,r)=>sum+((r.helpfulBy||[]).length),0)>=5 },
@@ -909,7 +925,7 @@ function reviewCard(rv, opts){
         <a class="rc-avatar" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}" aria-label="${esc(rv.username)}" tabindex="-1">${miniAvatarHTML(rv.username, au.avatarUrl, au.isSubscriber)}</a>
         <div class="rc-head-text">
         <div class="rc-game">${esc(game.title)}${isFirstReview(rv)? ` <span class="first-badge">${t('first_review_badge')}</span>` : ''}</div>
-        <div class="rc-meta">${rankIconInline(authorLevel.icon, au.isSubscriber, au.rankIconStyle)} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
+        <div class="rc-meta">${rankIconInline(authorLevel.icon, au.isSubscriber, au.rankIconStyle)} <a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a>${streakFlameHTML(reviewStreak(rv))} · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
         ${rv.platforms && rv.platforms.length? `<div class="platbadges" style="margin-top:6px;">${platBadges(rv.platforms)}</div>` : ''}
         </div>
       </div>

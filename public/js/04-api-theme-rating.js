@@ -18,12 +18,16 @@
 // cualquier respuesta no-OK en una excepción con .status y .body (así el
 // código que llama puede hacer try/catch y mirar e.body.error).
 async function api(path, options){
+  // X-TZ-Offset: el huso horario de quien usa la página, para que el servidor sepa qué día es para esa persona (la racha).
   const res = await fetch('/api'+path, {
-    method:'GET', headers: options && options.isForm ? {} : {'Content-Type':'application/json'}, ...options,
+    method:'GET', ...options, headers: { ...(options && options.isForm ? {} : {'Content-Type':'application/json'}), 'X-TZ-Offset': String(new Date().getTimezoneOffset()) },
   });
   let body=null;
   try{ body = await res.json(); }catch(e){}
   if(!res.ok){ const err=new Error((body&&body.error)||'request_failed'); err.status=res.status; err.body=body; throw err; }
+  // Guardar una nota, una reseña o el reto del día responde con la racha: se actualiza la mejor y, si se llegó a una meta, se festeja (celebrateStreak, 07-stats-share-modals.js).
+  if(body && body.bestStreak!=null && state.user) state.user.bestStreak = Math.max(state.user.bestStreak||0, body.bestStreak);
+  if(body && body.streakMilestone) celebrateStreak(body.streakMilestone);
   return body;
 }
 function apiGet(path){ return api(path); }

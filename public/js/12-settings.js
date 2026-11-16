@@ -222,6 +222,12 @@ function renderSettingsView(){
         </section>
 
         <section class="settings-section">
+          <h3>${esc(t('settings_reminders_section'))}</h3>
+          <label class="check-row"><input type="checkbox" id="st-streak-reminders" ${u.streakReminders? 'checked' : ''}><span>${esc(t('streak_reminders_label'))}</span></label>
+          <p class="hint hint-tip">${esc(t(u.emailVerified? 'streak_reminders_hint' : 'streak_reminders_hint_unverified'))}</p>
+        </section>
+
+        <section class="settings-section">
           <h3>${esc(t('settings_security_section'))}</h3>
           ${legacyHintHTML}
           ${u.googleLinked ? `<p class="hint email-status ok">${ICONS.checkCircle} ${esc(t('st_google_linked'))}</p>` : ''}
@@ -423,6 +429,12 @@ function renderSettingsView(){
   };
 
   // Cerrar sesión en todos los dispositivos (también este): sirve si se perdió un aparato o se sospecha que alguien entró.
+  // Recordatorio de racha por correo: se guarda al marcar o desmarcar (apagado por omisión).
+  const reminders = document.getElementById('st-streak-reminders');
+  reminders.onchange = async ()=>{
+    try{ const r = await apiPut('/profile/streak-reminders', { enabled: reminders.checked }); state.user.streakReminders = r.streakReminders; toast(t('toast_privacy_saved'), 'good'); }
+    catch(e){ reminders.checked = !reminders.checked; toast(t('err_save_user'), 'bad'); }
+  };
   document.getElementById('stLogoutAll').onclick = async ()=>{
     try{ await apiPost('/auth/logout-all'); }catch(e){ toast(t('err_logout_all'), 'bad'); return; }
     await finishLogout('toast_logged_out_all');

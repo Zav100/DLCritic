@@ -129,6 +129,7 @@ function wireFavPanel(profile, favGame, editable, reviews){
 // `editable` decide qué mitad de las cosas de arriba se muestra.
 function renderProfileBody(el, username, profile, editable){
   const s = userStats(username);
+  if(!editable){ s.streak = profile.streak||0; s.bestStreak = profile.bestStreak||0; } // la de otras personas la cuenta el servidor (tiene sus días de actividad completos)
   s.hasAvatar = !!profile.avatarUrl;
   s.hasBio = !!(profile.bio && profile.bio.trim());
   const byDate = (a,b)=> new Date(b.date)-new Date(a.date);
@@ -173,7 +174,7 @@ function renderProfileBody(el, username, profile, editable){
       <div class="profile-card-main">
         <div class="profile-card-top">
           <div class="profile-id">
-            <div class="profile-name">${esc(username)}</div>
+            <div class="profile-name">${esc(username)}${streakFlameHTML(s.streak)}</div>
             <div class="profile-since">${t('member_since')} ${fmtDate(profile.joined)}</div>
           </div>
           <div class="profile-actions">${headActionsHTML}</div>
@@ -200,6 +201,7 @@ function renderProfileBody(el, username, profile, editable){
     <div class="taste-row">
       <span class="taste-pill${s.favGenre? '' : ' empty'}">${s.favGenre? (GENRE_EMOJI[s.favGenre]||ICONS.gamepad) : ICONS.gamepad}<span class="tl">${t('genre_fav_label')}</span> ${s.favGenre? esc(genreLabel(s.favGenre)) : noData}</span>
       <span class="taste-pill${s.favPlatform? '' : ' empty'}">${ICONS.layers}<span class="tl">${t('platform_fav_label')}</span> ${s.favPlatform? esc(s.favPlatform) : noData}</span>
+      ${s.bestStreak? `<span class="taste-pill">${ICONS.flame}<span class="tl">${t('streak_best_label')}</span> ${esc(t('streak_days_n').replace('{n}', s.bestStreak))}</span>` : ''}
     </div>
 
     ${favPanelHTML(profile, favGame, editable, s.reviews)}
@@ -542,7 +544,10 @@ function paintNotifications(){
     // El nombre de quien actúa es un enlace a su perfil (por encima del enlace que cubre toda la tarjeta, que lleva al juego).
     const actor = `<a class="notif-actor" href="${profileHref(n.actorUsername)}">${esc(n.actorUsername)}</a>`;
     const gameTitle = game ? esc(game.title) : '';
-    const text = n.type==='follow'
+    // La de «meta de racha» es sobre ti mismo: no tiene quien actúa ni enlace, y en game_id viene la meta (7, 30…).
+    const text = n.type==='streak'
+      ? t('notif_streak').replace('{n}', esc(n.gameId))
+      : n.type==='follow'
       ? (state.lang==='en' ? `${actor} started following you` : `${actor} empezó a seguirte`)
       : (state.lang==='en' ? `${actor} liked your review of ${gameTitle}` : `A ${actor} le gustó tu reseña de ${gameTitle}`);
     // «Le gustó tu reseña»: lleva a esa reseña (la tuya sobre ese juego), en su propia página; si ya no está, a la ficha del juego.
@@ -552,7 +557,7 @@ function paintNotifications(){
     row.className = 'card notif-row' + (href? ' has-card-link' : '') + (n.read? '' : ' unread');
     row.innerHTML = `
       ${href? cardLinkHTML(href, n.type==='follow'? n.actorUsername : gameTitle) : ''}
-      <div class="notif-icon">${n.type==='follow'? ICONS.heart : ICONS.thumbsUp}</div>
+      <div class="notif-icon">${n.type==='streak'? ICONS.flame : n.type==='follow'? ICONS.heart : ICONS.thumbsUp}</div>
       <div class="notif-body">
         <div class="notif-text">${text}</div>
         <div class="notif-date">${fmtDate(n.createdAt)}</div>
@@ -564,7 +569,8 @@ function paintNotifications(){
     `;
     // Abrir una notificación (la tarjeta o el nombre) también la marca como leída.
     const opened = ()=>{ markNotificationRead(n).then(ok=>{ if(ok) renderUserBadge(); }); };
-    row.querySelector('.notif-actor').onclick = spa(e=>{ e.stopPropagation(); opened(); state.profileUsername = n.actorUsername; goView('profile'); });
+    const actorLink = row.querySelector('.notif-actor'); // la de meta de racha no lo tiene
+    if(actorLink) actorLink.onclick = spa(e=>{ e.stopPropagation(); opened(); state.profileUsername = n.actorUsername; goView('profile'); });
     row.onclick = spa(()=>{
       opened();
       if(n.type==='follow'){ state.profileUsername = n.actorUsername; goView('profile'); }

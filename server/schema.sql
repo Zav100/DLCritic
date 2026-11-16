@@ -52,6 +52,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at TEXT;
 -- avatar_review_status: 'pending' (en revisión) o 'rejected' (la última no se aprobó); NULL si no hay nada.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_pending_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_review_status TEXT;
+-- Racha de días (ver public/js/streak-core.js y server/streaks.js). best_streak: la mejor racha que tuvo (nunca baja). last_activity_at: la última vez que registró actividad (ISO, UTC).
+-- tz_offset: minutos de diferencia con UTC de su huso en esa última actividad (new Date().getTimezoneOffset() del navegador): sirve para saber qué día es para esa persona.
+-- streak_reminders: pidió recibir un correo cuando su racha está por perderse (se activa en Ajustes, apagado por omisión). last_streak_reminder_at: cuándo se le mandó el último.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS best_streak INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tz_offset INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_reminders INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_at TEXT;
 -- Bandeja de moderación: lo que el filtro de palabras marca y lo que reportan los usuarios.
 -- kind: review | character_review | bio | list | user; target_id: id de la reseña o lista (en bio y user, el id de la persona); author_id: quien lo escribió.
 -- source: auto (filtro) | report; tier: grave | revisar (auto) o el motivo del reporte; text: el texto ORIGINAL (antes de censurar).
