@@ -6,7 +6,8 @@ const { Readable } = require('node:stream');
 const { receiveImage, saveImage, deleteImage } = require('./upload');
 const db = require('./db');
 const { rateLimit, consume } = require('./rateLimit');
-const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail } = require('./mail');
+const { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail, streakReminderEmail } = require('./mail');
+const streaks = require('./streaks');
 const google = require('./google');
 const moderation = require('./moderation');
 const { checkSecondFactor } = require('./twofactor');
@@ -110,6 +111,8 @@ async function publicUser(u) {
     steam: u.steam_id ? { id: u.steam_id, syncedAt: u.steam_synced_at, hoursPublic: !!u.steam_hours_public } : null,
     wishlist: JSON.parse(u.wishlist || '[]'),
     activityDates: JSON.parse(u.activity_dates || '[]'),
+    bestStreak: u.best_streak || 0, // la mejor racha que tuvo (la de ahora la calcula el navegador con public/js/streak-core.js)
+    streakReminders: !!u.streak_reminders, // pidió un correo cuando su racha está por perderse (Ajustes)
     isAdmin: !!u.is_admin,
     ...subscriberFields(u.is_subscriber, u.rank_icon_style), // rol de suscriptor: borde multicolor en la foto, icono de rango relleno, GIFs como foto de perfil, etc.
     twoFactor: !!u.totp_enabled, // verificación en dos pasos activada (solo admins)
@@ -632,7 +635,7 @@ app.post('/api/reports', requireAuth, reportLimiter, async (req, res) => {
 /* ---------------- reviews ---------------- */
 
 const listReviewsWithVotes = db.prepare(`
-  SELECT r.id, r.game_id AS "gameId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
+  SELECT r.id, r.game_id AS "gameId", r.user_id AS "userId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", r.rating, r.text, r.platforms, r.updated_at AS date,
     r.hidden,
     COALESCE((SELECT json_agg(hv_user.username)::text FROM helpful_votes hv
        JOIN users hv_user ON hv_user.id = hv.user_id WHERE hv.review_id = r.id AND hv.value = 1), '[]') AS "helpfulByJson",
@@ -653,9 +656,11 @@ const updateVote = db.prepare('UPDATE helpful_votes SET value = ? WHERE review_i
 const deleteVote = db.prepare('DELETE FROM helpful_votes WHERE review_id = ? AND user_id = ?');
 const findVote = db.prepare('SELECT value FROM helpful_votes WHERE review_id = ? AND user_id = ?');
 
-function shapeReviewRow(r) {
+// streakOf: mapa de rachas (streaks.streakMap) para poner la llama de quien escribió; sin él, la reseña va sin racha.
+function shapeReviewRow(r, streakOf) {
   return {
     id: r.id, gameId: r.gameId, username: r.username, avatarUrl: r.avatarUrl || null, rating: r.rating,
+    ...(streakOf && streakOf.get(r.userId) >= streaks.PUBLIC_MIN_STREAK ? { streak: streakOf.get(r.userId) } : {}),
     text: r.text, platforms: JSON.parse(r.platforms), date: r.date,
     ...subscriberFields(r.isSubscriber, r.rankIconStyle), // suscriptor: la reseña lleva borde multicolor y el icono de rango relleno
     ...(r.hidden ? { hidden: true } : {}), // oculta por un admin: solo su autor la recibe, con este aviso
@@ -666,7 +671,8 @@ function shapeReviewRow(r) {
 
 app.get('/api/reviews', async (req, res) => {
   const me = await currentUser(req);
-  res.json({ reviews: (await listReviewsWithVotes.all({ viewer: me ? me.id : 0 })).map(shapeReviewRow) }); // las ocultas solo las ve su autor
+  const streakOf = await streaks.streakMap();
+  res.json({ reviews: (await listReviewsWithVotes.all({ viewer: me ? me.id : 0 })).map(r => shapeReviewRow(r, streakOf)) }); // las ocultas solo las ve su autor
 });
 
 app.put('/api/reviews/:gameId', requireAuth, writeLimiter, async (req, res) => {
@@ -692,14 +698,14 @@ app.put('/api/reviews/:gameId', requireAuth, writeLimiter, async (req, res) => {
     const scan = 'text' in b && text !== existing.text ? moderation.scanText(text) : null;
     await updateReview.run(rating, scan ? scan.text : text, JSON.stringify(platforms), now, existing.id);
     if (scan) await recordFlag('review', existing.id, req.user.id, text, scan);
-    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored) });
+    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored), ...(await activityFields(req)) });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
   const scan = moderation.scanText(text);
   await insertReview.run(id, gameId, req.user.id, rating, scan.text, JSON.stringify(platforms), now);
   await recordFlag('review', id, req.user.id, text, scan);
-  res.json({ id, text: scan.text, censored: scan.censored });
+  res.json({ id, text: scan.text, censored: scan.censored, ...(await activityFields(req)) });
 });
 
 app.delete('/api/reviews/:gameId/text', requireAuth, async (req, res) => {
@@ -762,7 +768,7 @@ app.post('/api/reviews/id/:id/helpful', requireAuth, async (req, res) => {
 /* ---------------- character reviews (separate from game reviews) ---------------- */
 
 const listCharacterReviews = db.prepare(`
-  SELECT cr.id, cr.character_id AS "characterId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.hidden, cr.rating, cr.text, cr.updated_at AS date
+  SELECT cr.id, cr.character_id AS "characterId", cr.user_id AS "userId", u.username, u.avatar_url AS "avatarUrl", u.is_subscriber AS "isSubscriber", u.rank_icon_style AS "rankIconStyle", cr.hidden, cr.rating, cr.text, cr.updated_at AS date
   FROM character_reviews cr JOIN users u ON u.id = cr.user_id
   WHERE cr.hidden = 0 OR cr.user_id = @viewer
   ORDER BY cr.updated_at DESC, cr.id ASC
@@ -774,13 +780,14 @@ const updateCharReview = db.prepare('UPDATE character_reviews SET rating = ?, te
 const deleteCharReviewById = db.prepare('DELETE FROM character_reviews WHERE id = ? AND user_id = ?');
 const deleteCharReviewAny = db.prepare('DELETE FROM character_reviews WHERE id = ?'); // solo para admins
 
-function shapeCharReviewRow(r) {
-  return { id: r.id, characterId: r.characterId, username: r.username, avatarUrl: r.avatarUrl || null, rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
+function shapeCharReviewRow(r, streakOf) {
+  return { id: r.id, characterId: r.characterId, username: r.username, avatarUrl: r.avatarUrl || null, ...(streakOf && streakOf.get(r.userId) >= streaks.PUBLIC_MIN_STREAK ? { streak: streakOf.get(r.userId) } : {}), rating: r.rating, text: r.text, date: r.date, ...subscriberFields(r.isSubscriber, r.rankIconStyle), ...(r.hidden ? { hidden: true } : {}) };
 }
 
 app.get('/api/character-reviews', async (req, res) => {
   const me = await currentUser(req);
-  res.json({ characterReviews: (await listCharacterReviews.all({ viewer: me ? me.id : 0 })).map(shapeCharReviewRow) });
+  const streakOf = await streaks.streakMap();
+  res.json({ characterReviews: (await listCharacterReviews.all({ viewer: me ? me.id : 0 })).map(r => shapeCharReviewRow(r, streakOf)) });
 });
 
 app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async (req, res) => {
@@ -805,14 +812,14 @@ app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async 
     const scan = 'text' in b && text !== existing.text ? moderation.scanText(text) : null;
     await updateCharReview.run(rating, scan ? scan.text : text, now, existing.id);
     if (scan) await recordFlag('character_review', existing.id, req.user.id, text, scan);
-    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored) });
+    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored), ...(await activityFields(req)) });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
   const scan = moderation.scanText(text);
   await insertCharReview.run(id, characterId, req.user.id, rating, scan.text, now);
   await recordFlag('character_review', id, req.user.id, text, scan);
-  res.json({ id, text: scan.text, censored: scan.censored });
+  res.json({ id, text: scan.text, censored: scan.censored, ...(await activityFields(req)) });
 });
 
 app.delete('/api/character-reviews/:characterId/text', requireAuth, async (req, res) => {
@@ -889,12 +896,38 @@ app.put('/api/daily', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------------- racha de días ---------------- */
+
+// Registra la actividad de la persona (calificó, reseñó o jugó el reto) y devuelve lo que se suma a la respuesta: su racha, la mejor y, si alcanzó una meta hoy, cuál (el navegador la festeja).
+// Si algo falla no se tumba lo que la persona estaba guardando: la respuesta sale sin esos datos.
+async function activityFields(req, date) {
+  try {
+    const a = await streaks.recordActivity(req.user, { offset: req.get('X-TZ-Offset'), date }, insertNotification, uid);
+    return { streak: a.streak, bestStreak: a.bestStreak, ...(a.milestone ? { streakMilestone: a.milestone } : {}) };
+  } catch (e) { console.error('No se pudo registrar la actividad de la racha:', e.message); return {}; }
+}
+
+// Activar o apagar el recordatorio por correo (Ajustes › Privacidad y seguridad). Apagado por omisión: solo lo recibe quien lo pide, y solo si su correo está confirmado.
+app.put('/api/profile/streak-reminders', requireAuth, writeLimiter, async (req, res) => {
+  if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'invalid_value' });
+  await db.prepare('UPDATE users SET streak_reminders = ? WHERE id = ?').run(req.body.enabled ? 1 : 0, req.user.id);
+  res.json({ streakReminders: req.body.enabled });
+});
+
+// La llama una tarea programada cada hora (.github/workflows/streak-reminders.yml) con Authorization: Bearer <CRON_SECRET>. Sin CRON_SECRET en el entorno esta dirección no existe.
+// Manda los recordatorios de racha que toquen en ese momento (ver sendStreakReminders en streaks.js: el rango de 2 horas) y responde cuántos se mandaron.
+app.get('/api/cron/streak-reminders', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return res.status(404).json({ error: 'not_found' });
+  if (!sameText(String(req.get('authorization') || '').replace(/^Bearer /i, ''), secret)) return res.status(401).json({ error: 'unauthorized' });
+  res.json(await streaks.sendStreakReminders((u, days) => sendMail({ to: u.email, ...streakReminderEmail('es', u.username, days) })));
+});
+
 /* ---------------- profile (favorite game, wishlist, activity streak) ---------------- */
 
 const setFavoriteGame = db.prepare('UPDATE users SET favorite_game_id = ?, favorite_platinum = ? WHERE id = ?');
 const setFavoritePlatinum = db.prepare('UPDATE users SET favorite_platinum = ? WHERE id = ?');
 const setWishlist = db.prepare('UPDATE users SET wishlist = ? WHERE id = ?');
-const setActivityDates = db.prepare('UPDATE users SET activity_dates = ? WHERE id = ?');
 
 // Tiene límite de uso porque, si el favorito está en la cuenta de Steam de la persona, se le piden sus logros a Steam.
 app.put('/api/profile/favorite', requireAuth, writeLimiter, async (req, res) => {
@@ -956,12 +989,8 @@ app.post('/api/profile/activity', requireAuth, async (req, res) => {
   const dateStr = req.body.date;
   if (!dateStr) return res.status(400).json({ error: 'missing_date' });
   if (!isPlausibleDate(dateStr)) return res.status(400).json({ error: 'invalid_date' });
-  const dates = JSON.parse(req.user.activity_dates || '[]');
-  if (!dates.includes(dateStr)) {
-    dates.push(dateStr);
-    await setActivityDates.run(JSON.stringify(dates), req.user.id);
-  }
-  res.json({ activityDates: dates });
+  const extra = await activityFields(req, dateStr);
+  res.json({ activityDates: JSON.parse((await findUserById.get(req.user.id)).activity_dates || '[]'), ...extra });
 });
 
 /* ---------------- public profiles, editing, follows ---------------- */
@@ -988,6 +1017,7 @@ async function shapePublicProfile(u, viewer) {
     ...subscriberFields(u.is_subscriber, u.rank_icon_style), bio: u.bio || null, avatarUrl: u.avatar_url || null,
     socialLinks: JSON.parse(u.social_links || '{}'),
     reviewCount, avgRating: avg || null,
+    ...(await streaks.profileStreak(u)), // streak y bestStreak
     followerCount: (await countFollowers.get(u.id)).n, followingCount: (await countFollowing.get(u.id)).n,
     isFollowing, isFriend,
     // La biblioteca (y las horas de Steam) se ven en el perfil público salvo que la persona las oculte en Ajustes.

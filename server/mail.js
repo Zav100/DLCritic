@@ -88,6 +88,13 @@ const EMAILS = {
       paragraphs: ['Alguien pidió eliminar tu cuenta de DLCritic. Si fuiste tú, escribe este código en la pantalla de eliminación: se borrarán tu perfil, tus reseñas y todo lo demás, y no se podrá deshacer.'],
       box: { label: 'Tu código', code, note: 'Vale 15 minutos y se usa una sola vez. Si no fuiste tú, ignora este mensaje: tu cuenta no se borrará.', accent: C.pink },
     }),
+    streakReminder: (name, days, site) => ({
+      subject: `No pierdas tu racha de ${days} días en DLCritic`,
+      preheader: 'Hoy todavía no sumaste un día: califica un juego o un personaje, o juega el reto del día.',
+      title: 'Tu racha te está esperando',
+      paragraphs: [`Llevas ${days} días seguidos en DLCritic, pero hoy todavía no sumaste el de hoy.`, 'Califica un juego o un personaje, o juega el reto del día, y la mantienes: toma un minuto.'],
+      box: { label: 'Tu racha', code: `${days} días`, button: { text: 'Calificar un juego', url: `${site}/explorar` }, note: `Recibes este recordatorio porque lo activaste. Para no recibirlo más, desactívalo en Ajustes › Privacidad y seguridad: ${site}/ajustes`, accent: C.purple },
+    }),
   },
   en: {
     verify: (name, link) => ({
@@ -128,6 +135,13 @@ const EMAILS = {
       paragraphs: ['Someone asked to delete your DLCritic account. If it was you, type this code on the deletion screen: your profile, your reviews and everything else will be deleted, and it can\'t be undone.'],
       box: { label: 'Your code', code, note: "It's valid for 15 minutes and can be used only once. If it wasn't you, ignore this message: your account won't be deleted.", accent: C.pink },
     }),
+    streakReminder: (name, days, site) => ({
+      subject: `Don't lose your ${days}-day streak on DLCritic`,
+      preheader: "You haven't added today yet: rate a game or a character, or play the daily challenge.",
+      title: 'Your streak is waiting for you',
+      paragraphs: [`You're on a ${days}-day streak on DLCritic, but you haven't added today yet.`, 'Rate a game or a character, or play the daily challenge, to keep it going: it takes a minute.'],
+      box: { label: 'Your streak', code: `${days} days`, button: { text: 'Rate a game', url: `${site}/explorar` }, note: `You get this reminder because you turned it on. To stop receiving it, turn it off in Settings › Privacy and security: ${site}/ajustes`, accent: C.purple },
+    }),
   },
 };
 
@@ -137,5 +151,7 @@ const googleLinkedEmail = (lang, name, takeover) => buildEmail(lang, name, EMAIL
 const passwordChangedEmail = (lang, name) => buildEmail(lang, name, EMAILS[lang].changed(name), siteUrlOrEmpty());
 
 const deleteCodeEmail = (lang, name, code) => buildEmail(lang, name, EMAILS[lang].deleteCode(name, code), siteUrlOrEmpty());
+// Recordatorio de racha (solo para quien lo activó en Ajustes): los enlaces necesitan la dirección pública, así que sin PUBLIC_URL en producción falla en vez de mandar enlaces rotos.
+const streakReminderEmail = (lang, name, days) => buildEmail(lang, name, EMAILS[lang].streakReminder(name, days, publicUrl()), siteUrlOrEmpty());
 
-module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail, outbox };
+module.exports = { sendMail, publicUrl, resetEmail, passwordChangedEmail, verifyEmail, googleLinkedEmail, deleteCodeEmail, streakReminderEmail, outbox };

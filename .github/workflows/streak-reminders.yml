@@ -1,0 +1,26 @@
+# Recordatorios de racha por correo. Cada hora le pide al sitio que mande los que toquen en ese momento (ver sendStreakReminders en server/streaks.js: a quien lo activó en Ajustes,
+# 24 horas después de su última actividad y dentro de un rango de 2 horas, si hoy todavía no sumó y tiene al menos 3 días de racha).
+#
+# Hace falta, una sola vez:
+#   1. Una clave: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+#   2. Ponerla como variable de entorno CRON_SECRET en Vercel (Settings > Environment Variables) y volver a desplegar.
+#   3. En GitHub (Settings > Secrets and variables > Actions) crear dos secretos: CRON_SECRET (la misma clave) y SITE_URL (la dirección pública del sitio, sin barra al final).
+# GitHub puede atrasar una ejecución unos minutos: con el rango de 2 horas no se pierde ningún recordatorio. En Vercel, un cron propio (vercel.json) con esta frecuencia necesita el plan Pro.
+name: Recordatorios de racha
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  recordatorios:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedirle al sitio que mande los recordatorios
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then echo "Faltan los secretos SITE_URL y CRON_SECRET del repositorio."; exit 1; fi
+          curl --fail --silent --show-error --max-time 60 -H "Authorization: Bearer $CRON_SECRET" "$SITE_URL/api/cron/streak-reminders"

@@ -517,7 +517,7 @@ function characterReviewCard(rv, opts){
         <a class="rc-avatar" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}" aria-label="${esc(rv.username)}" tabindex="-1">${miniAvatarHTML(rv.username, au.avatarUrl, au.isSubscriber)}</a>
         <div class="rc-head-text">
         <div class="rc-game">${esc(c.name)}</div>
-        <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a> · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
+        <div class="rc-meta"><a class="rc-author" href="${profileHref(rv.username)}" data-username="${esc(rv.username)}">${esc(rv.username)}</a>${streakFlameHTML(reviewStreak(rv))} · <a class="rc-permalink" href="${reviewHref(rv.id)}" title="${esc(t('review_permalink_title'))}">${fmtDate(rv.date)}</a></div>
         </div>
       </div>
     </div>
