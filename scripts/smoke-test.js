@@ -1336,7 +1336,22 @@ const today = new Date().toISOString().slice(0, 10);
     assert.equal(S.analyze(d(7, 9, 11, 13, 15), T, S.GRACE.subscriber).streak, 2, 'tres perdidos en una semana rompen hasta la del suscriptor');
     const rota = S.analyze(d(1, 2, 3, 4, 5, 6, 7, 15, 16), T, 1); assert.deepEqual([rota.streak, rota.best], [2, 7], 'la mejor racha se conserva');
     assert.equal(S.analyze(['2026-11-01', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-11', '2026-11-12'], '2026-11-12', 1).streak, 10, 'la gracia se renueva a los 7 días');
-    assert.deepEqual(S.MILESTONES, [3, 7, 14, 30, 100, 365]); assert.deepEqual([S.nextMilestone(7), S.nextMilestone(365)], [14, null]);
+    assert.deepEqual(S.MILESTONES, [3, 7, 14, 30, 45, 60, 80, 100, 125, 150, 175, 200, 225, 250, 275, 300, 330, 365]); assert.deepEqual([S.nextMilestone(7), S.nextMilestone(30), S.nextMilestone(330), S.nextMilestone(365)], [14, 45, 365, null]);
+    // la llama cambia de color en 30, 100, 200 y 365
+    assert.deepEqual([7, 29, 30, 99, 100, 199, 200, 364, 365, 900].map(S.flameTier), ['t7', 't7', 't30', 't30', 't100', 't100', 't200', 't200', 't365', 't365']);
+  });
+  await step('racha: cada meta tiene su logro, con nombre único en español e inglés', async () => {
+    const S = require('../public/js/streak-core.js');
+    const ctx = { ICONS: new Proxy({}, { get: () => '' }) }; require('node:vm').createContext(ctx);
+    const i18nSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '02-i18n.js'), 'utf8');
+    const bloque = i18nSource.slice(i18nSource.indexOf('const I18N = {'), i18nSource.indexOf('\n};', i18nSource.indexOf('const I18N = {')) + 3); // el diccionario es/en
+    require('node:vm').runInContext(bloque.replace('const I18N', 'this.I18N'), ctx);
+    for (const lang of ['es', 'en']) {
+      const d = ctx.I18N[lang];
+      for (const m of S.MILESTONES) { assert.ok(d['ach_streak' + m + '_t'] && d['ach_streak' + m + '_d'], `falta el logro de ${m} días en ${lang}`); assert.ok(d['ach_streak' + m + '_d'].includes(String(m)), `la descripción de ${m} días dice cuántos`); }
+      const names = Object.keys(d).filter(k => /^ach_.*_t$/.test(k)).map(k => d[k]);
+      assert.equal(new Set(names).size, names.length, `hay nombres de logros repetidos en ${lang}`);
+    }
   });
   await step('racha: guardar una nota cuenta como actividad; al llegar a una meta avisa y deja la notificación una sola vez; desde 7 días los demás ven la llama', async () => {
     const day = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10); // UTC, como el encabezado X-TZ-Offset: 0
@@ -1359,6 +1374,18 @@ const today = new Date().toISOString().slice(0, 10);
     const perfil = (await anon('GET', '/api/users/smoketest_rc')).body.user; assert.deepEqual([perfil.streak, perfil.bestStreak], [7, 7]);
     const yo = (await u('GET', '/api/auth/me')).body.user; assert.equal(yo.bestStreak, 7);
     assert.deepEqual((await u('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'streak').map(n => n.gameId).sort(), ['3', '7']);
+  });
+  await step('racha: calificar o reseñar un personaje también cuenta como actividad (y alcanza para una meta)', async () => {
+    const day = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const u = client(); u.extra['X-TZ-Offset'] = '0';
+    ok(await u('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_rp@example.com', password: pass, username: 'smoketest_rp' }));
+    await db.prepare("UPDATE users SET activity_dates = ? WHERE username = 'smoketest_rp'").run(JSON.stringify([day(2), day(1)]));
+    const r = await u('PUT', `/api/character-reviews/${charId}`, { rating: 9 }); ok(r);
+    assert.deepEqual([r.body.streak, r.body.streakMilestone], [3, 3], 'la nota a un personaje suma el día y llega a la meta de 3');
+    assert.deepEqual((await u('GET', '/api/notifications')).body.notifications.filter(n => n.type === 'streak').map(n => n.gameId), ['3']);
+    // sin actividad guardada, la reseña del personaje de hoy cuenta igual por su fecha (así cuenta también lo anterior a este sistema)
+    await db.prepare("UPDATE users SET activity_dates = '[]' WHERE username = 'smoketest_rp'").run();
+    const perfil = (await anon('GET', '/api/users/smoketest_rp')).body.user; assert.equal(perfil.streak, 1);
   });
   await step('recordatorio de racha por correo: solo a quien lo pidió y tiene el correo confirmado, 24 h después de su última actividad dentro de un rango de 2 h, una vez y si hoy no sumó', async () => {
     if (REMOTE) return; // necesita la variable CRON_SECRET del servidor y la bandeja de correos del proceso
@@ -1449,7 +1476,7 @@ const today = new Date().toISOString().slice(0, 10);
       const surfaces = tema === 'claro' ? ['paper', 'paper-alt', 'bg'] : ['paper', 'paper-alt']; // en el oscuro la página es oscura y las tarjetas claras
       for (const s of surfaces) for (const t of ['ink-soft', 'gold-dim', 'teal-dim', 'pink-dim', 'red-dim', 'success-dim', 'orange-dim']) must(tok(t), tok(s), `${tema}: --${t} sobre --${s}`);
       must(tok('fg-soft'), tok('bg'), `${tema}: --fg-soft sobre --bg`);
-      for (const t of ['btn-gold', 'btn-teal']) must('#FFFFFF', tok(t), `${tema}: texto blanco sobre --${t}`);
+      for (const t of ['btn-gold', 'btn-teal', 'pink-dim', 'orange-dim']) must('#FFFFFF', tok(t), `${tema}: texto blanco sobre --${t}`); // los dos últimos: los degradados de las llamas de 100, 200 y 365 días
     }
     const palette = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-state-and-utils.js'), 'utf8').match(/const AVATAR_COLORS = \[([^\]]*)\]/)[1].match(/#[0-9A-Fa-f]{6}/g);
     assert.ok(palette.length >= 6);

@@ -8549,6 +8549,17 @@ html.verify-pending #verifyBanner[hidden] {
   background: linear-gradient(135deg, var(--btn-gold), var(--pink-dim));
 }
 
+/* a los 200, azul y violeta; a los 365, los tres colores de la marca (el texto es blanco y se lee en todos: ver la prueba de contraste) */
+.streak-flame.t200 {
+  color: #fff;
+  background: linear-gradient(135deg, var(--btn-teal), var(--btn-gold));
+}
+
+.streak-flame.t365 {
+  color: #fff;
+  background: linear-gradient(135deg, var(--btn-gold), var(--pink-dim), var(--orange-dim));
+}
+
 .profile-name .streak-flame {
   font-family: 'Lexend', sans-serif;
   font-size: 12px;

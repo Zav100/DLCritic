@@ -812,14 +812,14 @@ app.put('/api/character-reviews/:characterId', requireAuth, writeLimiter, async 
     const scan = 'text' in b && text !== existing.text ? moderation.scanText(text) : null;
     await updateCharReview.run(rating, scan ? scan.text : text, now, existing.id);
     if (scan) await recordFlag('character_review', existing.id, req.user.id, text, scan);
-    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored) });
+    return res.json({ id: existing.id, text: scan ? scan.text : text, censored: !!(scan && scan.censored), ...(await activityFields(req)) });
   }
   if (isEmpty) return res.json({ id: null });
   const id = uid();
   const scan = moderation.scanText(text);
   await insertCharReview.run(id, characterId, req.user.id, rating, scan.text, now);
   await recordFlag('character_review', id, req.user.id, text, scan);
-  res.json({ id, text: scan.text, censored: scan.censored });
+  res.json({ id, text: scan.text, censored: scan.censored, ...(await activityFields(req)) });
 });
 
 app.delete('/api/character-reviews/:characterId/text', requireAuth, async (req, res) => {

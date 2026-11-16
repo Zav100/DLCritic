@@ -12,7 +12,10 @@
  */
 (function (root) {
   const DAY = 86400000;
-  const MILESTONES = [3, 7, 14, 30, 100, 365]; // metas de racha: cada una tiene su logro
+  const MILESTONES = [3, 7, 14, 30, 45, 60, 80, 100, 125, 150, 175, 200, 225, 250, 275, 300, 330, 365]; // metas de racha: cada una tiene su logro (con nombre único en 02-i18n.js)
+  // La llama junto al nombre cambia de color en 30, 100, 200 y 365 días (.streak-flame.t30 / t100 / t200 / t365 en style.css); antes de los 30, el color de siempre (t7).
+  const COLOR_STEPS = [[365, 't365'], [200, 't200'], [100, 't100'], [30, 't30']];
+  const flameTier = days => (COLOR_STEPS.find(([min]) => days >= min) || [0, 't7'])[1];
   const GRACE = { member: 1, subscriber: 2 }; // días de gracia por semana
   const GRACE_WINDOW = 7;
   const MAX_LOOKBACK = 1500; // días: más atrás no cambia nada de lo que se muestra
@@ -49,7 +52,7 @@
   // La primera meta que todavía no se alcanzó (null si ya pasó la última).
   const nextMilestone = streak => MILESTONES.find(m => m > streak) || null;
 
-  const api = { analyze, nextMilestone, dayKey, MILESTONES, GRACE };
+  const api = { analyze, nextMilestone, flameTier, dayKey, MILESTONES, GRACE };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.StreakCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

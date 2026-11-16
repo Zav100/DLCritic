@@ -77,7 +77,7 @@ function localDateKey(d){
 }
 // Todos los días en que un usuario tuvo actividad: los días en que publicó/editó una reseña, más los días "manuales" guardados en activityDates (actividad que no viene de una reseña, p.ej. jugar el reto del día). Se usa para la racha y el calendario de actividad.
 function userActivityDays(username){
-  const reviewDates = state.reviews.filter(r=>r.username===username).map(r=> localDateKey(r.date));
+  const reviewDates = [...state.reviews, ...state.characterReviews].filter(r=>r.username===username).map(r=> localDateKey(r.date)); // reseñas y notas de juegos Y de personajes
   const extra = (state.user && state.user.username===username && state.user.activityDates) || [];
   return [...reviewDates, ...extra];
 }
@@ -100,11 +100,11 @@ function streakInfo(username){
   return a;
 }
 function computeStreak(username){ return streakInfo(username).streak; }
-// Llama con los días de racha junto al nombre, desde STREAK_FLAME_MIN días (cambia de color a los 30 y a los 100). La ven los demás: en el perfil y en cada reseña.
+// Llama con los días de racha junto al nombre, desde STREAK_FLAME_MIN días (cambia de color a los 30, 100, 200 y 365: StreakCore.flameTier). La ven los demás: en el perfil y en cada reseña.
 const STREAK_FLAME_MIN = 7;
 function streakFlameHTML(days){
   if(!days || days<STREAK_FLAME_MIN) return '';
-  const tier = days>=100 ? 't100' : days>=30 ? 't30' : 't7';
+  const tier = StreakCore.flameTier(days);
   const label = t('streak_flame_title').replace('{n}', days);
   return `<span class="streak-flame ${tier}" title="${esc(label)}" aria-label="${esc(label)}">${ICONS.flame}${days}</span>`;
 }
@@ -187,6 +187,9 @@ function userStats(username){
 // userStats() de arriba y devuelve true/false si el logro está desbloqueado.
 // Para agregar un logro nuevo: suma una entrada aquí + sus claves ach_XXX_t /
 // ach_XXX_d en el diccionario I18N (02-i18n.js), en los dos idiomas.
+// Un logro por cada meta de racha de 14 días en adelante (las de 3 y 7 van más abajo, con los demás): cuentan la MEJOR racha, con su icono. Los nombres y descripciones están en 02-i18n.js (ach_streakN_t / _d).
+const STREAK_ICONS = { 14:'sprout', 30:'medal', 45:'target', 60:'shield', 80:'zap', 100:'trophy', 125:'star', 150:'candle', 175:'feather', 200:'trophyBig', 225:'pixelHeart', 250:'ribbon', 275:'queen', 300:'swords', 330:'map', 365:'sparkles' };
+const LONG_STREAK_ACHIEVEMENTS = StreakCore.MILESTONES.filter(m=>m>=14).map(m=>({ id:'streak'+m, icon:ICONS[STREAK_ICONS[m]], titleKey:'ach_streak'+m+'_t', descKey:'ach_streak'+m+'_d', check:s=>s.bestStreak>=m }));
 const ACHIEVEMENTS = [
   { id:'first',      icon:ICONS.gamepad, titleKey:'ach_first_t',     descKey:'ach_first_d',     check:s=>s.count>=1 },
   { id:'ten',        icon:ICONS.book, titleKey:'ach_ten_t',       descKey:'ach_ten_d',       check:s=>s.count>=10 },
@@ -200,10 +203,7 @@ const ACHIEVEMENTS = [
   { id:'genres8',     icon:ICONS.sparkles, titleKey:'ach_genres8_t',     descKey:'ach_genres8_d',     check:s=>s.genres>=8 },
   { id:'platforms5',  icon:ICONS.globe,    titleKey:'ach_platforms5_t',  descKey:'ach_platforms5_d',  check:s=>s.platforms>=5 },
   { id:'streak7',     icon:ICONS.calendar, titleKey:'ach_streak7_t',     descKey:'ach_streak7_d',     check:s=>s.bestStreak>=7 },
-  { id:'streak14',    icon:ICONS.flame,    titleKey:'ach_streak14_t',    descKey:'ach_streak14_d',    check:s=>s.bestStreak>=14 },
-  { id:'streak30',    icon:ICONS.calendar, titleKey:'ach_streak30_t',    descKey:'ach_streak30_d',    check:s=>s.bestStreak>=30 },
-  { id:'streak100',   icon:ICONS.trophy,   titleKey:'ach_streak100_t',   descKey:'ach_streak100_d',   check:s=>s.bestStreak>=100 },
-  { id:'streak365',   icon:ICONS.sparkles, titleKey:'ach_streak365_t',   descKey:'ach_streak365_d',   check:s=>s.bestStreak>=365 },
+  ...LONG_STREAK_ACHIEVEMENTS,
   { id:'wordsmith',   icon:ICONS.fileText, titleKey:'ach_wordsmith_t',   descKey:'ach_wordsmith_d',   check:s=>s.reviews.some(r=>r.text && r.text.trim().length>=300) },
   { id:'polarized',   icon:ICONS.dice,     titleKey:'ach_polarized_t',   descKey:'ach_polarized_d',   check:s=>s.tens>=1 && s.hasLow },
   { id:'helpful5',    icon:ICONS.thumbsUp, titleKey:'ach_helpful5_t',    descKey:'ach_helpful5_d',    check:s=>s.reviews.reduce((sum,r)=>sum+((r.helpfulBy||[]).length),0)>=5 },

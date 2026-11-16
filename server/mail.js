@@ -90,9 +90,9 @@ const EMAILS = {
     }),
     streakReminder: (name, days, site) => ({
       subject: `No pierdas tu racha de ${days} días en DLCritic`,
-      preheader: 'Hoy todavía no sumaste un día: califica un juego o juega el reto del día.',
+      preheader: 'Hoy todavía no sumaste un día: califica un juego o un personaje, o juega el reto del día.',
       title: 'Tu racha te está esperando',
-      paragraphs: [`Llevas ${days} días seguidos en DLCritic, pero hoy todavía no sumaste el de hoy.`, 'Califica un juego o juega el reto del día y la mantienes: toma un minuto.'],
+      paragraphs: [`Llevas ${days} días seguidos en DLCritic, pero hoy todavía no sumaste el de hoy.`, 'Califica un juego o un personaje, o juega el reto del día, y la mantienes: toma un minuto.'],
       box: { label: 'Tu racha', code: `${days} días`, button: { text: 'Calificar un juego', url: `${site}/explorar` }, note: `Recibes este recordatorio porque lo activaste. Para no recibirlo más, desactívalo en Ajustes › Privacidad y seguridad: ${site}/ajustes`, accent: C.purple },
     }),
   },
@@ -137,9 +137,9 @@ const EMAILS = {
     }),
     streakReminder: (name, days, site) => ({
       subject: `Don't lose your ${days}-day streak on DLCritic`,
-      preheader: "You haven't added today yet: rate a game or play the daily challenge.",
+      preheader: "You haven't added today yet: rate a game or a character, or play the daily challenge.",
       title: 'Your streak is waiting for you',
-      paragraphs: [`You're on a ${days}-day streak on DLCritic, but you haven't added today yet.`, 'Rate a game or play the daily challenge to keep it going: it takes a minute.'],
+      paragraphs: [`You're on a ${days}-day streak on DLCritic, but you haven't added today yet.`, 'Rate a game or a character, or play the daily challenge, to keep it going: it takes a minute.'],
       box: { label: 'Your streak', code: `${days} days`, button: { text: 'Rate a game', url: `${site}/explorar` }, note: `You get this reminder because you turned it on. To stop receiving it, turn it off in Settings › Privacy and security: ${site}/ajustes`, accent: C.purple },
     }),
   },

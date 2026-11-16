@@ -2,7 +2,7 @@
 // en pantalla y lo que decide el servidor no puedan diferir. Aquí van: registrar la actividad (mejor racha, última vez, aviso de meta), la racha que ven los demás (la llama junto
 // al nombre) y los recordatorios por correo.
 //
-// Qué cuenta como actividad: calificar o reseñar un juego (cada vez que se guarda) y jugar el reto del día. Los días se guardan en users.activity_dates (los últimos MAX_STORED_DAYS)
+// Qué cuenta como actividad: calificar o reseñar un juego o un personaje (cada vez que se guarda) y jugar el reto del día. Los días se guardan en users.activity_dates (los últimos MAX_STORED_DAYS)
 // y, de antes de que esto existiera, también cuentan las fechas de las reseñas. «Hoy» es el de la persona: se usa el huso horario (tz_offset) que dejó en su última actividad.
 const StreakCore = require('../public/js/streak-core.js');
 const db = require('./db');
@@ -22,13 +22,13 @@ const parseOffset = v => { const n = Number(v); return v !== undefined && v !== 
 // La fecha «AAAA-MM-DD» que es en ese huso horario.
 const localKey = (when, offsetMin) => new Date(new Date(when).getTime() - offsetMin * 60000).toISOString().slice(0, 10);
 
-const reviewDates = db.prepare('SELECT updated_at FROM reviews WHERE user_id = ?');
+const reviewDates = db.prepare('SELECT updated_at FROM reviews WHERE user_id = ? UNION ALL SELECT updated_at FROM character_reviews WHERE user_id = ?');
 const setActivity = db.prepare('UPDATE users SET activity_dates = ?, last_activity_at = ?, tz_offset = ?, best_streak = ? WHERE id = ?');
 
 // Todos los días con actividad de una persona: los guardados más las fechas de sus reseñas (así cuenta también lo anterior a este sistema).
 async function daysOf(user, offset) {
   const stored = JSON.parse(user.activity_dates || '[]');
-  const fromReviews = (await reviewDates.all(user.id)).map(r => localKey(r.updated_at, offset));
+  const fromReviews = (await reviewDates.all(user.id, user.id)).map(r => localKey(r.updated_at, offset));
   return [...stored, ...fromReviews];
 }
 
@@ -39,7 +39,7 @@ async function streakMap() {
   if (Date.now() - cache.at < CACHE_MS) return cache.map;
   const users = await db.prepare('SELECT id, activity_dates, tz_offset, is_subscriber FROM users').all();
   const byUser = new Map();
-  for (const r of await db.prepare('SELECT user_id, updated_at FROM reviews').all()) (byUser.get(r.user_id) || byUser.set(r.user_id, []).get(r.user_id)).push(r.updated_at);
+  for (const r of await db.prepare('SELECT user_id, updated_at FROM reviews UNION ALL SELECT user_id, updated_at FROM character_reviews').all()) (byUser.get(r.user_id) || byUser.set(r.user_id, []).get(r.user_id)).push(r.updated_at);
   const now = Date.now(), map = new Map();
   for (const u of users) {
     const stored = JSON.parse(u.activity_dates || '[]'), dates = byUser.get(u.id) || [];
