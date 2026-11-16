@@ -1323,6 +1323,40 @@ const today = new Date().toISOString().slice(0, 10);
     assert.ok((await anon('GET', '/api/games')).headers.get('content-security-policy'));
   });
 
+  console.log('Fotos animadas');
+  await step('GIF de foto de perfil: tope de peso (1,5 MB), medidas (400×400) y cuadros (200); el panel muestra el peso del pendiente; lo que sube un admin no se limita', async () => {
+    // Un GIF con la estructura real (cabecera, lienzo, paleta, N cuadros y un comentario de relleno hasta el peso pedido); los píxeles no importan: nadie los decodifica en el servidor.
+    const makeGif = ({ w = 10, h = 10, frames = 1, padTo = 0 }) => {
+      const lsd = Buffer.alloc(7); lsd.writeUInt16LE(w, 0); lsd.writeUInt16LE(h, 2); lsd[4] = 0x80;
+      const parts = [Buffer.from('GIF89a', 'latin1'), lsd, Buffer.alloc(6)];
+      for (let i = 0; i < frames; i++) {
+        const desc = Buffer.alloc(10); desc[0] = 0x2c; desc.writeUInt16LE(w, 5); desc.writeUInt16LE(h, 7);
+        parts.push(Buffer.from([0x21, 0xf9, 0x04, 0, 0, 0, 0, 0]), desc, Buffer.from([0x02, 0x02, 0x4c, 0x01, 0x00]));
+      }
+      let size = parts.reduce((n, p) => n + p.length, 0) + 1;
+      while (padTo && size < padTo - 4) { const c = Math.min(255, padTo - size - 4); parts.push(Buffer.from([0x21, 0xfe, c]), Buffer.alloc(c, 0x41), Buffer.from([0])); size += c + 4; }
+      parts.push(Buffer.from([0x3b]));
+      return Buffer.concat(parts);
+    };
+    const form = (buf, name) => { const f = new FormData(); f.append('image', new Blob([buf]), name); return f; };
+    const u = client(); ok(await u('POST', '/api/auth/register', { acceptTerms: true, email: 'smoketest_an@example.com', password: pass, username: 'smoketest_an' }));
+    await db.prepare("UPDATE users SET is_subscriber = 1 WHERE username = 'smoketest_an'").run();
+    const casos = [
+      ['demasiado ancho', makeGif({ w: 401, h: 10 }), 'animated_too_big'], ['demasiado alto', makeGif({ w: 10, h: 401 }), 'animated_too_big'],
+      ['demasiados cuadros', makeGif({ frames: 201 }), 'animated_too_many_frames'], ['demasiado pesado', makeGif({ padTo: 1.5 * 1024 * 1024 + 10 }), 'animated_too_heavy'],
+    ];
+    for (const [nombre, buf, error] of casos) { const r = await u('POST', '/api/profile/avatar', form(buf, 'baila.gif')); ok(r, 400); assert.equal(r.body.error, error, nombre); }
+    assert.equal((await u('GET', '/api/auth/me')).body.user.avatarPendingUrl, null, 'lo rechazado no se guarda');
+    const bueno = makeGif({ w: 400, h: 400, frames: 200, padTo: 1.5 * 1024 * 1024 - 10 }); // justo en cada tope
+    const sube = await u('POST', '/api/profile/avatar', form(bueno, 'baila.gif')); ok(sube);
+    created.push(sube.body.user.avatarPendingUrl);
+    const info = (await admin('GET', '/api/admin/moderation')).body.gifs.find(x => x.username === 'smoketest_an').pendingInfo;
+    assert.deepEqual([info.bytes, info.width, info.height, info.frames, info.problem], [bueno.length, 400, 400, 200, null]);
+    // un admin puede subir uno más pesado (portadas y fotos de personajes no llevan este tope)
+    const grande = await admin('POST', '/api/admin/upload', form(makeGif({ w: 800, h: 800, padTo: 2 * 1024 * 1024 }), 'portada.gif')); ok(grande);
+    created.push(grande.body.url);
+  });
+
   console.log('Peticiones raras');
   await step('un %00 o un %ff%fe en la dirección y un \\u0000 en el cuerpo dan 400, no un error 500', async () => {
     for (const url of ['/api/users/%00', '/juego/%00', '/api/games?q=%00', '/usuario/%ff%fe', '/api/users/%ff%fe']) ok(await anon('GET', url), 400);

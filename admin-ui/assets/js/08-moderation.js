@@ -57,6 +57,18 @@ function modFlagHTML(f){
     </div>`;
 }
 
+// Peso, medidas y cuadros del GIF nuevo; «Pesado» si pasa los límites de las fotos de perfil (1,5 MB, 400×400 px y 200 cuadros: ANIMATED_MAX_* en server/upload.js), lo que solo
+// pasa con GIF subidos antes de que esos límites existieran.
+const GIF_PROBLEM = { animated_too_heavy: 'pesa más de 1,5 MB', animated_too_big: 'mide más de 400×400 px', animated_too_many_frames: 'tiene más de 200 cuadros' };
+function fmtBytes(n){ return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+function gifInfoHTML(i){
+  if(!i) return '<p class="mod-gif-info">No se pudo leer el peso del GIF.</p>';
+  const bits = [fmtBytes(i.bytes)];
+  if(i.width && i.height) bits.push(`${i.width}×${i.height} px`);
+  if(i.frames) bits.push(`${i.frames} ${i.frames === 1 ? "cuadro" : "cuadros"}`);
+  return `<p class="mod-gif-info">GIF nuevo: ${bits.join(' · ')}${i.problem ? ` <span class="kind-badge mod">Pesado: ${esc(GIF_PROBLEM[i.problem] || '')}</span>` : ''}</p>`;
+}
+
 function renderModeration(){
   const { flags, gifs, suspended, recent } = state.moderation;
   const wrap = document.getElementById('moderationBody');
@@ -69,6 +81,7 @@ function renderModeration(){
           <figure><figcaption>Foto actual</figcaption>${g.currentUrl ? `<img src="${esc(g.currentUrl)}" alt="">` : '<span class="mod-none">Sin foto</span>'}</figure>
           <figure><figcaption>GIF nuevo</figcaption><img src="${esc(g.pendingUrl)}" alt=""></figure>
         </div>
+        ${gifInfoHTML(g.pendingInfo)}
         <div class="suggestion-foot"><span></span>
           <div class="chip-group">
             <button type="button" class="chip" data-gif="${g.userId}" data-action="approve">Aprobar</button>
