@@ -1071,8 +1071,11 @@ const AVATAR_CHANGES_PER_WEEK = 5;
 // Fotos animadas (GIF, PNG o WebP animados): solo las cuentas con el rol de suscriptor. Las demás, solo imágenes fijas.
 app.post('/api/profile/avatar', requireAuth, avatarUploadLimiter, async (req, res) => {
   let file;
-  try { file = await receiveImage(req, res, { animated: !!req.user.is_subscriber }); }
-  catch (e) { return res.status(400).json({ error: e.code === 'animated_not_allowed' ? 'animated_not_allowed' : 'upload_failed' }); }
+  try { file = await receiveImage(req, res, { animated: !!req.user.is_subscriber, limitAnimated: true }); }
+  catch (e) {
+    const known = ['animated_not_allowed', 'animated_too_heavy', 'animated_too_big', 'animated_too_many_frames'];
+    return res.status(400).json({ error: known.includes(e.code) ? e.code : 'upload_failed' });
+  }
   if (!file) return res.status(400).json({ error: 'invalid_file' });
   const week = await consume('avatar-week', 'u:' + req.user.id, 7 * 24 * 60 * 60 * 1000, AVATAR_CHANGES_PER_WEEK);
   if (week.limited) { res.setHeader('Retry-After', String(week.retryAfter)); return res.status(429).json({ error: 'avatar_weekly_limit', retryAfter: week.retryAfter }); }

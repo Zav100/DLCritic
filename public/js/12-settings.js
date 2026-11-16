@@ -136,6 +136,13 @@ function wireSettingsTabs(){
 }
 // Arma Ajustes: una tarjeta con las pestañas Perfil (foto, nombre, descripción), Privacidad y seguridad (correo, contraseña y cerrar sesión en todos los dispositivos) y Conexiones
 // (redes y plataformas de juego, y Steam y biblioteca con su guía), y engancha cada botón "Guardar". Si no hay sesión, redirige a /cuenta.
+// Límites de un GIF como foto de perfil (los mismos ANIMATED_MAX_* de server/upload.js; el servidor es quien manda, esto solo avisa sin gastar la subida). Devuelve la clave del texto del problema o null.
+const GIF_MAX_BYTES = 1.5 * 1024 * 1024, GIF_MAX_SIDE = 400;
+async function gifProblemKey(file){
+  if(file.size > GIF_MAX_BYTES) return 'err_avatar_gif_heavy';
+  try{ const bmp = await createImageBitmap(file); const big = bmp.width > GIF_MAX_SIDE || bmp.height > GIF_MAX_SIDE; bmp.close(); return big ? 'err_avatar_gif_big' : null; }
+  catch(e){ return null; } // el navegador no pudo leerlo: lo decide el servidor
+}
 // Selector del estilo del icono de rango (solo suscriptores): tres estilos hechos y un color propio. Se guarda con «Guardar cambios» del perfil.
 function rankIconPickerHTML(u){
   const icon = computeLevel(levelCounts(u.username)).current.icon;
@@ -288,7 +295,7 @@ function renderSettingsView(){
   };
 
   let pendingSettingsAvatarFile = null;
-  document.getElementById('st-avatar-file').onchange = (e)=>{
+  document.getElementById('st-avatar-file').onchange = async (e)=>{
     const file = e.target.files[0];
     if(!file) return;
     // Los GIF (y las imágenes animadas) son solo de los suscriptores; el servidor lo vuelve a comprobar, esto solo avisa antes de subir.
@@ -296,6 +303,13 @@ function renderSettingsView(){
       e.target.value = '';
       const errEl = document.getElementById('stProfileError');
       errEl.textContent = t('err_avatar_animated'); errEl.hidden = false;
+      return;
+    }
+    const gifProblem = file.type==='image/gif' ? await gifProblemKey(file) : null;
+    if(gifProblem){
+      e.target.value = '';
+      const errEl = document.getElementById('stProfileError');
+      errEl.textContent = t(gifProblem); errEl.hidden = false;
       return;
     }
     document.getElementById('stProfileError').hidden = true;
@@ -322,7 +336,7 @@ function renderSettingsView(){
           if(r.user.avatarReview==='pending') toast(t('toast_gif_pending')); // un GIF espera la aprobación de un admin
         }catch(e){
           const code = e.body && e.body.error;
-          errEl.textContent = t(code==='avatar_weekly_limit' ? 'err_avatar_weekly' : code==='animated_not_allowed' ? 'err_avatar_animated' : code==='invalid_file' ? 'err_avatar_invalid' : 'err_avatar_upload');
+          errEl.textContent = t(code==='avatar_weekly_limit' ? 'err_avatar_weekly' : code==='animated_not_allowed' ? 'err_avatar_animated' : code==='animated_too_heavy' ? 'err_avatar_gif_heavy' : code==='animated_too_big' ? 'err_avatar_gif_big' : code==='animated_too_many_frames' ? 'err_avatar_gif_frames' : code==='invalid_file' ? 'err_avatar_invalid' : 'err_avatar_upload');
           errEl.hidden = false;
           return;
         }

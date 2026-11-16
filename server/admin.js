@@ -4,7 +4,7 @@ const db = require('./db');
 const { requireAuth, verifyPin, sessionToken, endOtherSessions, endAllSessions } = require('./auth');
 const totp = require('./totp');
 const { rateLimit } = require('./rateLimit');
-const { receiveImage, saveImage, deleteImage } = require('./upload');
+const { receiveImage, saveImage, deleteImage, describeImage } = require('./upload');
 const moderation = require('./moderation');
 
 const router = express.Router();
@@ -414,7 +414,8 @@ async function shapeFlag(f) {
 router.get('/moderation', async (req, res) => {
   const flags = await Promise.all((await openFlags.all()).map(shapeFlag));
   const recent = await Promise.all((await recentFlags.all()).map(shapeFlag));
-  const gifs = (await pendingGifs.all()).map(u => ({ userId: u.id, username: u.username, currentUrl: u.avatar_url || null, pendingUrl: u.avatar_pending_url }));
+  // pendingInfo: peso, medidas y cuadros del GIF nuevo (y problem si pasa los límites de las fotos de perfil: los GIF subidos antes de que existieran pueden ser pesados).
+  const gifs = await Promise.all((await pendingGifs.all()).map(async u => ({ userId: u.id, username: u.username, currentUrl: u.avatar_url || null, pendingUrl: u.avatar_pending_url, pendingInfo: await describeImage(u.avatar_pending_url) })));
   const suspended = (await suspendedUsers.all()).map(u => ({ userId: u.id, username: u.username, since: u.suspended_at }));
   res.json({ flags, gifs, suspended, recent, openCount: flags.length + gifs.length });
 });
