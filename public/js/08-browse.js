@@ -361,7 +361,7 @@ function renderGameDetail(){
   // Se busca dentro de la ficha (el), no en todo el documento: la ficha de un personaje también usa .game-hero-bg y .game-hero-card, y si antes se había
   // visitado un personaje, su elemento (oculto) venía primero y la portada del juego se pintaba ahí, dejando vacía la de la ficha hasta recargar.
   loadHeroCover(el.querySelector('.game-hero-bg'), g.bannerUrl || g.coverUrl, !!g.bannerUrl); // el fondo: la portada de fondo si la tiene; si no, la foto de tarjeta
-  makeZoomable(el.querySelector('.game-hero-card .gc-cover'), g.coverUrl, g.title); // la portada de la ficha se abre en grande
+  makeZoomable(el.querySelector('.game-hero-card .gc-cover'), squareCoverUrl(g), g.title); // la miniatura de la ficha se abre en grande: la misma foto cuadrada que se ve (si no hay, la foto de tarjeta)
   document.getElementById('wishlistBtn').onclick = ()=> toggleWishlist(g.id);
   const addToListBtn = document.getElementById('addToListBtn');
   if(addToListBtn) addToListBtn.onclick = ()=> openAddToListModal(g.id);
