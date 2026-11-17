@@ -237,6 +237,7 @@
   .mod-gifs figure{ margin:0; }
   .mod-gifs figcaption{ font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
   .mod-gifs img{ width:120px; height:120px; object-fit:cover; border-radius:14px; background:var(--paper); }
+  .shape-warn{ margin:4px 0 0; color:var(--red-dim); font-weight:600; }
   .mod-gif-info{ margin:0 0 12px; font-size:12px; color:var(--ink-soft); }
   .mod-none{ display:flex; width:120px; height:120px; align-items:center; justify-content:center; border-radius:14px; background:var(--paper); color:var(--ink-soft); font-size:12px; }
   .mod-line{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--line); font-size:13px; }

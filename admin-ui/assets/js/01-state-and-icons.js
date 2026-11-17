@@ -32,7 +32,7 @@ const PLATFORMS = [
 ];
 
 // Estado global del panel: sesión de admin, catálogo completo, qué se está editando en cada una de las 3 pestañas (juegos/fechas/noticias), filtros de búsqueda, y las sugerencias de la bandeja de entrada.
-let state = { user:null, games:[], editingId:null, coverUrl:null, cardCoverUrl:null, characters:[], editingCharacterId:null, characterPhotoUrl:null, characterGameIds:[], characterBannerUrl:null, characterBannerGameId:null, dateEvents:[], editingDateId:null, newsItems:[], editingNewsId:null, gameSearch:'', gameVisFilter:'all', gameSortMode:'title', suggestions:[], inboxFilter:'all', inboxKind:'all' };
+let state = { user:null, games:[], editingId:null, coverUrl:null, cardCoverUrl:null, bannerUrl:null, characters:[], editingCharacterId:null, characterPhotoUrl:null, characterGameIds:[], characterBannerUrl:null, characterBannerGameId:null, dateEvents:[], editingDateId:null, newsItems:[], editingNewsId:null, gameSearch:'', gameVisFilter:'all', gameSortMode:'title', suggestions:[], inboxFilter:'all', inboxKind:'all' };
 
 // Respaldo de "field-sizing: content" (ver textarea en admin-ui/assets/admin.css) para los navegadores que no lo tienen: la casilla crece al escribir; el tope de 5 renglones lo pone el CSS (max-height).
 if(!CSS.supports('field-sizing','content')){

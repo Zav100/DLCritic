@@ -548,7 +548,7 @@ function loadImageForCanvas(url){
 // (dibujarla se ve bien, pero canvas.toBlob()/toDataURL() tira error de
 // "tainted canvas" — por eso el proxy).
 async function resolveCardCoverUrl(game){
-  const url = game.cardCoverUrl || game.coverUrl || null;
+  const url = squareCoverUrl(game) || null;
   if(!url) return null;
   try{
     const host = new URL(url, location.origin).hostname;

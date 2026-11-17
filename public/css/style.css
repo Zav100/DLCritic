@@ -4040,6 +4040,11 @@ input[type=search]::-webkit-search-cancel-button {
   opacity: 1;
 }
 
+/* la portada de fondo hecha a propósito (no la foto de tarjeta de relleno) se ve algo más nítida: desenfoque de 3,5 px en vez de 5 */
+.game-hero-bg.is-banner {
+  filter: blur(3.5px) brightness(.75) saturate(1.15);
+}
+
 .game-hero-card {
   position: relative;
   z-index: 1;

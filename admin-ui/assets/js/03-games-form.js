@@ -32,12 +32,31 @@ document.getElementById('f-cover-file').addEventListener('change', (e)=>{
   reader.onload = ()=>{ document.getElementById('coverPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
 });
+// Avisa si la imagen elegida no tiene la forma que pide su campo (cuadrada, o ancha): no se rechaza, solo se dice cómo se va a ver. noteId: el <p> del aviso; isOk(ancho, alto): si la forma sirve.
+async function shapeNote(file, noteId, isOk, message){
+  const note = document.getElementById(noteId);
+  note.hidden = true;
+  try{
+    const bmp = await createImageBitmap(file);
+    const w = bmp.width, h = bmp.height; bmp.close();
+    if(!isOk(w, h)){ note.textContent = message.replace('{w}', w).replace('{h}', h); note.hidden = false; }
+  }catch(e){ /* el navegador no pudo leerla: se sube igual y el servidor decide */ }
+}
 document.getElementById('f-card-cover-file').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = ()=>{ document.getElementById('cardCoverPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
   reader.readAsDataURL(file);
+  shapeNote(file, 'squareShapeNote', (w, h)=> Math.abs(w / h - 1) <= 0.05, 'Esta imagen no es cuadrada ({w}×{h}): en las miniaturas se verá recortada por el centro.');
+});
+document.getElementById('f-banner-file').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ document.getElementById('bannerPreview').innerHTML = `<img alt="" src="${reader.result}">`; };
+  reader.readAsDataURL(file);
+  shapeNote(file, 'bannerShapeNote', (w, h)=> w / h >= 1.6, 'Esta imagen no es muy ancha ({w}×{h}): en la ficha se verá recortada por arriba y por abajo.');
 });
 
 // Vuelve el formulario al estado "Nuevo juego" (vacío), saliendo del modo edición si estaba editando uno.
@@ -45,12 +64,16 @@ function resetForm(){
   state.editingId = null;
   state.coverUrl = null;
   state.cardCoverUrl = null;
+  state.bannerUrl = null;
   document.getElementById('formTitle').innerHTML = iconLabel('plus', 'Nuevo juego');
   document.getElementById('submitBtn').textContent = 'Guardar juego';
   document.getElementById('cancelEditBtn').hidden = true;
   document.getElementById('gameForm').reset();
   document.getElementById('coverPreview').innerHTML = ICON_SVG.gamepad;
   document.getElementById('cardCoverPreview').innerHTML = ICON_SVG.gamepad;
+  document.getElementById('bannerPreview').innerHTML = ICON_SVG.gamepad;
+  document.getElementById('squareShapeNote').hidden = true;
+  document.getElementById('bannerShapeNote').hidden = true;
   genreGrid.querySelectorAll('[data-genre]').forEach(cb=>{ cb.checked = false; });
   platformGrid.querySelectorAll('[data-plat-url]').forEach(i=>{ i.disabled = true; i.value=''; });
   document.getElementById('newReleaseDateField').hidden = true;
@@ -63,6 +86,9 @@ function fillFormForEdit(g){
   state.editingId = g.id;
   state.coverUrl = g.coverUrl || null;
   state.cardCoverUrl = g.cardCoverUrl || null;
+  state.bannerUrl = g.bannerUrl || null;
+  document.getElementById('squareShapeNote').hidden = true;
+  document.getElementById('bannerShapeNote').hidden = true;
   document.getElementById('formTitle').innerHTML = iconLabel('edit', 'Editar: ' + g.title);
   document.getElementById('submitBtn').textContent = 'Guardar cambios';
   document.getElementById('cancelEditBtn').hidden = false;
@@ -77,6 +103,7 @@ function fillFormForEdit(g){
   document.getElementById('f-description').value = g.description || '';
   document.getElementById('coverPreview').innerHTML = g.coverUrl ? `<img alt="" src="${esc(g.coverUrl)}">` : ICON_SVG.gamepad;
   document.getElementById('cardCoverPreview').innerHTML = g.cardCoverUrl ? `<img alt="" src="${esc(g.cardCoverUrl)}">` : ICON_SVG.gamepad;
+  document.getElementById('bannerPreview').innerHTML = g.bannerUrl ? `<img alt="" src="${esc(g.bannerUrl)}">` : ICON_SVG.gamepad;
   const platforms = g.platforms || [];
   const links = g.storeLinks || {};
   platformGrid.querySelectorAll('[data-plat]').forEach(cb=>{
@@ -131,6 +158,7 @@ document.getElementById('gameForm').addEventListener('submit', async (e)=>{
   try{
     const coverUrl = await uploadImageIfNeeded('f-cover-file', state.coverUrl);
     const cardCoverUrl = await uploadImageIfNeeded('f-card-cover-file', state.cardCoverUrl);
+    const bannerUrl = await uploadImageIfNeeded('f-banner-file', state.bannerUrl);
     const isNewRelease = document.getElementById('f-new-release').checked;
     const payload = {
       title, genres,
@@ -140,7 +168,7 @@ document.getElementById('gameForm').addEventListener('submit', async (e)=>{
       gameMode: document.getElementById('f-mode').value.trim(),
       steamAppId: document.getElementById('f-steam-appid').value ? Number(document.getElementById('f-steam-appid').value) : null,
       description: document.getElementById('f-description').value.trim(),
-      platforms, storeLinks, coverUrl, cardCoverUrl,
+      platforms, storeLinks, coverUrl, cardCoverUrl, bannerUrl,
       hidden: document.getElementById('f-hidden').checked,
       isNewRelease, newReleaseDate: isNewRelease ? (document.getElementById('f-new-release-date').value || null) : null,
     };

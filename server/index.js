@@ -536,7 +536,7 @@ const findGameById = db.prepare('SELECT * FROM games WHERE id = ?');
 function shapeGame(g) {
   return {
     id: g.id, title: g.title, genre: g.genre, genres: JSON.parse(g.genres || '[]'), platforms: JSON.parse(g.platforms), addedBy: g.added_by,
-    coverUrl: g.cover_url || null, cardCoverUrl: g.card_cover_url || null, description: g.description || null,
+    coverUrl: g.cover_url || null, cardCoverUrl: g.card_cover_url || null, bannerUrl: g.banner_url || null, description: g.description || null,
     developer: g.developer || null, publisher: g.publisher || null,
     releaseYear: g.release_year || null, gameMode: g.game_mode || null,
     storeLinks: JSON.parse(g.store_links || '{}'),

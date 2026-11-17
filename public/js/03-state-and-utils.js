@@ -278,11 +278,16 @@ const coverIO = new IntersectionObserver((entries)=>{
   });
 }, { rootMargin:'200px' });
 // Portada "hero" (la grande de la ficha de un juego): esta se carga de una, sin esperar a que entre en pantalla, porque siempre está arriba de todo.
-function loadHeroCover(el, url){
+// isBanner: la imagen es la portada de fondo hecha a propósito (bannerUrl): se ve con un desenfoque más suave que la foto de tarjeta usada de relleno (.game-hero-bg.is-banner en style.css).
+function loadHeroCover(el, url, isBanner){
   if(!el || !url) return;
   el.style.backgroundImage = `url("${url}")`;
   el.classList.add('has-cover');
+  el.classList.toggle('is-banner', !!isBanner);
 }
+// La foto para los marcos CUADRADOS (la ficha del juego, el reto del día, las filas de las listas laterales): la foto cuadrada (cardCoverUrl) si el juego la tiene; si no, la portada normal,
+// que ahí se ve entera con franjas desenfocadas arriba y abajo. Los marcos 16:9 (tarjetas de Explorar, listas, favoritos) siguen con la portada normal (coverUrl).
+function squareCoverUrl(g){ return g.cardCoverUrl || g.coverUrl || ''; }
 // Engancha data-cover-title/data-cover-url con el sistema de portadas de arriba. Idempotente: a los elementos ya enganchados no los vuelve a tocar (data-cover-observed).
 function enhanceCovers(){
   document.querySelectorAll('[data-cover-title]').forEach(el=>{
