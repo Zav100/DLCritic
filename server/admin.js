@@ -65,13 +65,13 @@ function uid() { return Date.now().toString(36) + crypto.randomBytes(3).toString
 const listAdminGames = db.prepare('SELECT * FROM games ORDER BY title ASC');
 const findAdminGame = db.prepare('SELECT * FROM games WHERE id = ?');
 const insertAdminGame = db.prepare(`
-  INSERT INTO games (id, title, genre, genres, platforms, added_by, created_at, cover_url, card_cover_url, description, developer, publisher,
+  INSERT INTO games (id, title, genre, genres, platforms, added_by, created_at, cover_url, card_cover_url, banner_url, description, developer, publisher,
     release_year, game_mode, store_links, hidden, is_new_release, new_release_date, builtin, steam_appid)
-  VALUES (@id, @title, @genre, @genres, @platforms, @added_by, @created_at, @cover_url, @card_cover_url, @description, @developer, @publisher,
+  VALUES (@id, @title, @genre, @genres, @platforms, @added_by, @created_at, @cover_url, @card_cover_url, @banner_url, @description, @developer, @publisher,
     @release_year, @game_mode, @store_links, @hidden, @is_new_release, @new_release_date, 0, @steam_appid)
 `);
 const updateAdminGame = db.prepare(`
-  UPDATE games SET title=@title, genre=@genre, genres=@genres, platforms=@platforms, cover_url=@cover_url, card_cover_url=@card_cover_url, description=@description,
+  UPDATE games SET title=@title, genre=@genre, genres=@genres, platforms=@platforms, cover_url=@cover_url, card_cover_url=@card_cover_url, banner_url=@banner_url, description=@description,
     developer=@developer, publisher=@publisher, release_year=@release_year, game_mode=@game_mode, store_links=@store_links,
     hidden=@hidden, is_new_release=@is_new_release, new_release_date=@new_release_date, steam_appid=@steam_appid
   WHERE id=@id
@@ -84,7 +84,7 @@ const appId = v => (Number.isInteger(Number(v)) && Number(v) > 0 ? Number(v) : n
 function shapeAdminGame(g) {
   return {
     id: g.id, title: g.title, genre: g.genre, genres: JSON.parse(g.genres || '[]'), platforms: JSON.parse(g.platforms || '[]'),
-    addedBy: g.added_by, createdAt: g.created_at, coverUrl: g.cover_url, cardCoverUrl: g.card_cover_url, description: g.description,
+    addedBy: g.added_by, createdAt: g.created_at, coverUrl: g.cover_url, cardCoverUrl: g.card_cover_url, bannerUrl: g.banner_url, description: g.description,
     developer: g.developer, publisher: g.publisher, releaseYear: g.release_year,
     gameMode: g.game_mode, storeLinks: JSON.parse(g.store_links || '{}'),
     hidden: !!g.hidden, isNewRelease: !!g.is_new_release, newReleaseDate: g.new_release_date, builtin: !!g.builtin, steamAppId: g.steam_appid || null,
@@ -104,7 +104,7 @@ router.post('/games', async (req, res) => {
   await insertAdminGame.run({
     id, title, genre: genresArr[0], genres: JSON.stringify(genresArr), platforms: JSON.stringify(b.platforms || []),
     added_by: req.user.username, created_at: new Date().toISOString(),
-    cover_url: b.coverUrl || null, card_cover_url: b.cardCoverUrl || null, description: b.description || null,
+    cover_url: b.coverUrl || null, card_cover_url: b.cardCoverUrl || null, banner_url: b.bannerUrl || null, description: b.description || null,
     developer: b.developer || null, publisher: b.publisher || null,
     release_year: b.releaseYear ? Number(b.releaseYear) : null,
     game_mode: b.gameMode || null, store_links: JSON.stringify(b.storeLinks || {}),
@@ -128,6 +128,7 @@ router.put('/games/:id', async (req, res) => {
     platforms: JSON.stringify(b.platforms !== undefined ? b.platforms : JSON.parse(existing.platforms || '[]')),
     cover_url: b.coverUrl !== undefined ? b.coverUrl : existing.cover_url,
     card_cover_url: b.cardCoverUrl !== undefined ? b.cardCoverUrl : existing.card_cover_url,
+    banner_url: b.bannerUrl !== undefined ? b.bannerUrl : existing.banner_url,
     description: b.description !== undefined ? b.description : existing.description,
     developer: b.developer !== undefined ? b.developer : existing.developer,
     publisher: b.publisher !== undefined ? b.publisher : existing.publisher,

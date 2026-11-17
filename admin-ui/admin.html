@@ -159,22 +159,34 @@
             <textarea id="f-description"></textarea>
           </div>
           <div class="field">
-            <label for="f-cover-file">Portada</label>
+            <label for="f-cover-file">Foto de tarjeta</label>
             <div class="cover-picker">
               <div class="cover-preview" id="coverPreview"></div>
               <div>
                 <input type="file" id="f-cover-file" accept="image/png,image/jpeg,image/webp,image/gif">
-                <p class="hint" style="margin:6px 0 0;">JPG, PNG o WEBP: si es muy grande, se achica sola. GIF: máximo 4MB.</p>
+                <p class="hint" style="margin:6px 0 0;">Es la que se ve en las tarjetas de Explorar, las listas y los favoritos (marco 16:9); también es el fondo de la ficha si no subes una portada de fondo. JPG, PNG o WEBP: si es muy grande, se achica sola. GIF: máximo 4MB.</p>
               </div>
             </div>
           </div>
           <div class="field">
-            <label for="f-card-cover-file">Imagen para la tarjeta de compartir (opcional)</label>
+            <label for="f-card-cover-file">Foto cuadrada (opcional): miniaturas y tarjeta de compartir</label>
             <div class="cover-picker">
               <div class="cover-preview" id="cardCoverPreview"></div>
               <div>
                 <input type="file" id="f-card-cover-file" accept="image/png,image/jpeg,image/webp,image/gif">
-                <p class="hint" style="margin:6px 0 0;">Imagen <strong>cuadrada</strong>, 920×920&nbsp;px (o más, misma proporción 1:1) — es el recuadro exacto que usa la tarjeta que se genera al compartir una reseña. Si no subes una, se usa la portada normal de arriba, entera y centrada sobre un fondo desenfocado.</p>
+                <p class="hint" style="margin:6px 0 0;">Imagen <strong>cuadrada</strong>, 920×920&nbsp;px (o más, misma proporción 1:1). Es la que se ve en las miniaturas cuadradas —la ficha del juego, el reto del día y las filas de las listas laterales— sin franjas arriba y abajo, y la que usa la tarjeta que se genera al compartir una reseña. Si no subes una, esas miniaturas usan la foto de tarjeta, entera y centrada sobre un fondo desenfocado.</p>
+                <p class="hint shape-warn" id="squareShapeNote" hidden></p>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-banner-file">Portada de fondo (opcional): ficha del juego</label>
+            <div class="cover-picker">
+              <div class="cover-preview" id="bannerPreview"></div>
+              <div>
+                <input type="file" id="f-banner-file" accept="image/png,image/jpeg,image/webp,image/gif">
+                <p class="hint" style="margin:6px 0 0;">Imagen <strong>ancha</strong> (16:9 o más, por ejemplo 1920×1080). Llena todo el fondo de la página del juego: la franja de arriba (unos 260&nbsp;px de alto) se ve nítida y el resto queda detrás de la tarjeta de vidrio, así que lo importante (logo, personajes) tiene que estar en la mitad de arriba. Si no subes una, el fondo es la foto de tarjeta.</p>
+                <p class="hint shape-warn" id="bannerShapeNote" hidden></p>
               </div>
             </div>
           </div>

@@ -192,6 +192,8 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE INDEX IF NOT EXISTS idx_games_title_lower ON games(lower(title));
 -- Id del juego en Steam (el número de store.steampowered.com/app/<id>): con él se cruzan los juegos de la cuenta de Steam con el catálogo. Los juegos fuera de Steam quedan en NULL.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS steam_appid INTEGER;
+-- Portada de fondo de la ficha del juego (imagen ancha). Si falta, el fondo es cover_url (la foto de tarjeta). card_cover_url es la foto CUADRADA (miniaturas y tarjeta de compartir).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS banner_url TEXT;
 
 CREATE TABLE IF NOT EXISTS date_events (
   id TEXT PRIMARY KEY,

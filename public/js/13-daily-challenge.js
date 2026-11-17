@@ -102,14 +102,14 @@ function renderGuessCard(){
   if(state.daily.solved){
     bodyHTML = `
       <div class="daily-result correct">
-        <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
+        <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(squareCoverUrl(g))}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
         <div><div class="rc-game">${esc(g.title)}</div><div class="rc-meta" style="color:var(--success-dim); font-weight:700;">${t('guess_win_line')} ${esc(d.developer)} · ${esc(String(d.year))}</div></div>
       </div>
       <button class="btn gold" id="dailyRateBtn" style="margin-top:14px;">${t('rate_this_game')}</button>`;
   } else if(state.daily.failed){
     bodyHTML = `
       <div class="daily-result">
-        <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
+        <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(squareCoverUrl(g))}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
         <div><div class="rc-game">${esc(g.title)}</div><div class="rc-meta">${t('guess_lose_line')}</div></div>
       </div>`;
   } else {
@@ -259,7 +259,7 @@ function showRouletteResult(g){
   const d = gameDetails(g);
   document.getElementById('rouletteResult').innerHTML = `
     <div class="daily-result win clickable has-card-link" id="rouletteResultBar" style="margin-top:16px;">${cardLinkHTML(gameHref(g.id), g.title)}
-      <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
+      <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:56px;height:56px;font-size:26px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(squareCoverUrl(g))}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
       <div><div class="rc-game">${esc(g.title)}</div><div class="rc-meta">${esc(genreLabelList(g))}${d? ' · '+esc(String(d.year)) : ''}</div></div>
     </div>
     <button class="btn small" id="rouletteRateBtn" style="margin-top:12px;">${t('rate_this_game')}</button>`;

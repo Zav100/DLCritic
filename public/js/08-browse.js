@@ -303,7 +303,7 @@ function renderGameDetail(){
       <div class="card game-hero-card">
         <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
           <div style="display:flex; gap:16px; align-items:center;">
-            <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:64px; height:64px; font-size:30px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
+            <div class="gc-cover ${genreTint(primaryGenre(g))}" style="width:64px; height:64px; font-size:30px;" data-cover-title="${esc(g.title)}" data-cover-url="${esc(squareCoverUrl(g))}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</div>
             <div>
               <div class="rc-game" style="font-size:22px;">${esc(g.title)}</div>
               <div class="rc-meta">${esc(genreLabelList(g))} · ${reviewsCountText(st.reviewCount)}</div>
@@ -360,7 +360,7 @@ function renderGameDetail(){
   renderGauge(document.getElementById('detailGauge'), st.avg||0);
   // Se busca dentro de la ficha (el), no en todo el documento: la ficha de un personaje también usa .game-hero-bg y .game-hero-card, y si antes se había
   // visitado un personaje, su elemento (oculto) venía primero y la portada del juego se pintaba ahí, dejando vacía la de la ficha hasta recargar.
-  loadHeroCover(el.querySelector('.game-hero-bg'), g.coverUrl);
+  loadHeroCover(el.querySelector('.game-hero-bg'), g.bannerUrl || g.coverUrl, !!g.bannerUrl); // el fondo: la portada de fondo si la tiene; si no, la foto de tarjeta
   makeZoomable(el.querySelector('.game-hero-card .gc-cover'), g.coverUrl, g.title); // la portada de la ficha se abre en grande
   document.getElementById('wishlistBtn').onclick = ()=> toggleWishlist(g.id);
   const addToListBtn = document.getElementById('addToListBtn');

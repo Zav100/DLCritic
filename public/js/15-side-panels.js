@@ -55,7 +55,7 @@ function railCardHTML(title, bodyHTML, subHTML='', cls=''){
 function gameRailRow(g, score=null){
   return railItemHTML({
     attrs: `data-go-game="${esc(g.id)}"`,
-    lead: `<span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(g.coverUrl||'')}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</span>`,
+    lead: `<span class="gc-cover ri-cover ${genreTint(primaryGenre(g))}" data-cover-title="${esc(g.title)}" data-cover-url="${esc(squareCoverUrl(g))}">${GENRE_EMOJI[primaryGenre(g)]||ICONS.gamepad}</span>`,
     title: esc(g.title),
     sub: esc(genreLabelList(g)),
     score,

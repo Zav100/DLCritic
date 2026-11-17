@@ -975,10 +975,15 @@ const today = new Date().toISOString().slice(0, 10);
     const r = await client('admin')('POST', '/api/auth/login', { identifier: 'smoketest_admin', password: pass, code: totp.codeForStep(secret, Math.floor(Date.now() / 30000)) }); ok(r);
     const now = await stored(); assert.match(now, /^enc1:/); assert.equal(totp.openSecret(now), secret);
   });
-  await step('juegos: crear, editar, ocultar y borrar', async () => {
-    const c = await admin('POST', '/api/admin/games', { title: 'Smoketest Game', genres: ['Acción', 'Indie'], platforms: ['steam'], releaseYear: '2025', description: 'd', isNewRelease: true, newReleaseDate: '2025-05-05' }); ok(c);
+  await step('juegos: crear, editar, ocultar y borrar; las tres fotos (de tarjeta, cuadrada y de fondo) se guardan, se ven en el sitio y se pueden quitar', async () => {
+    const c = await admin('POST', '/api/admin/games', { title: 'Smoketest Game', genres: ['Acción', 'Indie'], platforms: ['steam'], releaseYear: '2025', description: 'd', isNewRelease: true, newReleaseDate: '2025-05-05', coverUrl: '/uploads/prueba-tarjeta.png', cardCoverUrl: '/uploads/prueba-cuadrada.png', bannerUrl: '/uploads/prueba-fondo.png' }); ok(c);
     const id = c.body.game.id; assert.deepEqual([c.body.game.genre, c.body.game.releaseYear, c.body.game.isNewRelease, c.body.game.builtin], ['Acción', 2025, true, false]);
     assert.ok((await anon('GET', '/api/games')).body.games.some(g => g.id === id));
+    const fotos = g => [g.coverUrl, g.cardCoverUrl, g.bannerUrl];
+    assert.deepEqual(fotos(c.body.game), ['/uploads/prueba-tarjeta.png', '/uploads/prueba-cuadrada.png', '/uploads/prueba-fondo.png']);
+    assert.deepEqual(fotos((await anon('GET', '/api/games')).body.games.find(g => g.id === id)), fotos(c.body.game), 'el sitio público las recibe');
+    const sinTocarFotos = await admin('PUT', `/api/admin/games/${id}`, { title: 'Smoketest Game 1' }); ok(sinTocarFotos); assert.deepEqual(fotos(sinTocarFotos.body.game), fotos(c.body.game), 'editar otra cosa no las borra');
+    const quitaFondo = await admin('PUT', `/api/admin/games/${id}`, { bannerUrl: null }); ok(quitaFondo); assert.deepEqual(fotos(quitaFondo.body.game), ['/uploads/prueba-tarjeta.png', '/uploads/prueba-cuadrada.png', null], 'se puede quitar solo la de fondo');
     const u = await admin('PUT', `/api/admin/games/${id}`, { title: 'Smoketest Game 2', hidden: true }); ok(u); assert.deepEqual([u.body.game.title, u.body.game.hidden], ['Smoketest Game 2', true]);
     assert.ok(!(await anon('GET', '/api/games')).body.games.some(g => g.id === id)); // oculto: no aparece en el sitio público
     assert.equal((await admin('POST', '/api/admin/games', { title: 'a' })).body.error, 'title_too_short');
